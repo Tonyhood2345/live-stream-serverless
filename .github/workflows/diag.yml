@@ -1,0 +1,23 @@
+﻿name: Diagnosi Connettivita Facebook RTMP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnosi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test DNS Facebook
+        run: nslookup live-api-s.facebook.com
+
+      - name: Test TCP porta 443
+        run: nc -zv live-api-s.facebook.com 443 && echo "PORTA 443 APERTA" || echo "PORTA 443 BLOCCATA"
+
+      - name: Test TCP porta 1935 RTMP classico
+        run: nc -zv live-api-s.facebook.com 1935 && echo "PORTA 1935 APERTA" || echo "PORTA 1935 BLOCCATA"
+
+      - name: Test curl TLS verso Facebook RTMP
+        run: curl -v --max-time 10 "https://live-api-s.facebook.com/" 2>&1 | head -30 || true
+
+      - name: Mostra IP GitHub Actions
+        run: curl -s ifconfig.me && echo " <- IP del server"

@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'URL del video'
+        description: 'URL del video (mp4 diretto o redirect)'
         required: true
       fb_key:
-        description: 'Facebook Stream Key'
+        description: 'Facebook RTMP URL completo (rtmps://live-api-s.facebook.com/rtmp/KEY)'
         required: false
       yt_key:
         description: 'YouTube Stream Key'
@@ -22,21 +22,44 @@ on:
 jobs:
   multistream:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 360
+
     steps:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
-        
+
+      - name: Verify Video Input
+        run: |
+          echo "Testing video URL: ${{ github.event.inputs.video_url }}"
+          ffprobe -v error -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
+            -show_entries format=duration -of default=noprint_wrappers=1 \
+            "${{ github.event.inputs.video_url }}" && echo "VIDEO OK" || (echo "ERRORE: Video non accessibile!" && exit 1)
+
       - name: Start Multistream
         run: |
           DESTINATIONS=""
-          if [ -n "${{ github.event.inputs.fb_key }}" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${{ github.event.inputs.fb_key }}|"; fi
-          if [ -n "${{ github.event.inputs.yt_key }}" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${{ github.event.inputs.yt_key }}|"; fi
-          if [ -n "${{ github.event.inputs.tk_key }}" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${{ github.event.inputs.tk_key }}|"; fi
-          if [ -n "${{ github.event.inputs.ig_key }}" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${{ github.event.inputs.ig_key }}|"; fi
+          FB="${{ github.event.inputs.fb_key }}"
+          YT="${{ github.event.inputs.yt_key }}"
+          TK="${{ github.event.inputs.tk_key }}"
+          IG="${{ github.event.inputs.ig_key }}"
+
+          if [ -n "$FB" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${FB}|"; fi
+          if [ -n "$YT" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]rtmp://a.rtmp.youtube.com/live2/${YT}|"; fi
+          if [ -n "$TK" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${TK}|"; fi
+          if [ -n "$IG" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${IG}|"; fi
+
           DESTINATIONS=${DESTINATIONS%|}
-          
-          ffmpeg -re -stream_loop -1 -i "${{ github.event.inputs.video_url }}" \
+
+          if [ -z "$DESTINATIONS" ]; then
+            echo "ERRORE: Nessuna destinazione stream! Inserisci almeno la chiave Facebook o YouTube nel foglio."
+            exit 1
+          fi
+
+          echo "Avvio multistream verso: $DESTINATIONS"
+
+          ffmpeg -re -stream_loop -1 \
+            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
+            -i "${{ github.event.inputs.video_url }}" \
             -c:v libx264 -preset veryfast -b:v 3000k \
             -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
             -c:a aac -b:a 128k -ar 44100 \

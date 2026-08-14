@@ -1,0 +1,46 @@
+name: Test Audio Options Diagnostic
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-audio:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Test ALSA Kernel Loopback (snd-aloop)
+        run: |
+          echo "=== TEST IPOTESI 4: snd-aloop ==="
+          if sudo modprobe snd-aloop; then
+            echo "RESULT_ALOOP: SUCCESS - Modulo snd-aloop caricato!"
+            lsmod | grep snd_aloop
+            aplay -l
+          else
+            echo "RESULT_ALOOP: FAILED - Modulo snd-aloop bloccato dal kernel!"
+          fi
+
+      - name: 2. Test PulseAudio Virtual Sink
+        run: |
+          echo "=== TEST IPOTESI 1: PulseAudio Virtual Sink ==="
+          sudo apt-get update && sudo apt-get install -y pulseaudio pulseaudio-utils alsa-utils ffmpeg
+          
+          # Avvia pulseaudio in modalità daemon
+          pulseaudio -D --exit-idle-time=-1 --system=false || true
+          sleep 2
+          
+          # Carica il modulo null-sink
+          SINK_ID=$(pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=VirtualSink 2>&1)
+          echo "Sink loaded: $SINK_ID"
+          
+          pactl set-default-sink VirtualSink
+          
+          # Lista sorgenti audio
+          pactl list sources short
+          
+          # Prova a registrare 3 secondi di audio da VirtualSink.monitor
+          ffmpeg -t 3 -f pulse -i VirtualSink.monitor test_pulse.wav && echo "RESULT_PULSE: SUCCESS - Registrazione PulseAudio riuscita!" || echo "RESULT_PULSE: FAILED"
+
+      - name: 3. Test Direct MP3 Audio Injection
+        run: |
+          echo "=== TEST IPOTESI 2: MP3 Audio Injection ==="
+          ffmpeg -t 3 -re -stream_loop -1 -i "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" -c:a aac test_mp3.aac && echo "RESULT_MP3: SUCCESS - Stream MP3 riuscito!" || echo "RESULT_MP3: FAILED"

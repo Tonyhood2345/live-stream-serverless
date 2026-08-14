@@ -25,10 +25,10 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Setup Headless Environment and Dependencies
+      - name: Setup Headless Environment and Audio Engine
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg xvfb openbox
+          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils
           
           # Installa Google Chrome
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
@@ -39,21 +39,29 @@ jobs:
           google-chrome --version
           ffmpeg -version | head -1
 
-      - name: Launch Browser and Start Multistream
+      - name: Launch Audio Engine, Browser and Start Multistream
         run: |
-          # Avvia il server X virtuale a 1920x1080
+          # 1. Avvia PulseAudio daemon in background
+          pulseaudio -D --exit-idle-time=-1 --system=false || true
+          sleep 2
+          
+          # 2. Crea il Sink Virtuale (Dispositivo Altoparlante Virtuale)
+          pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=VirtualSink || true
+          pactl set-default-sink VirtualSink || true
+
+          # 3. Avvia il server X virtuale a 1920x1080
           Xvfb :99 -screen 0 1920x1080x24 &
           export DISPLAY=:99
           
-          # Avvia Openbox per gestire la finestra a tutto schermo pulita
+          # 4. Avvia Openbox per gestire la finestra a tutto schermo pulita
           openbox &
           sleep 2
 
-          # Pre-crea la cartella profilo ed evita tassativamente la schermata "First Run" / "Browser Predefinito"
+          # 5. Pre-crea la cartella profilo ed evita la schermata "First Run"
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
 
-          echo "Avvio Chrome sulla pagina: ${{ github.event.inputs.video_url }}"
+          echo "Avvio Chrome con supporto Audio Pulse sulla pagina: ${{ github.event.inputs.video_url }}"
           google-chrome \
             --kiosk \
             --window-position=0,0 \
@@ -70,16 +78,16 @@ jobs:
             --user-data-dir=/tmp/chrome_clean_profile \
             "${{ github.event.inputs.video_url }}" &
           
-          echo "Attesa di 15 secondi per il caricamento della pagina..."
+          echo "Attesa di 15 secondi per il caricamento della pagina e dell'audio..."
           sleep 15
 
           PIDS=()
 
-          # -draw_mouse 0 nasconde il cursore del mouse dalla diretta!
+          # -f pulse -i VirtualSink.monitor cattura l'audio HD del browser!
           if [ -n "${{ github.event.inputs.fb_key }}" ]; then
-            echo "Avvio stream Facebook..."
+            echo "Avvio stream Facebook (Video HD + Audio PulseAudio)..."
             ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -f lavfi -i anullsrc \
+                   -f pulse -i VirtualSink.monitor \
                    -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
                    -f flv "${{ github.event.inputs.fb_key }}" &
@@ -87,9 +95,9 @@ jobs:
           fi
 
           if [ -n "${{ github.event.inputs.yt_key }}" ]; then
-            echo "Avvio stream YouTube..."
+            echo "Avvio stream YouTube (Video HD + Audio PulseAudio)..."
             ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -f lavfi -i anullsrc \
+                   -f pulse -i VirtualSink.monitor \
                    -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
                    -f flv "rtmp://a.rtmp.youtube.com/live2/${{ github.event.inputs.yt_key }}" &
@@ -101,6 +109,6 @@ jobs:
             exit 1
           fi
 
-          echo "Tutti gli stream attivi (PIDs: ${PIDS[*]}). In attesa..."
+          echo "Tutti gli stream attivi con Audio e Video (PIDs: ${PIDS[*]}). In attesa..."
           wait "${PIDS[@]}"
           echo "Stream terminati."

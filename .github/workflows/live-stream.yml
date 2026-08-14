@@ -4,19 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'URL del video (mp4 diretto o redirect)'
+        description: 'URL del video (mp4 diretto)'
         required: true
       fb_key:
         description: 'Facebook RTMP URL completo (rtmps://live-api-s.facebook.com/rtmp/KEY)'
         required: false
       yt_key:
-        description: 'YouTube Stream Key'
+        description: 'YouTube Stream Key (solo la chiave, senza rtmp://)'
         required: false
       tk_key:
-        description: 'TikTok Stream Key'
+        description: 'TikTok RTMP URL completo'
         required: false
       ig_key:
-        description: 'Instagram Stream Key'
+        description: 'Instagram RTMP URL completo'
         required: false
 
 jobs:
@@ -26,41 +26,73 @@ jobs:
 
     steps:
       - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          ffmpeg -version | head -1
 
       - name: Verify Video Input
         run: |
           echo "Testing video URL: ${{ github.event.inputs.video_url }}"
-          ffprobe -v error -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
-            -show_entries format=duration -of default=noprint_wrappers=1 \
+          ffprobe -v error \
+            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
+            -show_entries format=duration \
+            -of default=noprint_wrappers=1 \
             "${{ github.event.inputs.video_url }}" && echo "VIDEO OK" || (echo "ERRORE: Video non accessibile!" && exit 1)
 
-      - name: Start Multistream
+      - name: Start Multistream to Facebook
+        if: ${{ github.event.inputs.fb_key != '' }}
         run: |
-          DESTINATIONS=""
-          FB="${{ github.event.inputs.fb_key }}"
-          YT="${{ github.event.inputs.yt_key }}"
-          TK="${{ github.event.inputs.tk_key }}"
-          IG="${{ github.event.inputs.ig_key }}"
-
-          if [ -n "$FB" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${FB}|"; fi
-          if [ -n "$YT" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]rtmp://a.rtmp.youtube.com/live2/${YT}|"; fi
-          if [ -n "$TK" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${TK}|"; fi
-          if [ -n "$IG" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${IG}|"; fi
-
-          DESTINATIONS=${DESTINATIONS%|}
-
-          if [ -z "$DESTINATIONS" ]; then
-            echo "ERRORE: Nessuna destinazione stream! Inserisci almeno la chiave Facebook o YouTube nel foglio."
-            exit 1
-          fi
-
-          echo "Avvio multistream verso: $DESTINATIONS"
-
+          echo "Avvio stream Facebook..."
           ffmpeg -re -stream_loop -1 \
             -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
             -i "${{ github.event.inputs.video_url }}" \
             -c:v libx264 -preset veryfast -b:v 3000k \
             -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
             -c:a aac -b:a 128k -ar 44100 \
-            -f tee "$DESTINATIONS"
+            -f flv "${{ github.event.inputs.fb_key }}" &
+          echo "Facebook stream avviato in background (PID: $!)"
+
+      - name: Start Multistream to YouTube
+        if: ${{ github.event.inputs.yt_key != '' }}
+        run: |
+          echo "Avvio stream YouTube..."
+          ffmpeg -re -stream_loop -1 \
+            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
+            -i "${{ github.event.inputs.video_url }}" \
+            -c:v libx264 -preset veryfast -b:v 3000k \
+            -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+            -c:a aac -b:a 128k -ar 44100 \
+            -f flv "rtmp://a.rtmp.youtube.com/live2/${{ github.event.inputs.yt_key }}" &
+          echo "YouTube stream avviato in background (PID: $!)"
+
+      - name: Start Multistream to TikTok
+        if: ${{ github.event.inputs.tk_key != '' }}
+        run: |
+          echo "Avvio stream TikTok..."
+          ffmpeg -re -stream_loop -1 \
+            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
+            -i "${{ github.event.inputs.video_url }}" \
+            -c:v libx264 -preset veryfast -b:v 3000k \
+            -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+            -c:a aac -b:a 128k -ar 44100 \
+            -f flv "${{ github.event.inputs.tk_key }}" &
+          echo "TikTok stream avviato in background (PID: $!)"
+
+      - name: Start Multistream to Instagram
+        if: ${{ github.event.inputs.ig_key != '' }}
+        run: |
+          echo "Avvio stream Instagram..."
+          ffmpeg -re -stream_loop -1 \
+            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
+            -i "${{ github.event.inputs.video_url }}" \
+            -c:v libx264 -preset veryfast -b:v 3000k \
+            -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+            -c:a aac -b:a 128k -ar 44100 \
+            -f flv "${{ github.event.inputs.ig_key }}" &
+          echo "Instagram stream avviato in background (PID: $!)"
+
+      - name: Keep streams alive
+        run: |
+          echo "Tutti gli stream attivi. In attesa..."
+          wait
+          echo "Stream terminati."

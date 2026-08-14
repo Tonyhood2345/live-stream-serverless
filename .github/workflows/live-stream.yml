@@ -28,7 +28,7 @@ jobs:
       - name: Setup Headless Environment and Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg xvfb
+          sudo apt-get install -y ffmpeg xvfb openbox
           
           # Installa Google Chrome
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
@@ -41,21 +41,36 @@ jobs:
 
       - name: Launch Browser and Start Multistream
         run: |
-          # Avvia il server X virtuale
+          # Avvia il server X virtuale a 1920x1080
           Xvfb :99 -screen 0 1920x1080x24 &
           export DISPLAY=:99
           
+          # Avvia Openbox per gestire la finestra a tutto schermo pulita
+          openbox &
+          sleep 2
+
           echo "Avvio Chrome sulla pagina: ${{ github.event.inputs.video_url }}"
-          google-chrome --kiosk --window-size=1920,1080 --no-sandbox --disable-infobars --start-maximized --autoplay-policy=no-user-gesture-required "${{ github.event.inputs.video_url }}" &
+          google-chrome \
+            --kiosk \
+            --window-position=0,0 \
+            --window-size=1920,1080 \
+            --no-sandbox \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --disable-restore-session-state \
+            --autoplay-policy=no-user-gesture-required \
+            --user-data-dir=/tmp/chrome_clean_profile \
+            "${{ github.event.inputs.video_url }}" &
           
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
 
           PIDS=()
 
+          # -draw_mouse 0 nasconde il cursore del mouse dalla diretta!
           if [ -n "${{ github.event.inputs.fb_key }}" ]; then
             echo "Avvio stream Facebook..."
-            ffmpeg -f x11grab -video_size 1920x1080 -framerate 30 -i :99 \
+            ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
                    -f lavfi -i anullsrc \
                    -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
@@ -65,7 +80,7 @@ jobs:
 
           if [ -n "${{ github.event.inputs.yt_key }}" ]; then
             echo "Avvio stream YouTube..."
-            ffmpeg -f x11grab -video_size 1920x1080 -framerate 30 -i :99 \
+            ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
                    -f lavfi -i anullsrc \
                    -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \

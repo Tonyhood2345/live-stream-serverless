@@ -114,6 +114,28 @@ jobs:
             PIDS+=($!)
           fi
 
+          if [ -n "${{ github.event.inputs.tk_key }}" ]; then
+            echo "Avvio stream TikTok (Video HD ritagliato senza fascia Google + Audio TTS)..."
+            ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
+                   -f pulse -i VirtualSink.monitor \
+                   -vf "crop=1920:1030:0:50,scale=1920:1080" \
+                   -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                   -c:a aac -b:a 128k -ar 44100 \
+                   -f flv "${{ github.event.inputs.tk_key }}" &
+            PIDS+=($!)
+          fi
+
+          if [ -n "${{ github.event.inputs.ig_key }}" ]; then
+            echo "Avvio stream Instagram (Video HD ritagliato senza fascia Google + Audio TTS)..."
+            ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
+                   -f pulse -i VirtualSink.monitor \
+                   -vf "crop=1920:1030:0:50,scale=1920:1080" \
+                   -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                   -c:a aac -b:a 128k -ar 44100 \
+                   -f flv "${{ github.event.inputs.ig_key }}" &
+            PIDS+=($!)
+          fi
+
           if [ ${#PIDS[@]} -eq 0 ]; then
             echo "Nessuna chiave di streaming fornita!"
             exit 1

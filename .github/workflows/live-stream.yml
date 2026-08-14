@@ -1,0 +1,43 @@
+name: Serverless Multistream Live
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'URL del video'
+        required: true
+      fb_key:
+        description: 'Facebook Stream Key'
+        required: false
+      yt_key:
+        description: 'YouTube Stream Key'
+        required: false
+      tk_key:
+        description: 'TikTok Stream Key'
+        required: false
+      ig_key:
+        description: 'Instagram Stream Key'
+        required: false
+
+jobs:
+  multistream:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        
+      - name: Start Multistream
+        run: |
+          DESTINATIONS=""
+          if [ -n "${{ github.event.inputs.fb_key }}" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${{ github.event.inputs.fb_key }}|"; fi
+          if [ -n "${{ github.event.inputs.yt_key }}" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${{ github.event.inputs.yt_key }}|"; fi
+          if [ -n "${{ github.event.inputs.tk_key }}" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${{ github.event.inputs.tk_key }}|"; fi
+          if [ -n "${{ github.event.inputs.ig_key }}" ]; then DESTINATIONS="${DESTINATIONS}[f=flv]${{ github.event.inputs.ig_key }}|"; fi
+          DESTINATIONS=${DESTINATIONS%|}
+          
+          ffmpeg -re -stream_loop -1 -i "${{ github.event.inputs.video_url }}" \
+            -c:v libx264 -preset veryfast -b:v 3000k \
+            -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+            -c:a aac -b:a 128k -ar 44100 \
+            -f tee "$DESTINATIONS"

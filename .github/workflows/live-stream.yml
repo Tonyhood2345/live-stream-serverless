@@ -43,14 +43,8 @@ jobs:
         run: |
           # 1. Configura ALSA per reindirizzare a PulseAudio
           mkdir -p ~/.config/pulse
-          cat << 'EOF' > ~/.asoundrc
-pcm.!default {
-    type pulse
-}
-ctl.!default {
-    type pulse
-}
-EOF
+          echo 'pcm.!default { type pulse }' > ~/.asoundrc
+          echo 'ctl.!default { type pulse }' >> ~/.asoundrc
 
           # 2. Avvia PulseAudio daemon in background
           pulseaudio -D --exit-idle-time=-1 --system=false || true

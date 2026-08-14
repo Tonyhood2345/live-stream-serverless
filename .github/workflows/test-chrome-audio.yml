@@ -1,0 +1,80 @@
+name: Test Chrome PulseAudio Capture
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-chrome-audio:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Audio and Browser
+        run: |
+          sudo apt-get update && sudo apt-get install -y pulseaudio pulseaudio-utils alsa-utils ffmpeg xvfb openbox google-chrome-stable
+          
+          # 1. Configura PulseAudio con socket UNIX esplicito
+          mkdir -p /tmp/pulse-config
+          cat << 'EOF' > /tmp/pulse.pa
+          load-module module-native-protocol-unix socket=/tmp/pulse-socket
+          load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=VirtualSink
+          set-default-sink VirtualSink
+EOF
+
+          pulseaudio -D --exit-idle-time=-1 -F /tmp/pulse.pa || true
+          sleep 2
+
+          export PULSE_SERVER=unix:/tmp/pulse-socket
+          export DISPLAY=:99
+
+          # Configura ALSA per reindirizzare a Pulse
+          cat << 'EOF' > ~/.asoundrc
+          pcm.!default {
+              type pulse
+          }
+          ctl.!default {
+              type pulse
+          }
+EOF
+
+          # Avvia Xvfb e Openbox
+          Xvfb :99 -screen 0 1920x1080x24 &
+          openbox &
+          sleep 2
+
+          # Crea una pagina HTML con audio in autoplay
+          cat << 'EOF' > /tmp/test_sound.html
+          <!DOCTYPE html>
+          <html>
+          <body>
+          <h1>Testing Audio Autoplay</h1>
+          <audio id="player" autoplay loop src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"></audio>
+          <script>
+            document.getElementById('player').play().catch(e => console.log('Autoplay blocked:', e));
+          </script>
+          </body>
+          </html>
+EOF
+
+          # Avvia Chrome
+          mkdir -p /tmp/chrome_clean_profile
+          touch "/tmp/chrome_clean_profile/First Run"
+
+          google-chrome \
+            --kiosk \
+            --window-size=1920,1080 \
+            --no-sandbox \
+            --no-first-run \
+            --no-default-browser-check \
+            --disable-first-run-ui \
+            --disable-infobars \
+            --autoplay-policy=no-user-gesture-required \
+            --disable-features=AudioServiceOutOfProcess \
+            --user-data-dir=/tmp/chrome_clean_profile \
+            "file:///tmp/test_sound.html" &
+
+          sleep 5
+
+          # Registra 5 secondi con FFmpeg da VirtualSink.monitor
+          ffmpeg -t 5 -f pulse -i VirtualSink.monitor -af "volumedetect" -f null /dev/null 2>&1 | tee /tmp/ffmpeg_audio_log.txt
+
+          cat /tmp/ffmpeg_audio_log.txt | grep -E "mean_volume|max_volume"

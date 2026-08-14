@@ -49,15 +49,23 @@ jobs:
           openbox &
           sleep 2
 
+          # Pre-crea la cartella profilo ed evita tassativamente la schermata "First Run" / "Browser Predefinito"
+          mkdir -p /tmp/chrome_clean_profile
+          touch "/tmp/chrome_clean_profile/First Run"
+
           echo "Avvio Chrome sulla pagina: ${{ github.event.inputs.video_url }}"
           google-chrome \
             --kiosk \
             --window-position=0,0 \
             --window-size=1920,1080 \
             --no-sandbox \
+            --no-first-run \
+            --no-default-browser-check \
+            --disable-first-run-ui \
             --disable-infobars \
             --disable-session-crashed-bubble \
             --disable-restore-session-state \
+            --disable-notifications \
             --autoplay-policy=no-user-gesture-required \
             --user-data-dir=/tmp/chrome_clean_profile \
             "${{ github.event.inputs.video_url }}" &

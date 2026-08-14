@@ -41,27 +41,39 @@ jobs:
 
       - name: Launch Audio Engine, Browser and Start Multistream
         run: |
-          # 1. Avvia PulseAudio daemon in background
+          # 1. Configura ALSA per reindirizzare a PulseAudio
+          mkdir -p ~/.config/pulse
+          cat << 'EOF' > ~/.asoundrc
+pcm.!default {
+    type pulse
+}
+ctl.!default {
+    type pulse
+}
+EOF
+
+          # 2. Avvia PulseAudio daemon in background
           pulseaudio -D --exit-idle-time=-1 --system=false || true
           sleep 2
           
-          # 2. Crea il Sink Virtuale (Dispositivo Altoparlante Virtuale)
+          # 3. Crea il Sink Virtuale per l'audio del Browser (Musica di Sottofondo + Voci TTS)
           pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=VirtualSink || true
           pactl set-default-sink VirtualSink || true
 
-          # 3. Avvia il server X virtuale a 1920x1080
-          Xvfb :99 -screen 0 1920x1080x24 &
           export DISPLAY=:99
+
+          # 4. Avvia il server X virtuale a 1920x1080
+          Xvfb :99 -screen 0 1920x1080x24 &
           
-          # 4. Avvia Openbox per gestire la finestra a tutto schermo pulita
+          # 5. Avvia Openbox per gestire la finestra a tutto schermo pulita
           openbox &
           sleep 2
 
-          # 5. Pre-crea la cartella profilo ed evita la schermata "First Run"
+          # 6. Pre-crea la cartella profilo ed evita la schermata "First Run"
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
 
-          echo "Avvio Chrome con supporto Audio Pulse sulla pagina: ${{ github.event.inputs.video_url }}"
+          echo "Avvio Chrome con sblocco Audio TTS e Musica sulla pagina: ${{ github.event.inputs.video_url }}"
           google-chrome \
             --kiosk \
             --window-position=0,0 \
@@ -74,18 +86,20 @@ jobs:
             --disable-session-crashed-bubble \
             --disable-restore-session-state \
             --disable-notifications \
+            --disable-features=AudioServiceOutOfProcess \
+            --enable-features=UsePulseAudio \
             --autoplay-policy=no-user-gesture-required \
             --user-data-dir=/tmp/chrome_clean_profile \
             "${{ github.event.inputs.video_url }}" &
           
-          echo "Attesa di 15 secondi per il caricamento della pagina e dell'audio..."
+          echo "Attesa di 15 secondi per il caricamento completo della pagina e l'avvio delle Voci TTS..."
           sleep 15
 
           PIDS=()
 
-          # -f pulse -i VirtualSink.monitor cattura l'audio HD del browser!
+          # -f pulse -i VirtualSink.monitor cattura sia la musica sia le 2 voci TTS prodotte da Chrome!
           if [ -n "${{ github.event.inputs.fb_key }}" ]; then
-            echo "Avvio stream Facebook (Video HD + Audio PulseAudio)..."
+            echo "Avvio stream Facebook (Video HD + Audio Musica & Voci TTS)..."
             ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
                    -f pulse -i VirtualSink.monitor \
                    -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
@@ -95,7 +109,7 @@ jobs:
           fi
 
           if [ -n "${{ github.event.inputs.yt_key }}" ]; then
-            echo "Avvio stream YouTube (Video HD + Audio PulseAudio)..."
+            echo "Avvio stream YouTube (Video HD + Audio Musica & Voci TTS)..."
             ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
                    -f pulse -i VirtualSink.monitor \
                    -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
@@ -109,6 +123,6 @@ jobs:
             exit 1
           fi
 
-          echo "Tutti gli stream attivi con Audio e Video (PIDs: ${PIDS[*]}). In attesa..."
+          echo "Tutti gli stream attivi con Audio TTS & Musica (PIDs: ${PIDS[*]}). In attesa..."
           wait "${PIDS[@]}"
           echo "Stream terminati."

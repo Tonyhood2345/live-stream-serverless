@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'URL del video (mp4 diretto)'
+        description: 'URL del video o della Web App'
         required: true
       fb_key:
-        description: 'Facebook RTMP URL completo (rtmps://live-api-s.facebook.com/rtmp/KEY)'
+        description: 'Facebook RTMP URL completo'
         required: false
       yt_key:
-        description: 'YouTube Stream Key (solo la chiave, senza rtmp://)'
+        description: 'YouTube Stream Key'
         required: false
       tk_key:
         description: 'TikTok RTMP URL completo'
@@ -25,71 +25,58 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Install FFmpeg
+      - name: Setup Headless Environment and Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y ffmpeg
+          sudo apt-get update
+          # Installa FFmpeg e Xvfb
+          sudo apt-get install -y ffmpeg xvfb
+          
+          # Installa Google Chrome
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          
+          google-chrome --version
           ffmpeg -version | head -1
 
-      - name: Verify Video Input
+      - name: Launch Headless Browser
         run: |
-          echo "Testing video URL: ${{ github.event.inputs.video_url }}"
-          ffprobe -v error \
-            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
-            -show_entries format=duration \
-            -of default=noprint_wrappers=1 \
-            "${{ github.event.inputs.video_url }}" && echo "VIDEO OK" || (echo "ERRORE: Video non accessibile!" && exit 1)
+          # Avvia il server X virtuale
+          Xvfb :99 -screen 0 1920x1080x24 &
+          export DISPLAY=:99
+          
+          echo "Avvio Chrome sulla pagina: ${{ github.event.inputs.video_url }}"
+          # Avvia Chrome in kiosk mode
+          google-chrome --kiosk --window-size=1920,1080 --no-sandbox --disable-infobars --start-maximized --autoplay-policy=no-user-gesture-required "${{ github.event.inputs.video_url }}" &
+          
+          echo "Attesa di 15 secondi per il caricamento della pagina..."
+          sleep 15
 
       - name: Start Multistream to Facebook
         if: ${{ github.event.inputs.fb_key != '' }}
         run: |
+          export DISPLAY=:99
           echo "Avvio stream Facebook..."
-          ffmpeg -re -stream_loop -1 \
-            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
-            -i "${{ github.event.inputs.video_url }}" \
-            -c:v libx264 -preset veryfast -b:v 3000k \
-            -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
-            -c:a aac -b:a 128k -ar 44100 \
-            -f flv "${{ github.event.inputs.fb_key }}" &
+          # Usa x11grab per catturare lo schermo :99 e anullsrc per creare una traccia audio muta
+          ffmpeg -f x11grab -video_size 1920x1080 -framerate 30 -i :99 \
+                 -f lavfi -i anullsrc \
+                 -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                 -c:a aac -b:a 128k -ar 44100 \
+                 -f flv "${{ github.event.inputs.fb_key }}" &
           echo "Facebook stream avviato in background (PID: $!)"
 
       - name: Start Multistream to YouTube
         if: ${{ github.event.inputs.yt_key != '' }}
         run: |
+          export DISPLAY=:99
           echo "Avvio stream YouTube..."
-          ffmpeg -re -stream_loop -1 \
-            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
-            -i "${{ github.event.inputs.video_url }}" \
-            -c:v libx264 -preset veryfast -b:v 3000k \
-            -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
-            -c:a aac -b:a 128k -ar 44100 \
-            -f flv "rtmp://a.rtmp.youtube.com/live2/${{ github.event.inputs.yt_key }}" &
+          ffmpeg -f x11grab -video_size 1920x1080 -framerate 30 -i :99 \
+                 -f lavfi -i anullsrc \
+                 -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                 -c:a aac -b:a 128k -ar 44100 \
+                 -f flv "rtmp://a.rtmp.youtube.com/live2/${{ github.event.inputs.yt_key }}" &
           echo "YouTube stream avviato in background (PID: $!)"
-
-      - name: Start Multistream to TikTok
-        if: ${{ github.event.inputs.tk_key != '' }}
-        run: |
-          echo "Avvio stream TikTok..."
-          ffmpeg -re -stream_loop -1 \
-            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
-            -i "${{ github.event.inputs.video_url }}" \
-            -c:v libx264 -preset veryfast -b:v 3000k \
-            -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
-            -c:a aac -b:a 128k -ar 44100 \
-            -f flv "${{ github.event.inputs.tk_key }}" &
-          echo "TikTok stream avviato in background (PID: $!)"
-
-      - name: Start Multistream to Instagram
-        if: ${{ github.event.inputs.ig_key != '' }}
-        run: |
-          echo "Avvio stream Instagram..."
-          ffmpeg -re -stream_loop -1 \
-            -user_agent "Mozilla/5.0 (compatible; FFmpeg)" \
-            -i "${{ github.event.inputs.video_url }}" \
-            -c:v libx264 -preset veryfast -b:v 3000k \
-            -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
-            -c:a aac -b:a 128k -ar 44100 \
-            -f flv "${{ github.event.inputs.ig_key }}" &
-          echo "Instagram stream avviato in background (PID: $!)"
 
       - name: Keep streams alive
         run: |

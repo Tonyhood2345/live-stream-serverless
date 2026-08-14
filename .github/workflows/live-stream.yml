@@ -28,7 +28,6 @@ jobs:
       - name: Setup Headless Environment and Dependencies
         run: |
           sudo apt-get update
-          # Installa FFmpeg e Xvfb
           sudo apt-get install -y ffmpeg xvfb
           
           # Installa Google Chrome
@@ -40,46 +39,45 @@ jobs:
           google-chrome --version
           ffmpeg -version | head -1
 
-      - name: Launch Headless Browser
+      - name: Launch Browser and Start Multistream
         run: |
           # Avvia il server X virtuale
           Xvfb :99 -screen 0 1920x1080x24 &
           export DISPLAY=:99
           
           echo "Avvio Chrome sulla pagina: ${{ github.event.inputs.video_url }}"
-          # Avvia Chrome in kiosk mode
           google-chrome --kiosk --window-size=1920,1080 --no-sandbox --disable-infobars --start-maximized --autoplay-policy=no-user-gesture-required "${{ github.event.inputs.video_url }}" &
           
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
 
-      - name: Start Multistream to Facebook
-        if: ${{ github.event.inputs.fb_key != '' }}
-        run: |
-          export DISPLAY=:99
-          echo "Avvio stream Facebook..."
-          # Usa x11grab per catturare lo schermo :99 e anullsrc per creare una traccia audio muta
-          ffmpeg -f x11grab -video_size 1920x1080 -framerate 30 -i :99 \
-                 -f lavfi -i anullsrc \
-                 -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
-                 -c:a aac -b:a 128k -ar 44100 \
-                 -f flv "${{ github.event.inputs.fb_key }}" &
-          echo "Facebook stream avviato in background (PID: $!)"
+          PIDS=()
 
-      - name: Start Multistream to YouTube
-        if: ${{ github.event.inputs.yt_key != '' }}
-        run: |
-          export DISPLAY=:99
-          echo "Avvio stream YouTube..."
-          ffmpeg -f x11grab -video_size 1920x1080 -framerate 30 -i :99 \
-                 -f lavfi -i anullsrc \
-                 -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
-                 -c:a aac -b:a 128k -ar 44100 \
-                 -f flv "rtmp://a.rtmp.youtube.com/live2/${{ github.event.inputs.yt_key }}" &
-          echo "YouTube stream avviato in background (PID: $!)"
+          if [ -n "${{ github.event.inputs.fb_key }}" ]; then
+            echo "Avvio stream Facebook..."
+            ffmpeg -f x11grab -video_size 1920x1080 -framerate 30 -i :99 \
+                   -f lavfi -i anullsrc \
+                   -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                   -c:a aac -b:a 128k -ar 44100 \
+                   -f flv "${{ github.event.inputs.fb_key }}" &
+            PIDS+=($!)
+          fi
 
-      - name: Keep streams alive
-        run: |
-          echo "Tutti gli stream attivi. In attesa..."
-          wait
+          if [ -n "${{ github.event.inputs.yt_key }}" ]; then
+            echo "Avvio stream YouTube..."
+            ffmpeg -f x11grab -video_size 1920x1080 -framerate 30 -i :99 \
+                   -f lavfi -i anullsrc \
+                   -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                   -c:a aac -b:a 128k -ar 44100 \
+                   -f flv "rtmp://a.rtmp.youtube.com/live2/${{ github.event.inputs.yt_key }}" &
+            PIDS+=($!)
+          fi
+
+          if [ ${#PIDS[@]} -eq 0 ]; then
+            echo "Nessuna chiave di streaming fornita!"
+            exit 1
+          fi
+
+          echo "Tutti gli stream attivi (PIDs: ${PIDS[*]}). In attesa..."
+          wait "${PIDS[@]}"
           echo "Stream terminati."

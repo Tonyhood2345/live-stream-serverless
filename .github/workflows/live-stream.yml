@@ -10,7 +10,7 @@ on:
         description: 'Facebook RTMP URL completo'
         required: false
       yt_key:
-        description: 'YouTube Stream Key'
+        description: 'YouTube Stream Key o URL RTMP completo'
         required: false
       tk_key:
         description: 'TikTok RTMP URL completo'
@@ -30,7 +30,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils
           
-          # Installa Google Chrome
+          # Installa Google Chrome stabile
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
           sudo apt-get update
@@ -41,33 +41,30 @@ jobs:
 
       - name: Launch Audio Engine, Browser and Start Multistream
         run: |
-          # 1. Configura ALSA per reindirizzare a PulseAudio
+          # 1. Configura ALSA per PulseAudio
           mkdir -p ~/.config/pulse
           echo 'pcm.!default { type pulse }' > ~/.asoundrc
           echo 'ctl.!default { type pulse }' >> ~/.asoundrc
 
-          # 2. Avvia PulseAudio daemon in background
+          # 2. Avvia PulseAudio
           pulseaudio -D --exit-idle-time=-1 --system=false || true
           sleep 2
           
-          # 3. Crea il Sink Virtuale per l'audio del Browser (Musica di Sottofondo + Voci TTS)
+          # 3. Sink Virtuale per Audio Browser
           pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=VirtualSink || true
           pactl set-default-sink VirtualSink || true
 
           export DISPLAY=:99
 
-          # 4. Avvia il server X virtuale a 1920x1080
+          # 4. Server X virtuale 1920x1080
           Xvfb :99 -screen 0 1920x1080x24 &
-          
-          # 5. Avvia Openbox per gestire la finestra a tutto schermo pulita
           openbox &
           sleep 2
 
-          # 6. Pre-crea la cartella profilo ed evita la schermata "First Run"
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
 
-          echo "Avvio Chrome con sblocco Audio TTS e Musica sulla pagina: ${{ github.event.inputs.video_url }}"
+          echo "Avvio Chrome sulla pagina: ${{ github.event.inputs.video_url }}"
           google-chrome \
             --kiosk \
             --window-position=0,0 \
@@ -86,61 +83,71 @@ jobs:
             --user-data-dir=/tmp/chrome_clean_profile \
             "${{ github.event.inputs.video_url }}" &
           
-          echo "Attesa di 15 secondi per il caricamento completo della pagina e l'avvio delle Voci TTS..."
+          echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
 
           PIDS=()
 
-          # Il filtro -vf "crop=1920:1030:0:50,scale=1920:1080" rimuove i 50px in alto (fascia Google Apps Script) e ri-scala a 1080p
+          # --- 1. STREAM FACEBOOK ---
           if [ -n "${{ github.event.inputs.fb_key }}" ]; then
-            echo "Avvio stream Facebook (Video HD ritagliato senza fascia Google + Audio TTS)..."
+            echo "Avvio stream Facebook Live..."
             ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
                    -f pulse -i VirtualSink.monitor \
                    -vf "crop=1920:1030:0:50,scale=1920:1080" \
-                   -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                   -c:v libx264 -preset veryfast -b:v 2800k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
                    -f flv "${{ github.event.inputs.fb_key }}" &
             PIDS+=($!)
           fi
 
-          if [ -n "${{ github.event.inputs.yt_key }}" ]; then
-            echo "Avvio stream YouTube (Video HD ritagliato senza fascia Google + Audio TTS)..."
+          # --- 2. STREAM YOUTUBE (RTMPS & RTMP Auto-Detect) ---
+          YT_KEY="${{ github.event.inputs.yt_key }}"
+          if [ -n "$YT_KEY" ]; then
+            YT_URL=""
+            if [[ "$YT_KEY" == rtmp* ]]; then
+              YT_URL="$YT_KEY"
+            else
+              YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
+            fi
+            echo "Avvio stream YouTube Live su: $YT_URL"
             ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
                    -f pulse -i VirtualSink.monitor \
                    -vf "crop=1920:1030:0:50,scale=1920:1080" \
-                   -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                   -c:v libx264 -preset veryfast -b:v 2800k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
-                   -f flv "rtmp://a.rtmp.youtube.com/live2/${{ github.event.inputs.yt_key }}" &
+                   -f flv "$YT_URL" &
             PIDS+=($!)
           fi
 
+          # --- 3. STREAM TIKTOK ---
           if [ -n "${{ github.event.inputs.tk_key }}" ]; then
-            echo "Avvio stream TikTok (Video HD ritagliato senza fascia Google + Audio TTS)..."
+            echo "Avvio stream TikTok..."
             ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
                    -f pulse -i VirtualSink.monitor \
                    -vf "crop=1920:1030:0:50,scale=1920:1080" \
-                   -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                   -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2800k -bufsize 5000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
                    -f flv "${{ github.event.inputs.tk_key }}" &
             PIDS+=($!)
           fi
 
+          # --- 4. STREAM INSTAGRAM ---
           if [ -n "${{ github.event.inputs.ig_key }}" ]; then
-            echo "Avvio stream Instagram (Video HD ritagliato senza fascia Google + Audio TTS)..."
+            echo "Avvio stream Instagram..."
             ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
                    -f pulse -i VirtualSink.monitor \
                    -vf "crop=1920:1030:0:50,scale=1920:1080" \
-                   -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                   -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2800k -bufsize 5000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
                    -f flv "${{ github.event.inputs.ig_key }}" &
             PIDS+=($!)
           fi
 
           if [ ${#PIDS[@]} -eq 0 ]; then
-            echo "Nessuna chiave di streaming fornita!"
+            echo "Nessuna chiave di streaming valida fornita!"
             exit 1
           fi
 
-          echo "Tutti gli stream attivi puliti senza banner (PIDs: ${PIDS[*]}). In attesa..."
+          echo "Streaming live in corso su tutti i canali attivi..."
           wait "${PIDS[@]}"
           echo "Stream terminati."

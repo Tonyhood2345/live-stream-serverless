@@ -88,19 +88,19 @@ jobs:
 
           PIDS=()
 
-          # --- 1. STREAM FACEBOOK ---
+          # --- 1. STREAM FACEBOOK LIVE ---
           if [ -n "${{ github.event.inputs.fb_key }}" ]; then
             echo "Avvio stream Facebook Live..."
-            ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -f pulse -i VirtualSink.monitor \
+            ffmpeg -thread_queue_size 1024 -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
+                   -thread_queue_size 1024 -f pulse -i VirtualSink.monitor \
                    -vf "crop=1920:1030:0:50,scale=1920:1080" \
                    -c:v libx264 -preset veryfast -b:v 2800k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
-                   -f flv "${{ github.event.inputs.fb_key }}" &
+                   -flvflags no_duration_filesize -f flv "${{ github.event.inputs.fb_key }}" &
             PIDS+=($!)
           fi
 
-          # --- 2. STREAM YOUTUBE (RTMPS & RTMP Auto-Detect) ---
+          # --- 2. STREAM YOUTUBE LIVE (Supporto Chiave Diretta & RTMP Ingestion) ---
           YT_KEY="${{ github.event.inputs.yt_key }}"
           if [ -n "$YT_KEY" ]; then
             YT_URL=""
@@ -110,36 +110,36 @@ jobs:
               YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
             fi
             echo "Avvio stream YouTube Live su: $YT_URL"
-            ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -f pulse -i VirtualSink.monitor \
+            ffmpeg -thread_queue_size 1024 -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
+                   -thread_queue_size 1024 -f pulse -i VirtualSink.monitor \
                    -vf "crop=1920:1030:0:50,scale=1920:1080" \
-                   -c:v libx264 -preset veryfast -b:v 2800k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
+                   -c:v libx264 -preset veryfast -b:v 2800k -maxrate 3200k -bufsize 6000k -pix_fmt yuv420p -g 60 -keyint_min 60 -sc_threshold 0 \
                    -c:a aac -b:a 128k -ar 44100 \
-                   -f flv "$YT_URL" &
+                   -flvflags no_duration_filesize -f flv "$YT_URL" &
             PIDS+=($!)
           fi
 
           # --- 3. STREAM TIKTOK ---
           if [ -n "${{ github.event.inputs.tk_key }}" ]; then
             echo "Avvio stream TikTok..."
-            ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -f pulse -i VirtualSink.monitor \
+            ffmpeg -thread_queue_size 1024 -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
+                   -thread_queue_size 1024 -f pulse -i VirtualSink.monitor \
                    -vf "crop=1920:1030:0:50,scale=1920:1080" \
                    -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2800k -bufsize 5000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
-                   -f flv "${{ github.event.inputs.tk_key }}" &
+                   -flvflags no_duration_filesize -f flv "${{ github.event.inputs.tk_key }}" &
             PIDS+=($!)
           fi
 
           # --- 4. STREAM INSTAGRAM ---
           if [ -n "${{ github.event.inputs.ig_key }}" ]; then
             echo "Avvio stream Instagram..."
-            ffmpeg -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -f pulse -i VirtualSink.monitor \
+            ffmpeg -thread_queue_size 1024 -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
+                   -thread_queue_size 1024 -f pulse -i VirtualSink.monitor \
                    -vf "crop=1920:1030:0:50,scale=1920:1080" \
                    -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2800k -bufsize 5000k -pix_fmt yuv420p -g 60 \
                    -c:a aac -b:a 128k -ar 44100 \
-                   -f flv "${{ github.event.inputs.ig_key }}" &
+                   -flvflags no_duration_filesize -f flv "${{ github.event.inputs.ig_key }}" &
             PIDS+=($!)
           fi
 

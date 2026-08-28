@@ -86,21 +86,16 @@ jobs:
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
 
-          PIDS=()
+          # 5. Costruzione dinamica delle destinazioni RTMP
+          OUTPUT_ARGS=()
 
-          # --- 1. STREAM FACEBOOK LIVE ---
+          # --- 1. FACEBOOK LIVE ---
           if [ -n "${{ github.event.inputs.fb_key }}" ]; then
-            echo "Avvio stream Facebook Live..."
-            ffmpeg -thread_queue_size 1024 -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -thread_queue_size 1024 -f pulse -i VirtualSink.monitor \
-                   -vf "crop=1920:1030:0:50,scale=1920:1080" \
-                   -c:v libx264 -preset veryfast -b:v 2800k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -g 60 \
-                   -c:a aac -b:a 128k -ar 44100 \
-                   -flvflags no_duration_filesize -f flv "${{ github.event.inputs.fb_key }}" &
-            PIDS+=($!)
+            echo "📡 Output abilitato: Facebook Live"
+            OUTPUT_ARGS+=(-f flv -flvflags no_duration_filesize "${{ github.event.inputs.fb_key }}")
           fi
 
-          # --- 2. STREAM YOUTUBE LIVE (Supporto Chiave Diretta & RTMP Ingestion) ---
+          # --- 2. YOUTUBE LIVE ---
           YT_KEY="${{ github.event.inputs.yt_key }}"
           if [ -n "$YT_KEY" ]; then
             YT_URL=""
@@ -109,45 +104,38 @@ jobs:
             else
               YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
             fi
-            echo "Avvio stream YouTube Live su: $YT_URL"
-            ffmpeg -thread_queue_size 1024 -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -thread_queue_size 1024 -f pulse -i VirtualSink.monitor \
-                   -vf "crop=1920:1030:0:50,scale=1920:1080" \
-                   -c:v libx264 -preset veryfast -b:v 2800k -maxrate 3200k -bufsize 6000k -pix_fmt yuv420p -g 60 -keyint_min 60 -sc_threshold 0 \
-                   -c:a aac -b:a 128k -ar 44100 \
-                   -flvflags no_duration_filesize -f flv "$YT_URL" &
-            PIDS+=($!)
+            echo "📡 Output abilitato: YouTube Live ($YT_URL)"
+            OUTPUT_ARGS+=(-f flv -flvflags no_duration_filesize "$YT_URL")
           fi
 
-          # --- 3. STREAM TIKTOK ---
+          # --- 3. TIKTOK LIVE ---
           if [ -n "${{ github.event.inputs.tk_key }}" ]; then
-            echo "Avvio stream TikTok..."
-            ffmpeg -thread_queue_size 1024 -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -thread_queue_size 1024 -f pulse -i VirtualSink.monitor \
-                   -vf "crop=1920:1030:0:50,scale=1920:1080" \
-                   -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2800k -bufsize 5000k -pix_fmt yuv420p -g 60 \
-                   -c:a aac -b:a 128k -ar 44100 \
-                   -flvflags no_duration_filesize -f flv "${{ github.event.inputs.tk_key }}" &
-            PIDS+=($!)
+            echo "📡 Output abilitato: TikTok Live"
+            OUTPUT_ARGS+=(-f flv -flvflags no_duration_filesize "${{ github.event.inputs.tk_key }}")
           fi
 
-          # --- 4. STREAM INSTAGRAM ---
+          # --- 4. INSTAGRAM LIVE ---
           if [ -n "${{ github.event.inputs.ig_key }}" ]; then
-            echo "Avvio stream Instagram..."
-            ffmpeg -thread_queue_size 1024 -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
-                   -thread_queue_size 1024 -f pulse -i VirtualSink.monitor \
-                   -vf "crop=1920:1030:0:50,scale=1920:1080" \
-                   -c:v libx264 -preset veryfast -b:v 2500k -maxrate 2800k -bufsize 5000k -pix_fmt yuv420p -g 60 \
-                   -c:a aac -b:a 128k -ar 44100 \
-                   -flvflags no_duration_filesize -f flv "${{ github.event.inputs.ig_key }}" &
-            PIDS+=($!)
+            echo "📡 Output abilitato: Instagram Live"
+            OUTPUT_ARGS+=(-f flv -flvflags no_duration_filesize "${{ github.event.inputs.ig_key }}")
           fi
 
-          if [ ${#PIDS[@]} -eq 0 ]; then
-            echo "Nessuna chiave di streaming valida fornita!"
+          if [ ${#OUTPUT_ARGS[@]} -eq 0 ]; then
+            echo "❌ Errore: Nessuna chiave o destinazione RTMP fornita!"
             exit 1
           fi
 
-          echo "Streaming live in corso su tutti i canali attivi..."
-          wait "${PIDS[@]}"
-          echo "Stream terminati."
+          echo "🚀 Avvio encoding FFmpeg CBR 3000k & Multistreaming ottimizzato..."
+          ffmpeg -thread_queue_size 2048 \
+            -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
+            -thread_queue_size 2048 \
+            -f pulse -i VirtualSink.monitor \
+            -vf "crop=1920:1030:0:50,scale=1920:1080" \
+            -c:v libx264 -preset veryfast \
+            -b:v 3000k -minrate 3000k -maxrate 3000k -bufsize 6000k \
+            -pix_fmt yuv420p -g 60 -keyint_min 60 -sc_threshold 0 \
+            -c:a aac -b:a 128k -ar 44100 -ac 2 \
+            -vsync cfr \
+            "${OUTPUT_ARGS[@]}"
+
+          echo "Stream terminato."

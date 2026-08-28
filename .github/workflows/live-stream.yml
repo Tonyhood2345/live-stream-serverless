@@ -92,8 +92,14 @@ jobs:
           # --- 1. FACEBOOK LIVE ---
           FB_KEY="${{ github.event.inputs.fb_key }}"
           if [ -n "$FB_KEY" ]; then
-            echo "📡 Output configurato: Facebook Live"
-            TEE_DESTS+=("[f=flv:onfail=ignore]${FB_KEY}")
+            FB_URL=""
+            if [[ "$FB_KEY" == rtmp* ]]; then
+              FB_URL="$FB_KEY"
+            else
+              FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
+            fi
+            echo "📡 Output configurato: Facebook Live ($FB_URL)"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
           fi
 
           # --- 2. YOUTUBE LIVE ---
@@ -139,9 +145,9 @@ jobs:
             -f pulse -i VirtualSink.monitor \
             -vf "crop=1920:1030:0:50,scale=1920:1080" \
             -c:v libx264 -preset veryfast \
-            -b:v 3000k -minrate 3000k -maxrate 3000k -bufsize 6000k \
+            -b:v 4500k -minrate 4000k -maxrate 5000k -bufsize 9000k \
             -pix_fmt yuv420p -g 60 -keyint_min 60 -sc_threshold 0 \
-            -c:a aac -b:a 128k -ar 44100 -ac 2 \
+            -c:a aac -b:a 160k -ar 44100 -ac 2 \
             -vsync cfr \
             -flags +global_header \
             -f tee -map 0:v -map 1:a "$TEE_STRING"

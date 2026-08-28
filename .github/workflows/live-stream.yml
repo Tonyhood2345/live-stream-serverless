@@ -86,13 +86,14 @@ jobs:
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
 
-          # 5. Costruzione dinamica delle destinazioni RTMP
-          OUTPUT_ARGS=()
+          # 5. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
+          TEE_DESTS=()
 
           # --- 1. FACEBOOK LIVE ---
-          if [ -n "${{ github.event.inputs.fb_key }}" ]; then
-            echo "📡 Output abilitato: Facebook Live"
-            OUTPUT_ARGS+=(-f flv -flvflags no_duration_filesize "${{ github.event.inputs.fb_key }}")
+          FB_KEY="${{ github.event.inputs.fb_key }}"
+          if [ -n "$FB_KEY" ]; then
+            echo "📡 Output configurato: Facebook Live"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${FB_KEY}")
           fi
 
           # --- 2. YOUTUBE LIVE ---
@@ -104,28 +105,34 @@ jobs:
             else
               YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
             fi
-            echo "📡 Output abilitato: YouTube Live ($YT_URL)"
-            OUTPUT_ARGS+=(-f flv -flvflags no_duration_filesize "$YT_URL")
+            echo "📡 Output configurato: YouTube Live ($YT_URL)"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")
           fi
 
           # --- 3. TIKTOK LIVE ---
-          if [ -n "${{ github.event.inputs.tk_key }}" ]; then
-            echo "📡 Output abilitato: TikTok Live"
-            OUTPUT_ARGS+=(-f flv -flvflags no_duration_filesize "${{ github.event.inputs.tk_key }}")
+          TK_KEY="${{ github.event.inputs.tk_key }}"
+          if [ -n "$TK_KEY" ]; then
+            echo "📡 Output configurato: TikTok Live"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${TK_KEY}")
           fi
 
           # --- 4. INSTAGRAM LIVE ---
-          if [ -n "${{ github.event.inputs.ig_key }}" ]; then
-            echo "📡 Output abilitato: Instagram Live"
-            OUTPUT_ARGS+=(-f flv -flvflags no_duration_filesize "${{ github.event.inputs.ig_key }}")
+          IG_KEY="${{ github.event.inputs.ig_key }}"
+          if [ -n "$IG_KEY" ]; then
+            echo "📡 Output configurato: Instagram Live"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${IG_KEY}")
           fi
 
-          if [ ${#OUTPUT_ARGS[@]} -eq 0 ]; then
+          if [ ${#TEE_DESTS[@]} -eq 0 ]; then
             echo "❌ Errore: Nessuna chiave o destinazione RTMP fornita!"
             exit 1
           fi
 
-          echo "🚀 Avvio encoding FFmpeg CBR 3000k & Multistreaming ottimizzato..."
+          # Unione delle destinazioni separate dal carattere pipe '|'
+          IFS="|"
+          TEE_STRING="${TEE_DESTS[*]}"
+
+          echo "🚀 Avvio encoding FFmpeg CBR 3000k con TEE Muxer (Resiliente a chiavi scadute)..."
           ffmpeg -thread_queue_size 2048 \
             -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
             -thread_queue_size 2048 \
@@ -136,6 +143,7 @@ jobs:
             -pix_fmt yuv420p -g 60 -keyint_min 60 -sc_threshold 0 \
             -c:a aac -b:a 128k -ar 44100 -ac 2 \
             -vsync cfr \
-            "${OUTPUT_ARGS[@]}"
+            -flags +global_header \
+            -f tee -map 0:v -map 1:a "$TEE_STRING"
 
           echo "Stream terminato."

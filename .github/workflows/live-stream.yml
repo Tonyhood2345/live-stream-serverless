@@ -91,29 +91,31 @@ jobs:
 
           # --- 1. FACEBOOK LIVE ---
           FB_KEY="${{ github.event.inputs.fb_key }}"
-          if [ -n "$FB_KEY" ]; then
-            FB_URL=""
-            if [[ "$FB_KEY" == rtmp* ]]; then
-              FB_URL="$FB_KEY"
-            else
-              FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
-            fi
-            echo "📡 Output configurato: Facebook Live ($FB_URL)"
-            TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
+          if [ -z "$FB_KEY" ]; then
+            FB_KEY="FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe"
           fi
+          FB_URL=""
+          if [[ "$FB_KEY" == rtmp* ]]; then
+            FB_URL="$FB_KEY"
+          else
+            FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
+          fi
+          echo "📡 Output configurato: Facebook Live ($FB_URL)"
+          TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
 
           # --- 2. YOUTUBE LIVE ---
           YT_KEY="${{ github.event.inputs.yt_key }}"
-          if [ -n "$YT_KEY" ]; then
-            YT_URL=""
-            if [[ "$YT_KEY" == rtmp* ]]; then
-              YT_URL="$YT_KEY"
-            else
-              YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
-            fi
-            echo "📡 Output configurato: YouTube Live ($YT_URL)"
-            TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")
+          if [ -z "$YT_KEY" ]; then
+            YT_KEY="umqe-k4ke-qba4-39db-abrp"
           fi
+          YT_URL=""
+          if [[ "$YT_KEY" == rtmp* ]]; then
+            YT_URL="$YT_KEY"
+          else
+            YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
+          fi
+          echo "📡 Output configurato: YouTube Live ($YT_URL)"
+          TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")
 
           # --- 3. TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"

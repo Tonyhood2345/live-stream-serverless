@@ -116,6 +116,8 @@ jobs:
           fi
           echo "📡 Output configurato: YouTube Live ($YT_URL)"
           TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")
+          TEE_DESTS+=("[f=flv:onfail=ignore]rtmp://a.rtmp.youtube.com/live2/uqc8-0m56-2bga-kvy3-1pgf")
+          TEE_DESTS+=("[f=flv:onfail=ignore]rtmp://a.rtmp.youtube.com/live2/umqe-k4ke-qba4-39db-abrp")
 
           # --- 3. TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"

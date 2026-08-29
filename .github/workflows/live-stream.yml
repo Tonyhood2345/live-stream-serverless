@@ -39,6 +39,14 @@ jobs:
           google-chrome --version
           ffmpeg -version | head -1
 
+      - name: Setup Playwright and Headless Automation Engines
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install-deps
+          npx playwright install chromium
+          python3 -m pip install playwright requests
+
       - name: Launch Audio Engine, Browser and Start Multistream
         run: |
           # 1. Configura ALSA per PulseAudio
@@ -87,6 +95,17 @@ jobs:
           sleep 15
 
           # 5. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
+          # --- 0. AUTOMAZIONE HEADLESS PER INSTAGRAM & TIKTOK ---
+          if [ -z "${{ github.event.inputs.ig_key }}" ] && [ -f scripts/instagram_live_auto.js ]; then
+            echo "📸 Tentativo estrazione automatica Instagram..."
+            node scripts/instagram_live_auto.js &
+            sleep 5
+          fi
+
+          if [ -f scripts/tiktok_live_auto.py ]; then
+            python3 scripts/tiktok_live_auto.py || true
+          fi
+
           TEE_DESTS=()
 
           # --- 1. FACEBOOK LIVE ---

@@ -125,8 +125,14 @@ jobs:
           # --- 4. INSTAGRAM LIVE ---
           IG_KEY="${{ github.event.inputs.ig_key }}"
           if [ -n "$IG_KEY" ]; then
-            echo "📡 Output configurato: Instagram Live"
-            TEE_DESTS+=("[f=flv:onfail=ignore]${IG_KEY}")
+            IG_URL=""
+            if [[ "$IG_KEY" == rtmp* ]]; then
+              IG_URL="$IG_KEY"
+            else
+              IG_URL="rtmps://live-upload.instagram.com:443/rtmp/$IG_KEY"
+            fi
+            echo "📡 Output configurato: Instagram Live ($IG_URL)"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${IG_URL}")
           fi
 
           if [ ${#TEE_DESTS[@]} -eq 0 ]; then

@@ -122,8 +122,14 @@ jobs:
           # --- 3. TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"
           if [ -n "$TK_KEY" ]; then
-            echo "📡 Output configurato: TikTok Live"
-            TEE_DESTS+=("[f=flv:onfail=ignore]${TK_KEY}")
+            TK_URL=""
+            if [[ "$TK_KEY" == rtmp* ]]; then
+              TK_URL="$TK_KEY"
+            else
+              TK_URL="rtmp://live-push.tiktok-cdns.com/live/$TK_KEY"
+            fi
+            echo "📡 Output configurato: TikTok Live ($TK_URL)"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${TK_URL}")
           fi
 
           # --- 4. INSTAGRAM LIVE ---

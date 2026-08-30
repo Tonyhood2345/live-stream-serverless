@@ -177,8 +177,15 @@ jobs:
           IFS="|"
           TEE_STRING="${TEE_DESTS[*]}"
 
-          echo "🚀 Avvio encoding FFmpeg CBR 3000k con TEE Muxer (Resiliente a chiavi scadute)..."
-          ffmpeg -thread_queue_size 2048 \
+          DUR_HOURS="${{ github.event.inputs.duration_hours }}"
+          if [ -z "$DUR_HOURS" ]; then
+            DUR_HOURS="6"
+          fi
+          DUR_SECS=$(awk "BEGIN {print int($DUR_HOURS * 3600)}")
+          echo "⏱️ Durata programmata dello streaming: $DUR_HOURS ore ($DUR_SECS secondi)"
+
+          echo "🚀 Avvio encoding FFmpeg CBR 4500k con TEE Muxer e Timer di $DUR_HOURS ore..."
+          timeout --kill-after=30s "${DUR_SECS}s" ffmpeg -thread_queue_size 2048 \
             -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
             -thread_queue_size 2048 \
             -f pulse -i VirtualSink.monitor \
@@ -189,6 +196,6 @@ jobs:
             -c:a aac -b:a 160k -ar 44100 -ac 2 \
             -vsync cfr \
             -flags +global_header \
-            -f tee -map 0:v -map 1:a "$TEE_STRING"
+            -f tee -map 0:v -map 1:a "$TEE_STRING" || true
 
-          echo "Stream terminato."
+          echo "Stream terminato regolarmente dopo $DUR_HOURS ore."

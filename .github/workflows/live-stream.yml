@@ -104,13 +104,15 @@ jobs:
           # 5. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
           # --- 0. AUTOMAZIONE HEADLESS PER INSTAGRAM & TIKTOK ---
           if [ -z "${{ github.event.inputs.ig_key }}" ] && [ -f scripts/instagram_live_auto.js ]; then
-            echo "📸 Tentativo estrazione automatica Instagram..."
+            echo "📸 Avvio automazione headless Instagram Live..."
             node scripts/instagram_live_auto.js &
             sleep 5
           fi
 
-          if [ -f scripts/tiktok_live_auto.py ]; then
-            python3 scripts/tiktok_live_auto.py || true
+          if [ -z "${{ github.event.inputs.tk_key }}" ] && [ -f scripts/tiktok_live_adapter.js ]; then
+            echo "🎵 Avvio automazione headless TikTok Live Adapter..."
+            node scripts/tiktok_live_adapter.js &
+            sleep 8
           fi
 
           TEE_DESTS=()
@@ -147,6 +149,10 @@ jobs:
 
           # --- 3. TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"
+          if [ -z "$TK_KEY" ] && [ -f /tmp/tiktok_rtmp.txt ]; then
+            TK_KEY=$(cat /tmp/tiktok_rtmp.txt | tr -d '\r\n')
+            echo "🎵 Endpoint TikTok RTMP recuperato da adapter: $TK_KEY"
+          fi
           if [ -n "$TK_KEY" ]; then
             TK_URL=""
             if [[ "$TK_KEY" == rtmp* ]]; then
@@ -160,6 +166,10 @@ jobs:
 
           # --- 4. INSTAGRAM LIVE ---
           IG_KEY="${{ github.event.inputs.ig_key }}"
+          if [ -z "$IG_KEY" ] && [ -f /tmp/instagram_rtmp.txt ]; then
+            IG_KEY=$(cat /tmp/instagram_rtmp.txt | tr -d '\r\n')
+            echo "📸 Endpoint Instagram RTMP recuperato da adapter: $IG_KEY"
+          fi
           if [ -n "$IG_KEY" ]; then
             IG_URL=""
             if [[ "$IG_KEY" == rtmp* ]]; then

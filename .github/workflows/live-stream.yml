@@ -18,6 +18,10 @@ on:
       ig_key:
         description: 'Instagram RTMP URL completo'
         required: false
+      duration_hours:
+        description: 'Durata massima della diretta in ore'
+        required: false
+        default: '6'
 
 jobs:
   multistream:

@@ -14,7 +14,7 @@ class TikTokLiveAdapter {
     this.options = Object.assign({
       headless: true,
       viewport: { width: 1920, height: 1080 },
-      cookiesPath: '/tmp/tiktok_cookies.json',
+      cookiesPath: fs.existsSync(path.join(__dirname, 'tiktok_cookies.json')) ? path.join(__dirname, 'tiktok_cookies.json') : '/tmp/tiktok_cookies.json',
       outputPath: '/tmp/tiktok_rtmp.txt',
       timeout: 35000,
       defaultTitle: '🔴 TOUR VIRTUALE 360° IN DIRETTA — Antonio Giancani'

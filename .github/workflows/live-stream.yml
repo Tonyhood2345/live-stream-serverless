@@ -29,6 +29,9 @@ jobs:
     timeout-minutes: 360
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Setup Headless Environment and Audio Engine
         run: |
           sudo apt-get update

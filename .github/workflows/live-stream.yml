@@ -84,6 +84,13 @@ jobs:
             --kiosk \
             --window-position=0,0 \
             --window-size=1920,1080 \
+            --force-device-scale-factor=1 \
+            --high-dpi-support=1 \
+            --enable-webgl \
+            --ignore-gpu-blocklist \
+            --use-gl=swiftshader \
+            --disable-web-security \
+            --allow-running-insecure-content \
             --no-sandbox \
             --no-first-run \
             --no-default-browser-check \
@@ -104,13 +111,13 @@ jobs:
           # 5. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
           # --- 0. AUTOMAZIONE HEADLESS PER INSTAGRAM & TIKTOK ---
           if [ -z "${{ github.event.inputs.ig_key }}" ] && [ -f scripts/instagram_live_auto.js ]; then
-            echo "📸 Avvio automazione headless Instagram Live..."
+            echo "? Avvio automazione headless Instagram Live..."
             node scripts/instagram_live_auto.js &
             sleep 5
           fi
 
           if [ -z "${{ github.event.inputs.tk_key }}" ] && [ -f scripts/tiktok_live_adapter.js ]; then
-            echo "🎵 Avvio automazione headless TikTok Live Adapter..."
+            echo "? Avvio automazione headless TikTok Live Adapter..."
             node scripts/tiktok_live_adapter.js &
             sleep 8
           fi
@@ -128,7 +135,7 @@ jobs:
           else
             FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
           fi
-          echo "📡 Output configurato: Facebook Live ($FB_URL)"
+          echo "? Output configurato: Facebook Live ($FB_URL)"
           TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
 
           # --- 2. YOUTUBE LIVE ---
@@ -142,7 +149,7 @@ jobs:
           else
             YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
           fi
-          echo "📡 Output configurato: YouTube Live ($YT_URL)"
+          echo "? Output configurato: YouTube Live ($YT_URL)"
           TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")
           TEE_DESTS+=("[f=flv:onfail=ignore]rtmp://a.rtmp.youtube.com/live2/uqc8-0m56-2bga-kvy3-1pgf")
           TEE_DESTS+=("[f=flv:onfail=ignore]rtmp://a.rtmp.youtube.com/live2/umqe-k4ke-qba4-39db-abrp")
@@ -151,7 +158,7 @@ jobs:
           TK_KEY="${{ github.event.inputs.tk_key }}"
           if [ -z "$TK_KEY" ] && [ -f /tmp/tiktok_rtmp.txt ]; then
             TK_KEY=$(cat /tmp/tiktok_rtmp.txt | tr -d '\r\n')
-            echo "🎵 Endpoint TikTok RTMP recuperato da adapter: $TK_KEY"
+            echo "? Endpoint TikTok RTMP recuperato da adapter: $TK_KEY"
           fi
           if [ -n "$TK_KEY" ]; then
             TK_URL=""
@@ -160,7 +167,7 @@ jobs:
             else
               TK_URL="rtmp://live-push.tiktok-cdns.com/live/$TK_KEY"
             fi
-            echo "📡 Output configurato: TikTok Live ($TK_URL)"
+            echo "? Output configurato: TikTok Live ($TK_URL)"
             TEE_DESTS+=("[f=flv:onfail=ignore]${TK_URL}")
           fi
 
@@ -168,7 +175,7 @@ jobs:
           IG_KEY="${{ github.event.inputs.ig_key }}"
           if [ -z "$IG_KEY" ] && [ -f /tmp/instagram_rtmp.txt ]; then
             IG_KEY=$(cat /tmp/instagram_rtmp.txt | tr -d '\r\n')
-            echo "📸 Endpoint Instagram RTMP recuperato da adapter: $IG_KEY"
+            echo "? Endpoint Instagram RTMP recuperato da adapter: $IG_KEY"
           fi
           if [ -n "$IG_KEY" ]; then
             IG_URL=""
@@ -177,12 +184,12 @@ jobs:
             else
               IG_URL="rtmps://live-upload.instagram.com:443/rtmp/$IG_KEY"
             fi
-            echo "📡 Output configurato: Instagram Live ($IG_URL)"
+            echo "? Output configurato: Instagram Live ($IG_URL)"
             TEE_DESTS+=("[f=flv:onfail=ignore]${IG_URL}")
           fi
 
           if [ ${#TEE_DESTS[@]} -eq 0 ]; then
-            echo "❌ Errore: Nessuna chiave o destinazione RTMP fornita!"
+            echo "? Errore: Nessuna chiave o destinazione RTMP fornita!"
             exit 1
           fi
 
@@ -195,9 +202,9 @@ jobs:
             DUR_HOURS="6"
           fi
           DUR_SECS=$(awk "BEGIN {print int($DUR_HOURS * 3600)}")
-          echo "⏱️ Durata programmata dello streaming: $DUR_HOURS ore ($DUR_SECS secondi)"
+          echo "?? Durata programmata dello streaming: $DUR_HOURS ore ($DUR_SECS secondi)"
 
-          echo "🚀 Avvio encoding FFmpeg CBR 4500k con TEE Muxer e Timer di $DUR_HOURS ore..."
+          echo "? Avvio encoding FFmpeg CBR 4500k con TEE Muxer e Timer di $DUR_HOURS ore..."
           timeout --kill-after=30s "${DUR_SECS}s" ffmpeg -thread_queue_size 2048 \
             -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
             -thread_queue_size 2048 \

@@ -84,7 +84,7 @@ jobs:
             --kiosk \
             --window-position=0,0 \
             --window-size=1920,1080 \
-            --force-device-scale-factor=1 \
+            --force-device-scale-factor=1.25 \
             --high-dpi-support=1 \
             --enable-webgl \
             --ignore-gpu-blocklist \

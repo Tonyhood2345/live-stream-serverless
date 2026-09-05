@@ -84,8 +84,7 @@ jobs:
             --kiosk \
             --window-position=0,0 \
             --window-size=1920,1080 \
-            --force-device-scale-factor=1.25 \
-            --high-dpi-support=1 \
+            --force-device-scale-factor=1.0 \
             --enable-webgl \
             --ignore-gpu-blocklist \
             --use-gl=swiftshader \
@@ -209,7 +208,7 @@ jobs:
             -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
             -thread_queue_size 2048 \
             -f pulse -i VirtualSink.monitor \
-            -vf "crop=1920:1030:0:50,scale=1920:1080" \
+            -vf "scale=1920:1080:flags=lanczos" \
             -c:v libx264 -preset veryfast \
             -b:v 4500k -minrate 4000k -maxrate 5000k -bufsize 9000k \
             -pix_fmt yuv420p -g 60 -keyint_min 60 -sc_threshold 0 \

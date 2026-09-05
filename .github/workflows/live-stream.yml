@@ -22,6 +22,14 @@ on:
         description: 'Durata massima della diretta in ore'
         required: false
         default: '6'
+      stream_quality:
+        description: 'Qualità stream (1080p_high, 1080p_std, 720p_hq, 720p_eco)'
+        required: false
+        default: '1080p_std'
+      scale_factor:
+        description: 'Scala Device Chrome (1.0 = Desktop 1:1, 1.25 = Zoom)'
+        required: false
+        default: '1.0'
 
 jobs:
   multistream:
@@ -35,7 +43,7 @@ jobs:
       - name: Setup Headless Environment and Audio Engine
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils
+          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl
           
           # Installa Google Chrome stabile
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
@@ -51,7 +59,7 @@ jobs:
           npm init -y
           npm install playwright
           npx playwright install-deps
-          npx playwright install chromium
+          npx playwright chromium
           python3 -m pip install playwright requests
 
       - name: Launch Audio Engine, Browser and Start Multistream
@@ -79,12 +87,15 @@ jobs:
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
 
-          echo "Avvio Chrome sulla pagina: ${{ github.event.inputs.video_url }}"
+          SCALE_FACTOR="${{ github.event.inputs.scale_factor }}"
+          if [ -z "$SCALE_FACTOR" ]; then SCALE_FACTOR="1.0"; fi
+
+          echo "Avvio Chrome con Scala $SCALE_FACTOR sulla pagina: ${{ github.event.inputs.video_url }}"
           google-chrome \
             --kiosk \
             --window-position=0,0 \
             --window-size=1920,1080 \
-            --force-device-scale-factor=1.0 \
+            --force-device-scale-factor=$SCALE_FACTOR \
             --enable-webgl \
             --ignore-gpu-blocklist \
             --use-gl=swiftshader \
@@ -203,14 +214,47 @@ jobs:
           DUR_SECS=$(awk "BEGIN {print int($DUR_HOURS * 3600)}")
           echo "?? Durata programmata dello streaming: $DUR_HOURS ore ($DUR_SECS secondi)"
 
-          echo "? Avvio encoding FFmpeg CBR 4500k con TEE Muxer e Timer di $DUR_HOURS ore..."
+          QUALITY="${{ github.event.inputs.stream_quality }}"
+          if [ -z "$QUALITY" ]; then QUALITY="1080p_std"; fi
+
+          if [ "$QUALITY" = "1080p_high" ]; then
+            BITRATE="6000k"; MINRATE="5000k"; MAXRATE="6500k"; BUFSIZE="12000k"; VF="scale=1920:1080:flags=lanczos"
+          elif [ "$QUALITY" = "720p_hq" ]; then
+            BITRATE="3200k"; MINRATE="2800k"; MAXRATE="3600k"; BUFSIZE="6400k"; VF="scale=1280:720:flags=bicubic"
+          elif [ "$QUALITY" = "720p_eco" ]; then
+            BITRATE="2000k"; MINRATE="1600k"; MAXRATE="2400k"; BUFSIZE="4000k"; VF="scale=1280:720:flags=bicubic"
+          else
+            BITRATE="4500k"; MINRATE="4000k"; MAXRATE="5000k"; BUFSIZE="9000k"; VF="scale=1920:1080:flags=lanczos"
+          fi
+
+          # --- 6. BACKGROUND SNAPSHOT DAEMON (OGNI 10 MINUTI) ---
+          # Cattura ogni 10 minuti uno snapshot reale da X11 :99 e lo invia a Google Apps Script
+          # per pubblicare la storia su Facebook e YouTube
+          (
+            sleep 60
+            while true; do
+              echo "📸 [SNAPSHOT 10 MIN] Cattura screen da X11 :99..."
+              ffmpeg -y -f x11grab -draw_mouse 0 -video_size 1920x1080 -i :99 -vframes 1 /tmp/live_snapshot.jpg >/dev/null 2>&1 || true
+              if [ -f /tmp/live_snapshot.jpg ]; then
+                B64_DATA=$(base64 -w 0 /tmp/live_snapshot.jpg)
+                WEBHOOK_URL="https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
+                PAYLOAD_JSON=$(jq -n --arg b64 "$B64_DATA" '{action: "pubblica_snapshot_live_10min", base64Image: $b64, forza: false}')
+                curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD_JSON" "$WEBHOOK_URL" >/dev/null 2>&1 || true
+                echo "📸 [SNAPSHOT 10 MIN] Inviato a Google Apps Script!"
+                rm -f /tmp/live_snapshot.jpg
+              fi
+              sleep 600
+            done
+          ) &
+
+          echo "? Avvio encoding FFmpeg CBR $BITRATE ($QUALITY) senza crop con TEE Muxer e Timer di $DUR_HOURS ore..."
           timeout --kill-after=30s "${DUR_SECS}s" ffmpeg -thread_queue_size 2048 \
             -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
             -thread_queue_size 2048 \
             -f pulse -i VirtualSink.monitor \
-            -vf "scale=1920:1080:flags=lanczos" \
+            -vf "$VF" \
             -c:v libx264 -preset veryfast \
-            -b:v 4500k -minrate 4000k -maxrate 5000k -bufsize 9000k \
+            -b:v $BITRATE -minrate $MINRATE -maxrate $MAXRATE -bufsize $BUFSIZE \
             -pix_fmt yuv420p -g 60 -keyint_min 60 -sc_threshold 0 \
             -c:a aac -b:a 160k -ar 44100 -ac 2 \
             -vsync cfr \

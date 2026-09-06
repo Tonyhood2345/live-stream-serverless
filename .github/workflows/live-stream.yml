@@ -52,13 +52,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl
-          
+
           # Installa Google Chrome stabile
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
-          
+
           google-chrome --version
           ffmpeg -version | head -1
 
@@ -80,7 +80,7 @@ jobs:
           # 2. Avvia PulseAudio
           pulseaudio -D --exit-idle-time=-1 --system=false || true
           sleep 2
-          
+
           # 3. Sink Virtuale per Audio Browser
           pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=VirtualSink || true
           pactl set-default-sink VirtualSink || true
@@ -96,94 +96,94 @@ jobs:
           # Rimuove qualsiasi disclaimer "Questa applicazione è stata creata da un altro utente"
           mkdir -p /tmp/hide_banner_ext
           cat << 'EOF' > /tmp/hide_banner_ext/manifest.json
-{
-  "manifest_version": 3,
-  "name": "Hide Apps Script Banner",
-  "version": "1.0",
-  "content_scripts": [
-    {
-      "matches": ["*://script.google.com/*", "*://script.googleusercontent.com/*"],
-      "css": ["style.css"],
-      "js": ["content.js"],
-      "run_at": "document_start"
-    }
-  ]
-}
-EOF
+          {
+          "manifest_version": 3,
+          "name": "Hide Apps Script Banner",
+          "version": "1.0",
+          "content_scripts": [
+          {
+          "matches": ["*://script.google.com/*", "*://script.googleusercontent.com/*"],
+          "css": ["style.css"],
+          "js": ["content.js"],
+          "run_at": "document_start"
+          }
+          ]
+          }
+          EOF
 
           cat << 'EOF' > /tmp/hide_banner_ext/style.css
-#warning,
-.warning-bar,
-#warning-bar-table tr:first-child,
-#warning-bar-table > tbody > tr:first-child,
-.docs-butter-bar-container,
-div[aria-label*="Apps Script"],
-.app-bar,
-#guest-banner {
-  display: none !important;
-  height: 0px !important;
-  max-height: 0px !important;
-  min-height: 0px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border: 0 !important;
-  overflow: hidden !important;
-  visibility: hidden !important;
-}
+          #warning,
+          .warning-bar,
+          #warning-bar-table tr:first-child,
+          #warning-bar-table > tbody > tr:first-child,
+          .docs-butter-bar-container,
+          div[aria-label*="Apps Script"],
+          .app-bar,
+          #guest-banner {
+          display: none !important;
+          height: 0px !important;
+          max-height: 0px !important;
+          min-height: 0px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: 0 !important;
+          overflow: hidden !important;
+          visibility: hidden !important;
+          }
 
-#warning-bar-table,
-#warning-bar-table > tbody,
-#warning-bar-table > tbody > tr:last-child,
-#warning-bar-table > tbody > tr:last-child > td,
-#sandboxFrame {
-  height: 100% !important;
-  width: 100% !important;
-  min-height: 100vh !important;
-  min-width: 100vw !important;
-  border: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
+          #warning-bar-table,
+          #warning-bar-table > tbody,
+          #warning-bar-table > tbody > tr:last-child,
+          #warning-bar-table > tbody > tr:last-child > td,
+          #sandboxFrame {
+          height: 100% !important;
+          width: 100% !important;
+          min-height: 100vh !important;
+          min-width: 100vw !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          }
 
-html, body {
-  overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  height: 100% !important;
-  width: 100% !important;
-}
-EOF
+          html, body {
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          height: 100% !important;
+          width: 100% !important;
+          }
+          EOF
 
           cat << 'EOF' > /tmp/hide_banner_ext/content.js
-(function() {
-  function removeBanner() {
-    var w = document.getElementById('warning');
-    if (w) {
-      w.style.setProperty('display', 'none', 'important');
-      if (w.parentElement && w.parentElement.parentElement) {
-        w.parentElement.parentElement.style.setProperty('display', 'none', 'important');
-      }
-    }
-    var tbl = document.getElementById('warning-bar-table');
-    if (tbl) {
-      var rows = tbl.querySelectorAll('tr');
-      if (rows.length > 1) {
-        rows[0].style.setProperty('display', 'none', 'important');
-      }
-    }
-    var iframe = document.getElementById('sandboxFrame');
-    if (iframe) {
-      iframe.style.setProperty('height', '100vh', 'important');
-      iframe.style.setProperty('width', '100vw', 'important');
-      iframe.style.setProperty('border', 'none', 'important');
-    }
-  }
-  removeBanner();
-  document.addEventListener('DOMContentLoaded', removeBanner);
-  window.addEventListener('load', removeBanner);
-  setInterval(removeBanner, 300);
-})();
-EOF
+          (function() {
+          function removeBanner() {
+          var w = document.getElementById('warning');
+          if (w) {
+          w.style.setProperty('display', 'none', 'important');
+          if (w.parentElement && w.parentElement.parentElement) {
+          w.parentElement.parentElement.style.setProperty('display', 'none', 'important');
+          }
+          }
+          var tbl = document.getElementById('warning-bar-table');
+          if (tbl) {
+          var rows = tbl.querySelectorAll('tr');
+          if (rows.length > 1) {
+          rows[0].style.setProperty('display', 'none', 'important');
+          }
+          }
+          var iframe = document.getElementById('sandboxFrame');
+          if (iframe) {
+          iframe.style.setProperty('height', '100vh', 'important');
+          iframe.style.setProperty('width', '100vw', 'important');
+          iframe.style.setProperty('border', 'none', 'important');
+          }
+          }
+          removeBanner();
+          document.addEventListener('DOMContentLoaded', removeBanner);
+          window.addEventListener('load', removeBanner);
+          setInterval(removeBanner, 300);
+          })();
+          EOF
 
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
@@ -193,7 +193,7 @@ EOF
 
           echo "Avvio Chrome con Scala $SCALE_FACTOR e Anti-Banner su: ${{ github.event.inputs.video_url }}"
           google-chrome             --kiosk             --window-position=0,0             --window-size=1920,1080             --force-device-scale-factor=$SCALE_FACTOR             --load-extension=/tmp/hide_banner_ext             --disable-extensions-except=/tmp/hide_banner_ext             --remote-debugging-port=9222             --enable-webgl             --ignore-gpu-blocklist             --use-gl=swiftshader             --disable-web-security             --allow-running-insecure-content             --no-sandbox             --no-first-run             --no-default-browser-check             --disable-first-run-ui             --disable-infobars             --disable-session-crashed-bubble             --disable-restore-session-state             --disable-notifications             --disable-features=AudioServiceOutOfProcess             --enable-features=UsePulseAudio             --autoplay-policy=no-user-gesture-required             --user-data-dir=/tmp/chrome_clean_profile             "${{ github.event.inputs.video_url }}" &
-          
+
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
 
@@ -322,20 +322,32 @@ EOF
 
           echo "🚀 Configurazione FFmpeg applicata: Qualità=$QUALITY, Bitrate=$BITRATE, Filtro=$VF"
 
-          # --- 7. BACKGROUND SNAPSHOT DAEMON (OGNI 10 MINUTI) ---
-          # Cattura ogni 10 minuti uno snapshot reale da X11 :99 e lo invia a Google Apps Script
-          # per pubblicare la storia su Facebook e YouTube
+          # --- 7. BACKGROUND SNAPSHOT DAEMON (OGNI 10 MINUTI ANTI-BLACK FRAME) ---
+          # Cattura ogni 10 minuti uno snapshot reale da X11 :99, verifica che non sia nero e lo invia a Google Apps Script
           (
             sleep 60
             while true; do
               echo "📸 [SNAPSHOT 10 MIN] Cattura screen da X11 :99..."
               ffmpeg -y -f x11grab -draw_mouse 0 -video_size 1920x1080 -i :99 -vframes 1 /tmp/live_snapshot.jpg >/dev/null 2>&1 || true
               if [ -f /tmp/live_snapshot.jpg ]; then
-                B64_DATA=$(base64 -w 0 /tmp/live_snapshot.jpg)
-                WEBHOOK_URL="https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
-                PAYLOAD_JSON=$(jq -n --arg b64 "$B64_DATA" '{action: "pubblica_snapshot_live_10min", base64Image: $b64, forza: false}')
-                curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD_JSON" "$WEBHOOK_URL" >/dev/null 2>&1 || true
-                echo "📸 [SNAPSHOT 10 MIN] Inviato a Google Apps Script!"
+                FILE_SIZE=$(stat -c%s "/tmp/live_snapshot.jpg" 2>/dev/null || echo "0")
+                IS_VALID=true
+                if [ "$FILE_SIZE" -lt 25000 ]; then
+                  echo "⚠️ [SNAPSHOT] Immagine troppo piccola ($FILE_SIZE bytes), scartata."
+                  IS_VALID=false
+                fi
+                if [ "$IS_VALID" = true ]; then
+                  python3 -c "import sys; from PIL import Image; sys.exit(0 if Image.open('/tmp/live_snapshot.jpg').convert('L').resize((60,60)).getextrema()[1] > 25 else 1)" || IS_VALID=false
+                fi
+                if [ "$IS_VALID" = true ]; then
+                  B64_DATA=$(base64 -w 0 /tmp/live_snapshot.jpg)
+                  WEBHOOK_URL="https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
+                  PAYLOAD_JSON=$(jq -n --arg b64 "$B64_DATA" '{action: "pubblica_snapshot_live_10min", base64Image: $b64, forza: false}')
+                  curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD_JSON" "$WEBHOOK_URL" >/dev/null 2>&1 || true
+                  echo "📸 [SNAPSHOT 10 MIN] Inviato con successo a Google Apps Script!"
+                else
+                  echo "⚠️ [SNAPSHOT] Frame nero o non renderizzato: evitata pubblicazione di storia vuota!"
+                fi
                 rm -f /tmp/live_snapshot.jpg
               fi
               sleep 600

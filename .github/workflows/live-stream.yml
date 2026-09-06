@@ -59,7 +59,7 @@ jobs:
           npm init -y
           npm install playwright
           npx playwright install-deps
-          npx playwright chromium
+          npx playwright install chromium
           python3 -m pip install playwright requests
 
       - name: Launch Audio Engine, Browser and Start Multistream

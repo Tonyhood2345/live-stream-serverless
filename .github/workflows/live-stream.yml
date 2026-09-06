@@ -23,13 +23,21 @@ on:
         required: false
         default: '6'
       stream_quality:
-        description: 'Qualità stream (1080p_high, 1080p_std, 720p_hq, 720p_eco)'
+        description: 'Qualità stream (1080p_high, 1080p_std, 1080p_eco, 720p_hq, 720p_std, 720p_eco, 480p, custom)'
         required: false
         default: '1080p_std'
       scale_factor:
         description: 'Scala Device Chrome (1.0 = Desktop 1:1, 1.25 = Zoom)'
         required: false
         default: '1.0'
+      custom_bitrate:
+        description: 'Bitrate FFmpeg personalizzato (es. 4000k)'
+        required: false
+        default: '4500k'
+      custom_res:
+        description: 'Risoluzione personalizzata (es. 1920:1080)'
+        required: false
+        default: '1920:1080'
 
 jobs:
   multistream:
@@ -84,50 +92,121 @@ jobs:
           openbox &
           sleep 2
 
+          # 5. CREA ESTENSIONE CHROME ANTI-BANNER GOOGLE APPS SCRIPT
+          # Rimuove qualsiasi disclaimer "Questa applicazione è stata creata da un altro utente"
+          mkdir -p /tmp/hide_banner_ext
+          cat << 'EOF' > /tmp/hide_banner_ext/manifest.json
+{
+  "manifest_version": 3,
+  "name": "Hide Apps Script Banner",
+  "version": "1.0",
+  "content_scripts": [
+    {
+      "matches": ["*://script.google.com/*", "*://script.googleusercontent.com/*"],
+      "css": ["style.css"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
+EOF
+
+          cat << 'EOF' > /tmp/hide_banner_ext/style.css
+#warning,
+.warning-bar,
+#warning-bar-table tr:first-child,
+#warning-bar-table > tbody > tr:first-child,
+.docs-butter-bar-container,
+div[aria-label*="Apps Script"],
+.app-bar,
+#guest-banner {
+  display: none !important;
+  height: 0px !important;
+  max-height: 0px !important;
+  min-height: 0px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+}
+
+#warning-bar-table,
+#warning-bar-table > tbody,
+#warning-bar-table > tbody > tr:last-child,
+#warning-bar-table > tbody > tr:last-child > td,
+#sandboxFrame {
+  height: 100% !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  min-width: 100vw !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+html, body {
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+EOF
+
+          cat << 'EOF' > /tmp/hide_banner_ext/content.js
+(function() {
+  function removeBanner() {
+    var w = document.getElementById('warning');
+    if (w) {
+      w.style.setProperty('display', 'none', 'important');
+      if (w.parentElement && w.parentElement.parentElement) {
+        w.parentElement.parentElement.style.setProperty('display', 'none', 'important');
+      }
+    }
+    var tbl = document.getElementById('warning-bar-table');
+    if (tbl) {
+      var rows = tbl.querySelectorAll('tr');
+      if (rows.length > 1) {
+        rows[0].style.setProperty('display', 'none', 'important');
+      }
+    }
+    var iframe = document.getElementById('sandboxFrame');
+    if (iframe) {
+      iframe.style.setProperty('height', '100vh', 'important');
+      iframe.style.setProperty('width', '100vw', 'important');
+      iframe.style.setProperty('border', 'none', 'important');
+    }
+  }
+  removeBanner();
+  document.addEventListener('DOMContentLoaded', removeBanner);
+  window.addEventListener('load', removeBanner);
+  setInterval(removeBanner, 300);
+})();
+EOF
+
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
 
           SCALE_FACTOR="${{ github.event.inputs.scale_factor }}"
           if [ -z "$SCALE_FACTOR" ]; then SCALE_FACTOR="1.0"; fi
 
-          echo "Avvio Chrome con Scala $SCALE_FACTOR sulla pagina: ${{ github.event.inputs.video_url }}"
-          google-chrome \
-            --kiosk \
-            --window-position=0,0 \
-            --window-size=1920,1080 \
-            --force-device-scale-factor=$SCALE_FACTOR \
-            --enable-webgl \
-            --ignore-gpu-blocklist \
-            --use-gl=swiftshader \
-            --disable-web-security \
-            --allow-running-insecure-content \
-            --no-sandbox \
-            --no-first-run \
-            --no-default-browser-check \
-            --disable-first-run-ui \
-            --disable-infobars \
-            --disable-session-crashed-bubble \
-            --disable-restore-session-state \
-            --disable-notifications \
-            --disable-features=AudioServiceOutOfProcess \
-            --enable-features=UsePulseAudio \
-            --autoplay-policy=no-user-gesture-required \
-            --user-data-dir=/tmp/chrome_clean_profile \
-            "${{ github.event.inputs.video_url }}" &
+          echo "Avvio Chrome con Scala $SCALE_FACTOR e Anti-Banner su: ${{ github.event.inputs.video_url }}"
+          google-chrome             --kiosk             --window-position=0,0             --window-size=1920,1080             --force-device-scale-factor=$SCALE_FACTOR             --load-extension=/tmp/hide_banner_ext             --disable-extensions-except=/tmp/hide_banner_ext             --remote-debugging-port=9222             --enable-webgl             --ignore-gpu-blocklist             --use-gl=swiftshader             --disable-web-security             --allow-running-insecure-content             --no-sandbox             --no-first-run             --no-default-browser-check             --disable-first-run-ui             --disable-infobars             --disable-session-crashed-bubble             --disable-restore-session-state             --disable-notifications             --disable-features=AudioServiceOutOfProcess             --enable-features=UsePulseAudio             --autoplay-policy=no-user-gesture-required             --user-data-dir=/tmp/chrome_clean_profile             "${{ github.event.inputs.video_url }}" &
           
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
 
-          # 5. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
+          # 6. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
           # --- 0. AUTOMAZIONE HEADLESS PER INSTAGRAM & TIKTOK ---
           if [ -z "${{ github.event.inputs.ig_key }}" ] && [ -f scripts/instagram_live_auto.js ]; then
-            echo "? Avvio automazione headless Instagram Live..."
+            echo "📸 Avvio automazione headless Instagram Live..."
             node scripts/instagram_live_auto.js &
             sleep 5
           fi
 
           if [ -z "${{ github.event.inputs.tk_key }}" ] && [ -f scripts/tiktok_live_adapter.js ]; then
-            echo "? Avvio automazione headless TikTok Live Adapter..."
+            echo "🎵 Avvio automazione headless TikTok Live Adapter..."
             node scripts/tiktok_live_adapter.js &
             sleep 8
           fi
@@ -145,7 +224,7 @@ jobs:
           else
             FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
           fi
-          echo "? Output configurato: Facebook Live ($FB_URL)"
+          echo "📘 Output configurato: Facebook Live ($FB_URL)"
           TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
 
           # --- 2. YOUTUBE LIVE ---
@@ -169,7 +248,7 @@ jobs:
           TK_KEY="${{ github.event.inputs.tk_key }}"
           if [ -z "$TK_KEY" ] && [ -f /tmp/tiktok_rtmp.txt ]; then
             TK_KEY=$(cat /tmp/tiktok_rtmp.txt | tr -d '\r\n')
-            echo "? Endpoint TikTok RTMP recuperato da adapter: $TK_KEY"
+            echo "🎵 Endpoint TikTok RTMP recuperato da adapter: $TK_KEY"
           fi
           if [ -n "$TK_KEY" ]; then
             TK_URL=""
@@ -178,7 +257,7 @@ jobs:
             else
               TK_URL="rtmp://live-push.tiktok-cdns.com/live/$TK_KEY"
             fi
-            echo "? Output configurato: TikTok Live ($TK_URL)"
+            echo "🎵 Output configurato: TikTok Live ($TK_URL)"
             TEE_DESTS+=("[f=flv:onfail=ignore]${TK_URL}")
           fi
 
@@ -186,7 +265,7 @@ jobs:
           IG_KEY="${{ github.event.inputs.ig_key }}"
           if [ -z "$IG_KEY" ] && [ -f /tmp/instagram_rtmp.txt ]; then
             IG_KEY=$(cat /tmp/instagram_rtmp.txt | tr -d '\r\n')
-            echo "? Endpoint Instagram RTMP recuperato da adapter: $IG_KEY"
+            echo "📸 Endpoint Instagram RTMP recuperato da adapter: $IG_KEY"
           fi
           if [ -n "$IG_KEY" ]; then
             IG_URL=""
@@ -195,12 +274,12 @@ jobs:
             else
               IG_URL="rtmps://live-upload.instagram.com:443/rtmp/$IG_KEY"
             fi
-            echo "? Output configurato: Instagram Live ($IG_URL)"
+            echo "📸 Output configurato: Instagram Live ($IG_URL)"
             TEE_DESTS+=("[f=flv:onfail=ignore]${IG_URL}")
           fi
 
           if [ ${#TEE_DESTS[@]} -eq 0 ]; then
-            echo "? Errore: Nessuna chiave o destinazione RTMP fornita!"
+            echo "❌ Errore: Nessuna chiave o destinazione RTMP fornita!"
             exit 1
           fi
 
@@ -213,22 +292,37 @@ jobs:
             DUR_HOURS="6"
           fi
           DUR_SECS=$(awk "BEGIN {print int($DUR_HOURS * 3600)}")
-          echo "?? Durata programmata dello streaming: $DUR_HOURS ore ($DUR_SECS secondi)"
+          echo "⏱️ Durata programmata dello streaming: $DUR_HOURS ore ($DUR_SECS secondi)"
 
           QUALITY="${{ github.event.inputs.stream_quality }}"
           if [ -z "$QUALITY" ]; then QUALITY="1080p_std"; fi
 
           if [ "$QUALITY" = "1080p_high" ]; then
             BITRATE="6000k"; MINRATE="5000k"; MAXRATE="6500k"; BUFSIZE="12000k"; VF="scale=1920:1080:flags=lanczos"
+          elif [ "$QUALITY" = "1080p_eco" ]; then
+            BITRATE="3500k"; MINRATE="3000k"; MAXRATE="4000k"; BUFSIZE="7000k"; VF="scale=1920:1080:flags=bicubic"
           elif [ "$QUALITY" = "720p_hq" ]; then
-            BITRATE="3200k"; MINRATE="2800k"; MAXRATE="3600k"; BUFSIZE="6400k"; VF="scale=1280:720:flags=bicubic"
+            BITRATE="3000k"; MINRATE="2600k"; MAXRATE="3400k"; BUFSIZE="6000k"; VF="scale=1280:720:flags=bicubic"
+          elif [ "$QUALITY" = "720p_std" ]; then
+            BITRATE="2200k"; MINRATE="1800k"; MAXRATE="2600k"; BUFSIZE="4400k"; VF="scale=1280:720:flags=bicubic"
           elif [ "$QUALITY" = "720p_eco" ]; then
-            BITRATE="2000k"; MINRATE="1600k"; MAXRATE="2400k"; BUFSIZE="4000k"; VF="scale=1280:720:flags=bicubic"
+            BITRATE="1600k"; MINRATE="1300k"; MAXRATE="2000k"; BUFSIZE="3200k"; VF="scale=1280:720:flags=bicubic"
+          elif [ "$QUALITY" = "480p" ]; then
+            BITRATE="1000k"; MINRATE="800k"; MAXRATE="1200k"; BUFSIZE="2000k"; VF="scale=854:480:flags=bicubic"
+          elif [ "$QUALITY" = "custom" ]; then
+            CUSTOM_BITRATE="${{ github.event.inputs.custom_bitrate }}"
+            if [ -z "$CUSTOM_BITRATE" ]; then CUSTOM_BITRATE="4000k"; fi
+            CUSTOM_RES="${{ github.event.inputs.custom_res }}"
+            if [ -z "$CUSTOM_RES" ]; then CUSTOM_RES="1920:1080"; fi
+            BITRATE="$CUSTOM_BITRATE"; MINRATE="$CUSTOM_BITRATE"; MAXRATE="$CUSTOM_BITRATE"; BUFSIZE="8000k"; VF="scale=$CUSTOM_RES:flags=bicubic"
           else
+            # Default 1080p Standard
             BITRATE="4500k"; MINRATE="4000k"; MAXRATE="5000k"; BUFSIZE="9000k"; VF="scale=1920:1080:flags=lanczos"
           fi
 
-          # --- 6. BACKGROUND SNAPSHOT DAEMON (OGNI 10 MINUTI) ---
+          echo "🚀 Configurazione FFmpeg applicata: Qualità=$QUALITY, Bitrate=$BITRATE, Filtro=$VF"
+
+          # --- 7. BACKGROUND SNAPSHOT DAEMON (OGNI 10 MINUTI) ---
           # Cattura ogni 10 minuti uno snapshot reale da X11 :99 e lo invia a Google Apps Script
           # per pubblicare la storia su Facebook e YouTube
           (
@@ -248,7 +342,7 @@ jobs:
             done
           ) &
 
-          echo "? Avvio encoding FFmpeg CBR $BITRATE ($QUALITY) senza crop con TEE Muxer e Timer di $DUR_HOURS ore..."
+          echo "🎥 Avvio encoding FFmpeg CBR $BITRATE ($QUALITY) con TEE Muxer e Timer di $DUR_HOURS ore..."
           timeout --kill-after=30s "${DUR_SECS}s" ffmpeg -thread_queue_size 2048 \
             -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
             -thread_queue_size 2048 \

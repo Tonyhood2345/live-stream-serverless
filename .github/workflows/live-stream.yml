@@ -159,10 +159,11 @@ jobs:
           else
             YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
           fi
-          echo "? Output configurato: YouTube Live ($YT_URL)"
+          echo "▶ Output configurato: YouTube Live ($YT_URL)"
           TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")
-          TEE_DESTS+=("[f=flv:onfail=ignore]rtmp://a.rtmp.youtube.com/live2/uqc8-0m56-2bga-kvy3-1pgf")
-          TEE_DESTS+=("[f=flv:onfail=ignore]rtmp://a.rtmp.youtube.com/live2/umqe-k4ke-qba4-39db-abrp")
+          if [ "$YT_KEY" != "uqc8-0m56-2bga-kvy3-1pgf" ] && [ "$YT_URL" != "rtmp://a.rtmp.youtube.com/live2/uqc8-0m56-2bga-kvy3-1pgf" ]; then
+            TEE_DESTS+=("[f=flv:onfail=ignore]rtmp://a.rtmp.youtube.com/live2/uqc8-0m56-2bga-kvy3-1pgf")
+          fi
 
           # --- 3. TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"

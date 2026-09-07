@@ -752,12 +752,91 @@ def invia_notifica_telegram_youtube(titolo, mq, prezzo, watch_url, is_morning, r
     except Exception as e:
         print(f"Avviso notifica Telegram: {e}")
 
+def seleziona_video_dinamico(yt_items, target_mode='auto', is_morning=True, now_rome=None):
+    """
+    Seleziona l'immobile da pubblicare evitando categoricamente che ci siano sempre gli stessi video.
+    Supporta:
+    - 'auto': Rotazione shuffle dinamica senza ripetizioni (mattina e sera sempre diversi, ciclando tutti i video).
+    - 'random': Scelta casuale escludendo l'ultimo video pubblicato per evitare ripetizioni immediate.
+    - 'cycle': Rotazione sequenziale ordinata (0, 1, 2, ...).
+    - 'first': Primo video.
+    - 'last': Ultimo video.
+    """
+    if not yt_items:
+        return None, 0
+
+    N = len(yt_items)
+    if N == 1:
+        return yt_items[0], 0
+
+    # Carica la cronologia degli ultimi video pubblicati
+    history_file = os.path.join(ASSETS_DIR, "last_published_history.json")
+    recent_urls = []
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, "r", encoding="utf-8") as hf:
+                recent_urls = json.load(hf)
+                if not isinstance(recent_urls, list):
+                    recent_urls = [str(recent_urls)]
+        except Exception:
+            recent_urls = []
+
+    if target_mode == 'first':
+        chosen_idx = 0
+    elif target_mode == 'last':
+        chosen_idx = N - 1
+    elif target_mode == 'random':
+        # Candidati escludendo gli ultimi video già pubblicati
+        candidates = [i for i, it in enumerate(yt_items) if it.get('videoUrl') not in recent_urls[:max(1, N - 1)]]
+        if not candidates:
+            candidates = list(range(N))
+        chosen_idx = random.choice(candidates)
+    elif target_mode == 'cycle':
+        day_of_year = now_rome.timetuple().tm_yday if now_rome else datetime.datetime.now().timetuple().tm_yday
+        slot = 0 if is_morning else 1
+        chosen_idx = (day_of_year * 2 + slot) % N
+    else:  # 'auto' (Predefinito: rotazione casuale dinamica che cicla l'intero catalogo senza ripetizioni)
+        day_of_year = now_rome.timetuple().tm_yday if now_rome else datetime.datetime.now().timetuple().tm_yday
+        slot = 0 if is_morning else 1
+        slot_number = day_of_year * 2 + slot
+
+        cycle = slot_number // N
+        idx_in_cycle = slot_number % N
+
+        # Genera un ordine casuale deterministico per ogni ciclo
+        rng = random.Random(cycle * 1009 + 42)
+        order = rng.sample(range(N), N)
+
+        # Evita che il primo del nuovo ciclo sia uguale all'ultimo del ciclo precedente
+        if cycle > 0:
+            rng_prev = random.Random((cycle - 1) * 1009 + 42)
+            prev_order = rng_prev.sample(range(N), N)
+            if order[0] == prev_order[-1] and N > 1:
+                order[0], order[1] = order[1], order[0]
+
+        chosen_idx = order[idx_in_cycle]
+
+        # Ulteriore controllo anti-ripetizione sull'ultimo URL pubblicato
+        if yt_items[chosen_idx].get('videoUrl') in recent_urls[:1] and N > 1:
+            chosen_idx = (chosen_idx + 1) % N
+
+    selected_item = yt_items[chosen_idx]
+
+    # Aggiorna cronologia
+    recent_urls.insert(0, selected_item.get('videoUrl', ''))
+    try:
+        with open(history_file, "w", encoding="utf-8") as hf:
+            json.dump(recent_urls[:10], hf)
+    except Exception:
+        pass
+
+    return selected_item, chosen_idx
+
 def esegui_pubblicazione(target_mode='auto'):
     """
-    Esegue il ciclo di pubblicazione storie YouTube:
-    - target_mode: 'first' (07:00 Mattina), 'last' (19:00 Sera) o 'auto' (in base all'ora corrente)
+    Esegue il ciclo completo di pubblicazione storie e post:
+    - target_mode: 'auto' (rotazione dinamica anti-ripetizione), 'random' (casuale), 'cycle', 'first', 'last'
     """
-    # 1. Calcola orario italiano
     now_rome = None
     if ZoneInfo:
         try:
@@ -767,17 +846,13 @@ def esegui_pubblicazione(target_mode='auto'):
     if not now_rome:
         now_rome = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
 
-    if target_mode == 'auto':
-        target_mode = 'first' if now_rome.hour < 13 else 'last'
-
-    is_morning = (target_mode == 'first')
-    fascia = "07:00 (MATTINA - PRIMO VIDEO)" if is_morning else "19:00 (SERA - ULTIMO VIDEO)"
+    is_morning = (now_rome.hour < 13)
+    fascia = "07:00 (MATTINA)" if is_morning else "19:00 (SERA)"
 
     print("═" * 70)
-    print(f"🎬 AVVIO BOT STORIE YOUTUBE: {fascia}")
+    print(f"🎬 AVVIO BOT STORIE E POST YOUTUBE: {fascia} (Modalità: {target_mode})")
     print("═" * 70)
 
-    # 2. Recupera i video dal foglio Post_YouTube
     url_sheets = f"{APPS_SCRIPT_URL}?action=debug_all_sheets"
     req_sheets = urllib.request.Request(url_sheets, headers={'User-Agent': 'Mozilla/5.0'})
     yt_items = []
@@ -813,16 +888,21 @@ def esegui_pubblicazione(target_mode='auto'):
             "thumbUrl": "https://i3.ytimg.com/vi/zekP_9iFLK0/hqdefault.jpg"
         })
 
-    # 3. Seleziona il primo (mattina) o l'ultimo (sera)
-    selected_item = yt_items[0] if is_morning else yt_items[-1]
-    print(f"🎯 Video selezionato per {fascia}:")
+    # 3. Seleziona l'immobile con rotazione casuale/intelligente anti-ripetizione
+    selected_item, selected_idx = seleziona_video_dinamico(
+        yt_items,
+        target_mode=target_mode,
+        is_morning=is_morning,
+        now_rome=now_rome
+    )
+
+    print(f"🎯 Video selezionato #{selected_idx + 1} di {len(yt_items)} per {fascia}:")
     print(f"   • Titolo: {selected_item['titolo']}")
     print(f"   • Prezzo: {selected_item['prezzo']}")
     print(f"   • Superficie: {selected_item['mq']}")
     print(f"   • URL Media: {selected_item['videoUrl']}")
     print(f"   • Testo Colonna F: {selected_item['testoF'][:80]}...")
 
-    # 4. Renderizza il video di 15 secondi continui con logo semi-visibile, musica originale e link interattivo
     video_path, watch_url = render_storia_youtube_video(selected_item, is_morning=is_morning)
     if not video_path:
         print("❌ Errore rendering video storia YouTube. — Immobiliare Giancani")
@@ -886,7 +966,12 @@ def esegui_pubblicazione(target_mode='auto'):
 
 def main():
     parser = argparse.ArgumentParser(description="Bot Storie e Post Facebook YouTube Immobiliare Giancani")
-    parser.add_argument("--target", choices=["auto", "first", "last"], default="auto", help="Seleziona quale video pubblicare (first = 07:00 mattina, last = 19:00 sera, auto = in base all'ora)")
+    parser.add_argument(
+        "--target",
+        choices=["auto", "random", "cycle", "first", "last"],
+        default="auto",
+        help="Seleziona modalità video: 'auto' (rotazione shuffle dinamica anti-ripetizione), 'random' (casuale intelligente), 'cycle' (sequenziale ciclico), 'first', 'last'"
+    )
     args = parser.parse_args()
     esegui_pubblicazione(target_mode=args.target)
 

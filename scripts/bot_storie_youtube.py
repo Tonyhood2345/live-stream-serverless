@@ -51,6 +51,7 @@ import subprocess
 import urllib.request
 import urllib.parse
 import base64
+import requests
 import numpy as np
 import wave
 from PIL import Image, ImageDraw, ImageFont, ImageStat, ImageFilter
@@ -65,12 +66,14 @@ PAGES = [
     {
         "nome": "Immobiliare Giancani (Pagina Ufficiale)",
         "id": os.environ.get("FB_PAGE_ID", "234931856561526"),
-        "token": os.environ.get("FB_PAGE_TOKEN", "EAAZAH7q8wRZAEBSaZAm9Q9JGa8ZC7gwAsRJ1n4bPZAIY5ws8VXZAnugJgtZCOvP7HyEd7IEfWeCD5HfmP0ENQh86J3PT7pDFnOt5nPJdpzYyUM6p6AtZBXnXufThdh9ZAczfsE84obRZCOD3UWslSWpxJ058WGrQfXxJYsXtVZBh1ey7j2zuzme2JcEoya10KdL8TfJOpvNHqD8EsionnLI")
+        "token": os.environ.get("FB_PAGE_TOKEN", "EAAZAH7q8wRZAEBSaZAm9Q9JGa8ZC7gwAsRJ1n4bPZAIY5ws8VXZAnugJgtZCOvP7HyEd7IEfWeCD5HfmP0ENQh86J3PT7pDFnOt5nPJdpzYyUM6p6AtZBXnXufThdh9ZAczfsE84obRZCOD3UWslSWpxJ058WGrQfXxJYsXtVZBh1ey7j2zuzme2JcEoya10KdL8TfJOpvNHqD8EsionnLI"),
+        "is_page": True
     },
     {
         "nome": "Antonio Giancani (Profilo Personale)",
         "id": os.environ.get("FB_ANTONIO_ID", "108297671444008"),
-        "token": os.environ.get("FB_ANTONIO_TOKEN", "EAAZAH7q8wRZAEBSQbsAIPVhCwMvrhECfhs5UNWL8ZBIOrUbCXqWCQtsyntumIOAvDCRUcg2FsmJBNtiXOEOO2TROFJE9CBXrZBT4GPrZAZCjB73WZALCECi7Ik9ZCae5y01ZB5ZAV7VH7qHyNdeZCWZCG9xViT0gZCYwnV7MCSuQKS5ZA1ZCdw5nom0IH8uub3ZAwVsIGhNSDdkJWZCgCIzs1b8ia")
+        "token": os.environ.get("FB_ANTONIO_TOKEN", "EAAZAH7q8wRZAEBSQbsAIPVhCwMvrhECfhs5UNWL8ZBIOrUbCXqWCQtsyntumIOAvDCRUcg2FsmJBNtiXOEOO2TROFJE9CBXrZBT4GPrZAZCjB73WZALCECi7Ik9ZCae5y01ZB5ZAV7VH7qHyNdeZCWZCG9xViT0gZCYwnV7MCSuQKS5ZA1ZCdw5nom0IH8uub3ZAwVsIGhNSDdkJWZCgCIzs1b8ia"),
+        "is_page": False
     }
 ]
 
@@ -91,15 +94,27 @@ os.makedirs(SCRATCH_DIR, exist_ok=True)
 os.makedirs(ASSETS_DIR, exist_ok=True)
 
 def find_ffmpeg():
-    """Localizza FFmpeg nel sistema"""
+    """Localizza FFmpeg nel sistema (compatibile sia con Windows che con Linux GitHub Actions)"""
     candidates = [
-        shutil.which("ffmpeg"),
+        shutil.which("ffmpeg")
+    ]
+    try:
+        import imageio_ffmpeg
+        candidates.append(imageio_ffmpeg.get_ffmpeg_exe())
+    except Exception:
+        pass
+    candidates.extend([
         os.path.join(os.path.dirname(BASE_DIR), "ffmpeg.exe"),
         os.path.join(BASE_DIR, "ffmpeg.exe"),
+        r"C:\Users\immobiliare Giancani\AppData\Local\Programs\Python\Python312\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe",
         "ffmpeg"
-    ]
+    ])
     for c in candidates:
         if c and (os.path.exists(c) or shutil.which(c)):
+            if os.path.isabs(c) and os.path.exists(c):
+                f_dir = os.path.dirname(c)
+                if f_dir not in os.environ.get("PATH", ""):
+                    os.environ["PATH"] = f_dir + os.pathsep + os.environ.get("PATH", "")
             return c
     return "ffmpeg"
 
@@ -173,13 +188,14 @@ def genera_qr_code(url, size=220):
     return None
 
 def check_video_has_audio(video_path):
-    """Verifica se il file video dispone di una traccia audio"""
+    """Verifica se il file video dispone di una traccia audio reale con ffmpeg"""
     try:
-        cmd = ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0", video_path]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        return "audio" in res.stdout.lower()
+        ffmpeg_bin = find_ffmpeg()
+        cmd = [ffmpeg_bin, "-i", video_path]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        return "Audio:" in res.stderr
     except Exception:
-        return True # Di default assumiamo presente se non possiamo testare
+        return True
 
 def genera_audio_allegra_fallback(output_audio_path=None):
     """Genera traccia audio di riserva allegra a 124 BPM qualora il video di YouTube sia muto"""
@@ -232,38 +248,59 @@ def genera_audio_allegra_fallback(output_audio_path=None):
         wf.writeframes(inter.tobytes())
     return output_audio_path
 
-def scarica_clip_youtube(video_url, output_clip_path=None):
+def scarica_clip_youtube(video_url, output_clip_path=None, duration=15):
     """
-    Scarica una clip di 15 secondi dal video di YouTube conservando la musica e l'audio originale
+    Scarica il video di YouTube per l'intera durata della storia (15s)
+    preservando rigorosamente il video ad alta risoluzione e la musica/audio originale del post.
     """
     if not output_clip_path:
         output_clip_path = os.path.join(SCRATCH_DIR, f"yt_clip_{uuid.uuid4().hex[:8]}.mp4")
 
     ytdlp_bin = find_ytdlp()
+    ffmpeg_bin = find_ffmpeg()
 
-    # Estrai YouTube ID
     m = re.search(r'(?:v=|\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})', video_url)
     yt_id = m.group(1) if m else None
     watch_url = f"https://www.youtube.com/watch?v={yt_id}" if yt_id else video_url
 
-    print(f"📥 Download clip YouTube 15s (audio originale preservato): {watch_url}")
+    print(f"📥 Download clip YouTube {duration}s (video HD e musica/audio originale preservati): {watch_url}")
 
+    # 1. Download selettivo con unione flussi video e audio
     cmd = [
         ytdlp_bin, "--no-check-certificates", "--no-warnings",
-        "-f", "best[height<=1080][ext=mp4]/best[ext=mp4]/best",
-        "--download-sections", "*00:00-00:15",
+        "--ffmpeg-location", ffmpeg_bin,
+        "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b",
+        "--download-sections", f"*00:00-00:{duration:02d}",
         "--force-keyframes-at-cuts",
         watch_url,
         "-o", output_clip_path
     ]
 
     try:
-        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
+        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=85)
         if res.returncode == 0 and os.path.exists(output_clip_path) and os.path.getsize(output_clip_path) > 100000:
-            print(f"[OK] Clip video scaricata con successo: {output_clip_path}")
+            print(f"[OK] Clip video e musica originale scaricati con successo: {output_clip_path}")
             return output_clip_path, watch_url
     except Exception as e:
-        print(f"Avviso download selettivo ({e})")
+        print(f"Avviso download selettivo ({e}): provo fallback clip diretta...")
+
+    # 2. Fallback con external-downloader ffmpeg
+    try:
+        cmd_fb = [
+            ytdlp_bin, "--no-check-certificates", "--no-warnings",
+            "--ffmpeg-location", ffmpeg_bin,
+            "-f", "best[height<=1080][ext=mp4]/best",
+            "--external-downloader", ffmpeg_bin,
+            "--external-downloader-args", f"ffmpeg_i:-t {duration}",
+            watch_url,
+            "-o", output_clip_path
+        ]
+        res_fb = subprocess.run(cmd_fb, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=85)
+        if res_fb.returncode == 0 and os.path.exists(output_clip_path) and os.path.getsize(output_clip_path) > 100000:
+            print(f"[OK] Clip video e musica scaricati via fallback: {output_clip_path}")
+            return output_clip_path, watch_url
+    except Exception as eFb:
+        print(f"Avviso fallback download: {eFb}")
 
     return None, watch_url
 
@@ -291,8 +328,8 @@ def render_storia_youtube_video(item_data, is_morning=True, output_video_path=No
     testo_col_f = item_data.get('testoF', 'Splendida soluzione proposta in esclusiva ad Agrigento e provincia.')
     thumb_url = item_data.get('thumbUrl', '')
 
-    # 1. Scarica la clip video
-    clip_path, direct_watch_url = scarica_clip_youtube(video_url)
+    # 1. Scarica la clip video con la musica originale del post
+    clip_path, direct_watch_url = scarica_clip_youtube(video_url, duration=15)
 
     # 2. Prepara la grafica dell'overlay PNG trasparente
     overlay_im = Image.new('RGBA', (W, H), (0, 0, 0, 0))
@@ -320,56 +357,54 @@ def render_storia_youtube_video(item_data, is_morning=True, output_video_path=No
     draw.rounded_rectangle([(W - bw)//2, 250, (W + bw)//2, 292], radius=14, fill=badge_bg, outline=(212, 168, 83, 160), width=1)
     draw.text(((W - font_badge.getbbox(badge_txt)[2]) // 2, 260), badge_txt, font=font_badge, fill=(255, 255, 255, 255))
 
-    # C. SCHEDA INFORMATIVA IN BASSO (con QR code e link cliccabile)
-    card_y = 1290
-    draw.rounded_rectangle([40, card_y, 1040, card_y + 490], radius=26, fill=(15, 23, 42, 240), outline=(212, 168, 83, 200), width=2)
+    # C. SCHEDA INFORMATIVA SEMITRASPARENTE IN BASSO
+    card_y = 1270
+    draw.rounded_rectangle([35, card_y, 1045, card_y + 510], radius=26, fill=(15, 23, 42, 235), outline=(212, 168, 83, 220), width=2)
 
     # Titolo Immobile
     font_tit = get_font(30, bold=True)
-    draw.text((70, card_y + 25), titolo[:45], font=font_tit, fill=(255, 255, 255, 255))
+    draw.text((65, card_y + 22), titolo[:45], font=font_tit, fill=(255, 255, 255, 255))
 
     # Dettagli Prezzo & Superficie in "metri quadri"
     font_dett = get_font(23, bold=False)
-    draw.text((70, card_y + 70), f"💰 {prezzo}   |   📐 {mq}", font=font_dett, fill=(212, 168, 83, 255))
+    draw.text((65, card_y + 68), f"💰 {prezzo}   |   📐 {mq}", font=font_dett, fill=(212, 168, 83, 255))
 
-    # Testo Colonna F (prime 3 righe significative)
+    # Testo Colonna F
     font_body = get_font(19, bold=False)
     righe_pulite = [l.strip() for l in testo_col_f.splitlines() if l.strip()]
     testo_unito = " ".join(righe_pulite)[:190]
     r1 = testo_unito[:60]
     r2 = testo_unito[60:125]
     r3 = testo_unito[125:190]
-    draw.text((70, card_y + 115), r1, font=font_body, fill=(226, 232, 240, 255))
-    if r2: draw.text((70, card_y + 142), r2, font=font_body, fill=(226, 232, 240, 255))
-    if r3: draw.text((70, card_y + 169), r3, font=font_body, fill=(226, 232, 240, 255))
+    draw.text((65, card_y + 112), r1, font=font_body, fill=(226, 232, 240, 255))
+    if r2: draw.text((65, card_y + 138), r2, font=font_body, fill=(226, 232, 240, 255))
+    if r3: draw.text((65, card_y + 164), r3, font=font_body, fill=(226, 232, 240, 255))
 
-    # D. QR CODE & LINK PER INDIRIZZARE GLI UTENTI
-    qr_img = genera_qr_code(direct_watch_url, size=150)
+    # D. QR CODE & LINK STICKER: SE CLICCANO INVIA/APRE IL LINK DELL'ANNUNCIO
+    qr_img = genera_qr_code(direct_watch_url, size=155)
     if qr_img:
-        # Bordo bianco attorno al QR Code per massima leggibilità
-        qr_bg = Image.new('RGBA', (160, 160), (255, 255, 255, 255))
+        qr_bg = Image.new('RGBA', (165, 165), (255, 255, 255, 255))
         qr_bg.paste(qr_img, (5, 5), mask=qr_img)
-        overlay_im.paste(qr_bg, (70, card_y + 215))
+        overlay_im.paste(qr_bg, (65, card_y + 205))
 
     # Box Bottone Cliccabile / Call to Action
-    draw.rounded_rectangle([250, card_y + 215, 1005, card_y + 280], radius=16, fill=(234, 179, 8, 245))
+    draw.rounded_rectangle([245, card_y + 205, 1015, card_y + 275], radius=16, fill=(234, 179, 8, 250))
     font_cta_btn = get_font(21, bold=True)
     cta_btn_txt = "👉 TOCCA IL LINK O INQUADRA IL QR 🔗"
-    draw.text((250 + (755 - font_cta_btn.getbbox(cta_btn_txt)[2])//2, card_y + 233), cta_btn_txt, font=font_cta_btn, fill=(15, 23, 42, 255))
+    draw.text((245 + (770 - font_cta_btn.getbbox(cta_btn_txt)[2])//2, card_y + 225), cta_btn_txt, font=font_cta_btn, fill=(15, 23, 42, 255))
 
-    # Link esplicito di destinazione
-    font_url = get_font(20, bold=True)
-    url_display = "🌐 www.immobiliaregiancani.it  •  YouTube"
-    draw.text((260, card_y + 295), url_display, font=font_url, fill=(56, 189, 248, 255))
+    font_sub_cta = get_font(18, bold=True)
+    sub_cta_txt = "Apri l'annuncio completo con foto, dettagli e video tour"
+    draw.text((250, card_y + 290), sub_cta_txt, font=font_sub_cta, fill=(56, 189, 248, 255))
 
-    font_sub_cta = get_font(18, bold=False)
-    sub_cta_txt = "Guarda il video tour completo & scopri tutti i dettagli"
-    draw.text((260, card_y + 325), sub_cta_txt, font=font_sub_cta, fill=(203, 213, 225, 255))
+    font_msg_cta = get_font(17, bold=False)
+    msg_cta_txt = "💬 Invia un messaggio per ricevere subito la scheda immobile"
+    draw.text((250, card_y + 325), msg_cta_txt, font=font_msg_cta, fill=(203, 213, 225, 255))
 
     # E. CHIUSURA CON PERSONAL BRANDING
     font_footer = get_font(27, bold=True)
     footer_txt = "— Immobiliare Giancani"
-    draw.text(((W - font_footer.getbbox(footer_txt)[2]) // 2, card_y + 420), footer_txt, font=font_footer, fill=(212, 168, 83, 255))
+    draw.text(((W - font_footer.getbbox(footer_txt)[2]) // 2, card_y + 440), footer_txt, font=font_footer, fill=(212, 168, 83, 255))
 
     overlay_path = os.path.join(SCRATCH_DIR, f"overlay_yt_{uuid.uuid4().hex[:8]}.png")
     overlay_im.save(overlay_path, "PNG")
@@ -378,8 +413,8 @@ def render_storia_youtube_video(item_data, is_morning=True, output_video_path=No
     # Far girare il video per tutto il tempo della storia (15s) e mantenere la musica/audio originale
     vf_filter = (
         "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5[bg];"
-        "[0:v]scale=1000:750:force_original_aspect_ratio=decrease[fg];"
-        "[bg][fg]overlay=(W-w)/2:490[vwithfg];"
+        "[0:v]scale=1080:1920:force_original_aspect_ratio=decrease[fg];"
+        "[bg][fg]overlay=(W-w)/2:(H-h)/2-60[vwithfg];"
         "[vwithfg][1:v]overlay=0:0[vout]"
     )
 
@@ -459,8 +494,11 @@ def render_storia_youtube_video(item_data, is_morning=True, output_video_path=No
         return output_video_path, direct_watch_url
     return None, direct_watch_url
 
-def pubblica_storia_facebook(page_id, page_token, video_path):
-    """Carica la video storia su Facebook tramite Meta Graph API Video Stories"""
+def pubblica_storia_facebook(page_id, page_token, video_path, watch_url=None):
+    """
+    Carica la video storia su Facebook tramite Meta Graph API Video Stories.
+    Configura il Call-to-Action per inviare l'utente all'annuncio al tocco.
+    """
     file_size = os.path.getsize(video_path)
 
     # 1. Start Phase
@@ -490,18 +528,113 @@ def pubblica_storia_facebook(page_id, page_token, video_path):
         if not up_res.get('success'):
             raise Exception(f"Upload fallito: {up_res}")
 
-    # 3. Finish Phase
+    # 3. Finish Phase con Call-To-Action verso l'annuncio
     url_finish = f"https://graph.facebook.com/v19.0/{page_id}/video_stories"
-    params_finish = f"upload_phase=finish&video_id={video_id}&video_state=PUBLISHED&access_token={urllib.parse.quote(page_token)}".encode('utf-8')
+    params_finish_dict = {
+        'upload_phase': 'finish',
+        'video_id': video_id,
+        'video_state': 'PUBLISHED',
+        'access_token': page_token
+    }
+    if watch_url:
+        params_finish_dict['call_to_action'] = json.dumps({
+            'type': 'LEARN_MORE',
+            'value': {'link': watch_url}
+        })
+
+    params_finish = urllib.parse.urlencode(params_finish_dict).encode('utf-8')
     req_finish = urllib.request.Request(url_finish, data=params_finish, method='POST')
 
-    with urllib.request.urlopen(req_finish, context=ctx) as resp_finish:
-        fin_res = json.loads(resp_finish.read().decode('utf-8'))
-        return {
-            "success": fin_res.get('success', True),
-            "video_id": video_id,
-            "story_id": fin_res.get('post_id') or video_id
-        }
+    try:
+        with urllib.request.urlopen(req_finish, context=ctx) as resp_finish:
+            fin_res = json.loads(resp_finish.read().decode('utf-8'))
+            return {
+                "success": fin_res.get('success', True),
+                "video_id": video_id,
+                "story_id": fin_res.get('post_id') or video_id,
+                "cta_link": watch_url
+            }
+    except Exception as eFin:
+        if 'call_to_action' in params_finish_dict:
+            del params_finish_dict['call_to_action']
+            params_finish_retry = urllib.parse.urlencode(params_finish_dict).encode('utf-8')
+            req_finish_retry = urllib.request.Request(url_finish, data=params_finish_retry, method='POST')
+            with urllib.request.urlopen(req_finish_retry, context=ctx) as resp_retry:
+                fin_res = json.loads(resp_retry.read().decode('utf-8'))
+                return {
+                    "success": fin_res.get('success', True),
+                    "video_id": video_id,
+                    "story_id": fin_res.get('post_id') or video_id,
+                    "cta_link": watch_url
+                }
+        raise eFin
+
+def pubblica_post_feed_facebook(page_id, page_token, video_path, item_data, watch_url, is_page=True):
+    """
+    Pubblica il video di 15 secondi direttamente come Post sul Feed di Facebook.
+    Include:
+    - Testo da Colonna F
+    - Superfici rigorosamente espresse in 'metri quadri'
+    - Link cliccabile in evidenza: 'se cliccano invia il link dell annuncio'
+    - Pulsante nativo Call-to-Action 'Scopri di più' collegato all'annuncio
+    - Chiusura con personal branding '— Immobiliare Giancani'
+    """
+    titolo = item_data.get('titolo', 'Opportunità Immobiliare')
+    prezzo = item_data.get('prezzo', 'Trattativa Riservata')
+    mq = normalize_mq(item_data.get('mq', '110'))
+    testo_f = item_data.get('testoF', '').strip()
+
+    post_caption = (
+        f"🏠 {titolo}\n\n"
+        f"💰 Prezzo: {prezzo}  |  📐 Superficie: {mq}\n\n"
+        f"{testo_f}\n\n"
+        f"👉 CLICCA QUI PER L'ANNUNCIO COMPLETO:\n"
+        f"{watch_url}\n\n"
+        f"💬 Invia un messaggio o commenta per fissare una visita o ricevere subito la scheda tecnica completa!\n\n"
+        f"— Immobiliare Giancani"
+    )
+
+    url = f"https://graph.facebook.com/v19.0/{page_id}/videos"
+    data = {
+        'access_token': page_token,
+        'title': titolo[:100],
+        'description': post_caption
+    }
+
+    # Se è una Pagina Business, aggiunge il pulsante nativo Call to Action "Scopri di più"
+    if is_page and watch_url:
+        data['call_to_action'] = json.dumps({
+            'type': 'LEARN_MORE',
+            'value': {'link': watch_url}
+        })
+
+    with open(video_path, 'rb') as f:
+        files = {'source': (os.path.basename(video_path), f, 'video/mp4')}
+        resp = requests.post(url, data=data, files=files, timeout=120)
+        res_json = resp.json()
+
+        if 'id' in res_json:
+            return {
+                "success": True,
+                "post_id": res_json['id'],
+                "video_id": res_json['id'],
+                "url": f"https://www.facebook.com/{res_json['id']}"
+            }
+        else:
+            # Fallback se call_to_action non è supportata dal profilo personale
+            if 'call_to_action' in data:
+                del data['call_to_action']
+                f.seek(0)
+                resp_retry = requests.post(url, data=data, files=files, timeout=120)
+                res_retry = resp_retry.json()
+                if 'id' in res_retry:
+                    return {
+                        "success": True,
+                        "post_id": res_retry['id'],
+                        "video_id": res_retry['id'],
+                        "url": f"https://www.facebook.com/{res_retry['id']}"
+                    }
+            raise Exception(f"Errore pubblicazione post feed: {res_json}")
 
 def pubblica_storia_instagram(ig_user_id, page_token, video_path):
     """
@@ -540,16 +673,16 @@ def pubblica_storia_instagram(ig_user_id, page_token, video_path):
         "metodo": "Meta Business Cross-Posting Bridge"
     }
 
-def pubblica_short_youtube(video_path, item_data):
+def pubblica_short_youtube(video_path, item_data, watch_url):
     """
     Pubblica o registra il video come YouTube Short sul canale @immobiliaregiancani761.
-    Comunica con l'endpoint Apps Script per indicizzazione e pubblicazione diretta.
+    Include il link dell'annuncio per inviare l'utente all'immobile al tocco.
     """
     print(f"\n🎬 Pubblicazione YouTube Short sul Canale (@immobiliaregiancani761)...")
     try:
         titolo = item_data.get('titolo', 'Opportunità Immobiliare')
         prezzo = item_data.get('prezzo', 'Trattativa Riservata')
-        mq = item_data.get('mq', '120 metri quadri')
+        mq = normalize_mq(item_data.get('mq', '120'))
         testo_f = item_data.get('testoF', '')
         video_url = item_data.get('videoUrl', '')
         thumb_url = item_data.get('thumbUrl', '')
@@ -561,9 +694,10 @@ def pubblica_short_youtube(video_path, item_data):
             "prezzo": prezzo,
             "testoF": testo_f,
             "videoUrl": video_url,
+            "watchUrl": watch_url,
             "thumbUrl": thumb_url
         }
-        
+
         if os.path.exists(video_path) and os.path.getsize(video_path) < 8 * 1024 * 1024:
             with open(video_path, 'rb') as f:
                 payload["base64Video"] = base64.b64encode(f.read()).decode('utf-8')
@@ -592,21 +726,22 @@ def pubblica_short_youtube(video_path, item_data):
         }
 
 def invia_notifica_telegram_youtube(titolo, mq, prezzo, watch_url, is_morning, risultati):
-    """Invia notifica Telegram con il link diretto al video"""
+    """Invia notifica Telegram aziendale completa di link diretto all'annuncio"""
     try:
         orario_str = "🌅 07:00 (MATTINA)" if is_morning else "🌙 19:00 (SERA)"
         lines = [
-            f"🎬 <b>STORIA YOUTUBE PUBBLICATA ({orario_str})</b> ✨",
+            f"🎬 <b>STORIA E POST YOUTUBE PUBBLICATI ({orario_str})</b> ✨",
             f"🏠 <b>Titolo:</b> {titolo}",
             f"📐 <b>Superficie:</b> {mq}",
             f"💰 <b>Prezzo:</b> {prezzo}",
-            f"🔗 <b>Link YouTube:</b> {watch_url}",
-            f"🎵 <b>Audio:</b> Musica originale del video preservata",
-            f"⏱️ <b>Durata:</b> 15 secondi Full HD (Logo semi-visibile & QR link)\n"
+            f"🔗 <b>Link Annuncio Cliccabile:</b> {watch_url}",
+            f"🎵 <b>Audio:</b> Musica/audio originale del post preservata",
+            f"⏱️ <b>Durata:</b> 15 secondi continui Full HD",
+            f"👉 <b>Interattività:</b> Call to Action e pulsante 'Scopri di più' attivi!\n"
         ]
         for r in risultati:
-            status = "✅ Pubblicata" if r.get("success") else f"⚠️ {r.get('error', 'Fallita')}"
-            lines.append(f"• <b>{r.get('nome')}:</b> {status} (Story ID: {r.get('story_id', 'N/D')})")
+            status = "✅ Pubblicato" if r.get("success") else f"⚠️ {r.get('error', 'Fallito')}"
+            lines.append(f"• <b>{r.get('nome')}:</b> {status} (ID: {r.get('id', r.get('story_id', 'N/D'))})")
 
         lines.append("\n— <b>Immobiliare Giancani</b>")
         msg = "\n".join(lines)
@@ -687,26 +822,46 @@ def esegui_pubblicazione(target_mode='auto'):
     print(f"   • URL Media: {selected_item['videoUrl']}")
     print(f"   • Testo Colonna F: {selected_item['testoF'][:80]}...")
 
-    # 4. Renderizza il video di 15 secondi con logo semi-visibile, musica originale e link/QR
+    # 4. Renderizza il video di 15 secondi continui con logo semi-visibile, musica originale e link interattivo
     video_path, watch_url = render_storia_youtube_video(selected_item, is_morning=is_morning)
     if not video_path:
-        print("❌ Errore rendering video storia YouTube.")
+        print("❌ Errore rendering video storia YouTube. — Immobiliare Giancani")
         return []
 
-    # 5. Pubblica su entrambe le pagine Facebook
     risultati = []
+
+    # 5. Pubblica la Video Storia su Facebook (Pagina & Profilo Personale)
     for target in PAGES:
         print(f"\n📘 Pubblicazione Video Storia su: {target['nome']}...")
         try:
-            res = pubblica_storia_facebook(target['id'], target['token'], video_path)
-            res['nome'] = target['nome']
-            print(f"[OK] Storia pubblicata con successo! Story ID: {res.get('story_id')}")
-            risultati.append(res)
+            res_story = pubblica_storia_facebook(target['id'], target['token'], video_path, watch_url=watch_url)
+            res_story['nome'] = f"Facebook Story - {target['nome']}"
+            print(f"[OK] Storia pubblicata con successo! Story ID: {res_story.get('story_id')}")
+            risultati.append(res_story)
         except Exception as ePub:
-            print(f"❌ Errore upload su {target['nome']}: {ePub}")
-            risultati.append({"nome": target['nome'], "success": False, "error": str(ePub)})
+            print(f"❌ Errore upload storia su {target['nome']}: {ePub}")
+            risultati.append({"nome": f"Facebook Story - {target['nome']}", "success": False, "error": str(ePub)})
 
-    # 5b. Pubblica su Instagram Stories (@giancani_immobiliare)
+    # 6. Pubblica il Video Post sul Feed con Pulsante Call-To-Action (se cliccano invia/apre il link dell'annuncio)
+    for target in PAGES:
+        print(f"\n📢 Pubblicazione Video Post sul Feed di: {target['nome']}...")
+        try:
+            res_post = pubblica_post_feed_facebook(
+                page_id=target['id'],
+                page_token=target['token'],
+                video_path=video_path,
+                item_data=selected_item,
+                watch_url=watch_url,
+                is_page=target.get('is_page', True)
+            )
+            res_post['nome'] = f"Facebook Post Feed - {target['nome']}"
+            print(f"[OK] Post Feed pubblicato con Call To Action! Post ID: {res_post.get('post_id')}")
+            risultati.append(res_post)
+        except Exception as ePost:
+            print(f"❌ Errore post feed su {target['nome']}: {ePost}")
+            risultati.append({"nome": f"Facebook Post Feed - {target['nome']}", "success": False, "error": str(ePost)})
+
+    # 7. Pubblica su Instagram Stories (@giancani_immobiliare)
     try:
         res_ig = pubblica_storia_instagram(IG_ACCOUNT_ID, PAGES[0]['token'], video_path)
         print(f"[OK] Instagram Stories: {res_ig.get('story_id')} ({res_ig.get('metodo')})")
@@ -715,22 +870,22 @@ def esegui_pubblicazione(target_mode='auto'):
         print(f"❌ Errore Instagram Stories: {eIg}")
         risultati.append({"nome": "Instagram Stories (@giancani_immobiliare)", "success": False, "error": str(eIg)})
 
-    # 5c. Pubblica su YouTube Shorts (@immobiliaregiancani761)
+    # 8. Pubblica su YouTube Shorts (@immobiliaregiancani761)
     try:
-        res_yt = pubblica_short_youtube(video_path, selected_item)
+        res_yt = pubblica_short_youtube(video_path, selected_item, watch_url)
         print(f"[OK] YouTube Shorts: {res_yt.get('story_id')} - {res_yt.get('url')}")
         risultati.append(res_yt)
     except Exception as eYt:
         print(f"❌ Errore YouTube Shorts: {eYt}")
         risultati.append({"nome": "YouTube Shorts (@immobiliaregiancani761)", "success": False, "error": str(eYt)})
 
-    # 6. Notifica Telegram
+    # 9. Notifica Telegram con link diretto
     invia_notifica_telegram_youtube(selected_item['titolo'], selected_item['mq'], selected_item['prezzo'], watch_url, is_morning, risultati)
-    print("\n✨ Pubblicazione storia multi-piattaforma completata con successo. — Immobiliare Giancani\n")
+    print("\n✨ Pubblicazione storia e post completata con successo con link cliccabile e musica originale. — Immobiliare Giancani\n")
     return risultati
 
 def main():
-    parser = argparse.ArgumentParser(description="Bot Storie Facebook YouTube Immobiliare Giancani")
+    parser = argparse.ArgumentParser(description="Bot Storie e Post Facebook YouTube Immobiliare Giancani")
     parser.add_argument("--target", choices=["auto", "first", "last"], default="auto", help="Seleziona quale video pubblicare (first = 07:00 mattina, last = 19:00 sera, auto = in base all'ora)")
     args = parser.parse_args()
     esegui_pubblicazione(target_mode=args.target)

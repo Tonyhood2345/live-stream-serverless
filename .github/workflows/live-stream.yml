@@ -51,7 +51,7 @@ jobs:
       - name: Setup Headless Environment and Audio Engine
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core
+          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core espeak-ng speech-dispatcher libespeak-ng1
 
           # Installa Google Chrome stabile
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -

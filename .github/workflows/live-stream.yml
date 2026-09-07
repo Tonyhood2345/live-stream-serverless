@@ -29,7 +29,7 @@ on:
       scale_factor:
         description: 'Scala Device Chrome (1.0 = Desktop 1:1, 1.25 = Zoom)'
         required: false
-        default: '1.0'
+        default: '1.5'
       custom_bitrate:
         description: 'Bitrate FFmpeg personalizzato (es. 4000k)'
         required: false

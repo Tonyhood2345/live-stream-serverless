@@ -1,0 +1,46 @@
+name: Storie YouTube Quotidiane (07:00 & 19:00)
+
+on:
+  schedule:
+    # Esegue alle 07:00 e 19:00 ora italiana (CEST UTC+2 -> 05:00 e 17:00 UTC)
+    - cron: '0 5,17 * * *'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Seleziona video da pubblicare (auto, first = mattina 07:00, last = sera 19:00)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - first
+          - last
+
+jobs:
+  pubblica-storia-youtube:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies (FFmpeg & Fonts)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - name: Install Python Dependencies
+        run: |
+          pip install --no-cache-dir pillow numpy yt-dlp requests
+
+      - name: Esegui Pubblicazione Storia YouTube
+        run: |
+          TARGET_MODE="${{ github.event.inputs.target }}"
+          if [ -z "$TARGET_MODE" ]; then TARGET_MODE="auto"; fi
+          python3 scripts/bot_storie_youtube.py --target "$TARGET_MODE"

@@ -27,7 +27,7 @@ on:
         required: false
         default: '1080p_std'
       scale_factor:
-        description: 'Scala Device Chrome (1.0 = Desktop 1:1, 1.25 = Zoom)'
+        description: 'Scala Device Chrome (1.0 = Desktop 1:5, 1.25 = Zoom)'
         required: false
         default: '1.5'
       custom_bitrate:
@@ -189,7 +189,7 @@ jobs:
           touch "/tmp/chrome_clean_profile/First Run"
 
           SCALE_FACTOR="${{ github.event.inputs.scale_factor }}"
-          if [ -z "$SCALE_FACTOR" ]; then SCALE_FACTOR="1.0"; fi
+          if [ -z "$SCALE_FACTOR" ]; then SCALE_FACTOR="1.5"; fi
 
           echo "Avvio Chrome con Scala $SCALE_FACTOR e Anti-Banner su: ${{ github.event.inputs.video_url }}"
           google-chrome             --kiosk             --window-position=0,0             --window-size=1920,1080             --force-device-scale-factor=$SCALE_FACTOR             --load-extension=/tmp/hide_banner_ext             --disable-extensions-except=/tmp/hide_banner_ext             --remote-debugging-port=9222             --enable-webgl             --ignore-gpu-blocklist             --use-gl=swiftshader             --disable-web-security             --allow-running-insecure-content             --no-sandbox             --no-first-run             --no-default-browser-check             --disable-first-run-ui             --disable-infobars             --disable-session-crashed-bubble             --disable-restore-session-state             --disable-notifications             --disable-features=AudioServiceOutOfProcess             --enable-features=UsePulseAudio             --autoplay-policy=no-user-gesture-required             --user-data-dir=/tmp/chrome_clean_profile             "${{ github.event.inputs.video_url }}" &

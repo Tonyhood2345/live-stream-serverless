@@ -636,6 +636,24 @@ def pubblica_post_feed_facebook(page_id, page_token, video_path, item_data, watc
                     }
             raise Exception(f"Errore pubblicazione post feed: {res_json}")
 
+def archivia_o_elimina_post_feed(post_id, page_token):
+    """
+    Rimuove o sposta in archivio immediatamente il post dal feed/bacheca pubblica,
+    garantendo che la Storia rimanga attiva, visibile e interattiva al 100%. — Immobiliare Giancani
+    """
+    if not post_id:
+        return False
+    try:
+        url_del = f"https://graph.facebook.com/v19.0/{post_id}?access_token={urllib.parse.quote(page_token)}"
+        req_del = urllib.request.Request(url_del, method='DELETE')
+        with urllib.request.urlopen(req_del, context=ctx) as r_del:
+            res_del = json.loads(r_del.read().decode('utf-8'))
+            print(f"📦 Post {post_id} spostato in archivio e rimosso dalla bacheca pubblica con successo (la Storia rimane attiva e visibile)! — Immobiliare Giancani")
+            return res_del.get("success", True)
+    except Exception as eDel:
+        print(f"⚠️ Avviso archiviazione post {post_id}: {eDel} — Immobiliare Giancani")
+        return False
+
 def pubblica_storia_instagram(ig_user_id, page_token, video_path):
     """
     Pubblica la video storia su Instagram (@giancani_immobiliare).
@@ -832,10 +850,12 @@ def seleziona_video_dinamico(yt_items, target_mode='auto', is_morning=True, now_
 
     return selected_item, chosen_idx
 
-def esegui_pubblicazione(target_mode='auto'):
+def esegui_pubblicazione(target_mode='auto', publish_feed=False, archivia_feed_subito=True):
     """
     Esegue il ciclo completo di pubblicazione storie e post:
     - target_mode: 'auto' (rotazione dinamica anti-ripetizione), 'random' (casuale), 'cycle', 'first', 'last'
+    - publish_feed: False di default per mantenere il feed/bacheca pulito e pubblicare SOLO la Storia
+    - archivia_feed_subito: se True e publish_feed è attivo, sposta/elimina subito il post dal feed lasciando la Storia visibile al 100%
     """
     now_rome = None
     if ZoneInfo:
@@ -850,7 +870,7 @@ def esegui_pubblicazione(target_mode='auto'):
     fascia = "07:00 (MATTINA)" if is_morning else "19:00 (SERA)"
 
     print("═" * 70)
-    print(f"🎬 AVVIO BOT STORIE E POST YOUTUBE: {fascia} (Modalità: {target_mode})")
+    print(f"🎬 AVVIO BOT STORIE E POST YOUTUBE: {fascia} (Modalità: {target_mode}) — Immobiliare Giancani")
     print("═" * 70)
 
     url_sheets = f"{APPS_SCRIPT_URL}?action=debug_all_sheets"
@@ -875,10 +895,10 @@ def esegui_pubblicazione(target_mode='auto'):
                             })
                     break
     except Exception as e:
-        print(f"Errore recupero Post_YouTube: {e}")
+        print(f"Errore recupero Post_YouTube: {e} — Immobiliare Giancani")
 
     if not yt_items:
-        print("⚠️ Nessun video trovato in Post_YouTube: uso fallback...")
+        print("⚠️ Nessun video trovato in Post_YouTube: uso fallback... — Immobiliare Giancani")
         yt_items.append({
             "videoUrl": "https://www.youtube.com/watch?v=zekP_9iFLK0",
             "prezzo": "Trattativa Riservata",
@@ -901,7 +921,7 @@ def esegui_pubblicazione(target_mode='auto'):
     print(f"   • Prezzo: {selected_item['prezzo']}")
     print(f"   • Superficie: {selected_item['mq']}")
     print(f"   • URL Media: {selected_item['videoUrl']}")
-    print(f"   • Testo Colonna F: {selected_item['testoF'][:80]}...")
+    print(f"   • Testo Colonna F: {selected_item['testoF'][:80]}... — Immobiliare Giancani")
 
     video_path, watch_url = render_storia_youtube_video(selected_item, is_morning=is_morning)
     if not video_path:
@@ -916,52 +936,64 @@ def esegui_pubblicazione(target_mode='auto'):
         try:
             res_story = pubblica_storia_facebook(target['id'], target['token'], video_path, watch_url=watch_url)
             res_story['nome'] = f"Facebook Story - {target['nome']}"
-            print(f"[OK] Storia pubblicata con successo! Story ID: {res_story.get('story_id')}")
+            print(f"[OK] Storia pubblicata con successo! Story ID: {res_story.get('story_id')} — Immobiliare Giancani")
             risultati.append(res_story)
         except Exception as ePub:
-            print(f"❌ Errore upload storia su {target['nome']}: {ePub}")
+            print(f"❌ Errore upload storia su {target['nome']}: {ePub} — Immobiliare Giancani")
             risultati.append({"nome": f"Facebook Story - {target['nome']}", "success": False, "error": str(ePub)})
 
-    # 6. Pubblica il Video Post sul Feed con Pulsante Call-To-Action (se cliccano invia/apre il link dell'annuncio)
-    for target in PAGES:
-        print(f"\n📢 Pubblicazione Video Post sul Feed di: {target['nome']}...")
-        try:
-            res_post = pubblica_post_feed_facebook(
-                page_id=target['id'],
-                page_token=target['token'],
-                video_path=video_path,
-                item_data=selected_item,
-                watch_url=watch_url,
-                is_page=target.get('is_page', True)
-            )
-            res_post['nome'] = f"Facebook Post Feed - {target['nome']}"
-            print(f"[OK] Post Feed pubblicato con Call To Action! Post ID: {res_post.get('post_id')}")
-            risultati.append(res_post)
-        except Exception as ePost:
-            print(f"❌ Errore post feed su {target['nome']}: {ePost}")
-            risultati.append({"nome": f"Facebook Post Feed - {target['nome']}", "success": False, "error": str(ePost)})
+    # 6. Gestione Post Feed: disabilitato di default (publish_feed=False) per mantenere la bacheca pulita.
+    # Se abilitato, oppure se archivia_feed_subito è True, sposta/rimuove immediatamente il post dal feed pubblico,
+    # garantendo che la Storia rimanga attiva e visibile al 100% nel carosello delle storie.
+    if publish_feed:
+        for target in PAGES:
+            print(f"\n📢 Pubblicazione Video Post sul Feed di: {target['nome']}...")
+            try:
+                res_post = pubblica_post_feed_facebook(
+                    page_id=target['id'],
+                    page_token=target['token'],
+                    video_path=video_path,
+                    item_data=selected_item,
+                    watch_url=watch_url,
+                    is_page=target.get('is_page', True)
+                )
+                res_post['nome'] = f"Facebook Post Feed - {target['nome']}"
+                post_id = res_post.get('post_id')
+                print(f"[OK] Post Feed pubblicato con Call To Action! Post ID: {post_id} — Immobiliare Giancani")
+
+                if archivia_feed_subito and post_id:
+                    print(f"📦 Spostamento immediato in archivio del post {post_id} (la Storia rimane visibile)... — Immobiliare Giancani")
+                    archivia_o_elimina_post_feed(post_id, target['token'])
+                    res_post['archiviato'] = True
+
+                risultati.append(res_post)
+            except Exception as ePost:
+                print(f"❌ Errore post feed su {target['nome']}: {ePost} — Immobiliare Giancani")
+                risultati.append({"nome": f"Facebook Post Feed - {target['nome']}", "success": False, "error": str(ePost)})
+    else:
+        print("\nℹ️ Pubblicazione feed bacheca disattivata: contenuto pubblicato esclusivamente nelle Storie (Facebook Stories, Instagram Stories e YouTube Shorts) per mantenere pulita la bacheca del profilo e della pagina. — Immobiliare Giancani")
 
     # 7. Pubblica su Instagram Stories (@giancani_immobiliare)
     try:
         res_ig = pubblica_storia_instagram(IG_ACCOUNT_ID, PAGES[0]['token'], video_path)
-        print(f"[OK] Instagram Stories: {res_ig.get('story_id')} ({res_ig.get('metodo')})")
+        print(f"[OK] Instagram Stories: {res_ig.get('story_id')} ({res_ig.get('metodo')}) — Immobiliare Giancani")
         risultati.append(res_ig)
     except Exception as eIg:
-        print(f"❌ Errore Instagram Stories: {eIg}")
+        print(f"❌ Errore Instagram Stories: {eIg} — Immobiliare Giancani")
         risultati.append({"nome": "Instagram Stories (@giancani_immobiliare)", "success": False, "error": str(eIg)})
 
     # 8. Pubblica su YouTube Shorts (@immobiliaregiancani761)
     try:
         res_yt = pubblica_short_youtube(video_path, selected_item, watch_url)
-        print(f"[OK] YouTube Shorts: {res_yt.get('story_id')} - {res_yt.get('url')}")
+        print(f"[OK] YouTube Shorts: {res_yt.get('story_id')} - {res_yt.get('url')} — Immobiliare Giancani")
         risultati.append(res_yt)
     except Exception as eYt:
-        print(f"❌ Errore YouTube Shorts: {eYt}")
+        print(f"❌ Errore YouTube Shorts: {eYt} — Immobiliare Giancani")
         risultati.append({"nome": "YouTube Shorts (@immobiliaregiancani761)", "success": False, "error": str(eYt)})
 
     # 9. Notifica Telegram con link diretto
     invia_notifica_telegram_youtube(selected_item['titolo'], selected_item['mq'], selected_item['prezzo'], watch_url, is_morning, risultati)
-    print("\n✨ Pubblicazione storia e post completata con successo con link cliccabile e musica originale. — Immobiliare Giancani\n")
+    print("\n✨ Pubblicazione storia completata con successo con link cliccabile e musica originale. — Immobiliare Giancani\n")
     return risultati
 
 def main():
@@ -972,8 +1004,24 @@ def main():
         default="auto",
         help="Seleziona modalità video: 'auto' (rotazione shuffle dinamica anti-ripetizione), 'random' (casuale intelligente), 'cycle' (sequenziale ciclico), 'first', 'last'"
     )
+    parser.add_argument(
+        "--publish-feed",
+        action="store_true",
+        default=False,
+        help="Se specificato, pubblica anche come post nel feed/bacheca di Facebook (default: False, pubblica solo la Storia)"
+    )
+    parser.add_argument(
+        "--keep-feed-post",
+        action="store_true",
+        default=False,
+        help="Se specificato con --publish-feed, mantiene il post sul feed invece di archiviarlo/rimuoverlo subito dalla bacheca"
+    )
     args = parser.parse_args()
-    esegui_pubblicazione(target_mode=args.target)
+    esegui_pubblicazione(
+        target_mode=args.target,
+        publish_feed=args.publish_feed,
+        archivia_feed_subito=(not args.keep_feed_post)
+    )
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,33 @@
+name: Storie Orarie Offline Facebook
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  pubblica-storia-oraria:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies (FFmpeg & Fonts)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - name: Install Python Dependencies
+        run: |
+          pip install --no-cache-dir pillow numpy edge-tts yt-dlp requests
+
+      - name: Esegui Pubblicazione Storia Oraria (Catalogo & YouTube)
+        run: |
+          python3 scripts/pubblica_storia_facebook.py --mode offline

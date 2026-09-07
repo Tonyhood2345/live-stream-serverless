@@ -7,12 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'Seleziona video da pubblicare (auto, first = mattina 07:00, last = sera 19:00)'
+        description: 'Seleziona modalità video (auto = rotazione dinamica anti-ripetizione, random = casuale, cycle = sequenziale, first, last)'
         required: false
         default: 'auto'
         type: choice
         options:
           - auto
+          - random
+          - cycle
           - first
           - last
 

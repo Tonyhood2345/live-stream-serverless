@@ -17,6 +17,11 @@ on:
           - cycle
           - first
           - last
+      publish_feed:
+        description: 'Pubblica anche come post nel feed/bacheca di Facebook? (default: false, solo Storie)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   pubblica-storia-youtube:
@@ -45,4 +50,8 @@ jobs:
         run: |
           TARGET_MODE="${{ github.event.inputs.target }}"
           if [ -z "$TARGET_MODE" ]; then TARGET_MODE="auto"; fi
-          python3 scripts/bot_storie_youtube.py --target "$TARGET_MODE"
+          EXTRA_FLAGS=""
+          if [ "${{ github.event.inputs.publish_feed }}" = "true" ]; then
+            EXTRA_FLAGS="--publish-feed"
+          fi
+          python3 scripts/bot_storie_youtube.py --target "$TARGET_MODE" $EXTRA_FLAGS

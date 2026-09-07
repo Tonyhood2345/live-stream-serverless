@@ -51,7 +51,7 @@ jobs:
       - name: Setup Headless Environment and Audio Engine
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl
+          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core
 
           # Installa Google Chrome stabile
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
@@ -68,7 +68,7 @@ jobs:
           npm install playwright
           npx playwright install-deps
           npx playwright install chromium
-          python3 -m pip install playwright requests
+          python3 -m pip install --no-cache-dir playwright requests pillow numpy edge-tts yt-dlp
 
       - name: Launch Audio Engine, Browser and Start Multistream
         run: |
@@ -322,37 +322,9 @@ jobs:
 
           echo "🚀 Configurazione FFmpeg applicata: Qualità=$QUALITY, Bitrate=$BITRATE, Filtro=$VF"
 
-          # --- 7. BACKGROUND SNAPSHOT DAEMON (OGNI 10 MINUTI ANTI-BLACK FRAME) ---
-          # Cattura ogni 10 minuti uno snapshot reale da X11 :99, verifica che non sia nero e lo invia a Google Apps Script
-          (
-            sleep 60
-            while true; do
-              echo "📸 [SNAPSHOT 10 MIN] Cattura screen da X11 :99..."
-              ffmpeg -y -f x11grab -draw_mouse 0 -video_size 1920x1080 -i :99 -vframes 1 /tmp/live_snapshot.jpg >/dev/null 2>&1 || true
-              if [ -f /tmp/live_snapshot.jpg ]; then
-                FILE_SIZE=$(stat -c%s "/tmp/live_snapshot.jpg" 2>/dev/null || echo "0")
-                IS_VALID=true
-                if [ "$FILE_SIZE" -lt 25000 ]; then
-                  echo "⚠️ [SNAPSHOT] Immagine troppo piccola ($FILE_SIZE bytes), scartata."
-                  IS_VALID=false
-                fi
-                if [ "$IS_VALID" = true ]; then
-                  python3 -c "import sys; from PIL import Image; sys.exit(0 if Image.open('/tmp/live_snapshot.jpg').convert('L').resize((60,60)).getextrema()[1] > 25 else 1)" || IS_VALID=false
-                fi
-                if [ "$IS_VALID" = true ]; then
-                  B64_DATA=$(base64 -w 0 /tmp/live_snapshot.jpg)
-                  WEBHOOK_URL="https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
-                  PAYLOAD_JSON=$(jq -n --arg b64 "$B64_DATA" '{action: "pubblica_snapshot_live_10min", base64Image: $b64, forza: false}')
-                  curl -s -X POST -H "Content-Type: application/json" -d "$PAYLOAD_JSON" "$WEBHOOK_URL" >/dev/null 2>&1 || true
-                  echo "📸 [SNAPSHOT 10 MIN] Inviato con successo a Google Apps Script!"
-                else
-                  echo "⚠️ [SNAPSHOT] Frame nero o non renderizzato: evitata pubblicazione di storia vuota!"
-                fi
-                rm -f /tmp/live_snapshot.jpg
-              fi
-              sleep 600
-            done
-          ) &
+          # --- 7. BACKGROUND STORIES DAEMON (OGNI 10 MINUTI ED ESCLUSIVAMENTE IN LIVE) ---
+          echo "📱 Avvio demone Storie Facebook in diretta ogni 10 minuti..."
+          python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 600 &
 
           echo "🎥 Avvio encoding FFmpeg CBR $BITRATE ($QUALITY) con TEE Muxer e Timer di $DUR_HOURS ore..."
           timeout --kill-after=30s "${DUR_SECS}s" ffmpeg -thread_queue_size 2048 \

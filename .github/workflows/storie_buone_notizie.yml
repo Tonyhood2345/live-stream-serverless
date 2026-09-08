@@ -1,0 +1,69 @@
+name: Storie Buone Notizie Quotidiane (06:00 & 22:00)
+
+on:
+  schedule:
+    # Esegue alle 06:00 e alle 22:00 ora italiana (Europe/Rome)
+    # Copre sia orario estivo CEST (UTC+2 -> 04:00 e 20:00 UTC) sia invernale CET (UTC+1 -> 05:00 e 21:00 UTC)
+    - cron: '0 4,20 * * *'
+  workflow_dispatch:
+    inputs:
+      fascia:
+        description: 'Fascia oraria: mattina (06:00, gancio risveglio) o sera (22:00, gancio buonanotte)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - mattina
+          - sera
+      target:
+        description: 'Modalità selezione notizia: auto (rotazione shuffle calendario), random (casuale), cycle, first, last'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - random
+          - cycle
+          - first
+          - last
+      publish_feed:
+        description: 'Pubblica anche come post nel feed/bacheca di Facebook? (default: false, solo Storie)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  pubblica-storia-buone-notizie:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies (FFmpeg & Fonts)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - name: Install Python Dependencies
+        run: |
+          pip install --no-cache-dir pillow numpy requests imageio_ffmpeg
+
+      - name: Esegui Pubblicazione Storie Buone Notizie
+        run: |
+          FASCIA_MODE="${{ github.event.inputs.fascia }}"
+          if [ -z "$FASCIA_MODE" ]; then FASCIA_MODE="auto"; fi
+          TARGET_MODE="${{ github.event.inputs.target }}"
+          if [ -z "$TARGET_MODE" ]; then TARGET_MODE="auto"; fi
+          EXTRA_FLAGS=""
+          if [ "${{ github.event.inputs.publish_feed }}" = "true" ]; then
+            EXTRA_FLAGS="--publish-feed"
+          fi
+          python3 scripts/bot_buone_notizie.py --fascia "$FASCIA_MODE" --target "$TARGET_MODE" $EXTRA_FLAGS

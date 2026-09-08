@@ -1,5 +1,4 @@
 name: Serverless Multistream Live
-
 on:
   workflow_dispatch:
     inputs:
@@ -38,30 +37,24 @@ on:
         description: 'Risoluzione personalizzata (es. 1920:1080)'
         required: false
         default: '1920:1080'
-
 jobs:
   multistream:
     runs-on: ubuntu-latest
     timeout-minutes: 360
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Setup Headless Environment and Audio Engine
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core espeak-ng speech-dispatcher libespeak-ng1
-
           # Installa Google Chrome stabile
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
-
           google-chrome --version
           ffmpeg -version | head -1
-
       - name: Setup Playwright and Headless Automation Engines
         run: |
           npm init -y
@@ -69,29 +62,42 @@ jobs:
           npx playwright install-deps
           npx playwright install chromium
           python3 -m pip install --no-cache-dir playwright requests pillow numpy edge-tts yt-dlp
-
       - name: Launch Audio Engine, Browser and Start Multistream
         run: |
-          # 1. Configura ALSA per PulseAudio
-          mkdir -p ~/.config/pulse
-          echo 'pcm.!default { type pulse }' > ~/.asoundrc
-          echo 'ctl.!default { type pulse }' >> ~/.asoundrc
+          # 1. Configura PulseAudio con socket UNIX esplicito
+          mkdir -p /tmp/pulse-config
+          cat << 'EOF' > /tmp/pulse.pa
+          load-module module-native-protocol-unix socket=/tmp/pulse-socket
+          load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=VirtualSink
+          set-default-sink VirtualSink
+          EOF
 
-          # 2. Avvia PulseAudio
-          pulseaudio -D --exit-idle-time=-1 --system=false || true
+          pulseaudio -D --exit-idle-time=-1 -F /tmp/pulse.pa || true
           sleep 2
 
-          # 3. Sink Virtuale per Audio Browser
-          pactl load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=VirtualSink || true
-          pactl set-default-sink VirtualSink || true
-
+          export PULSE_SERVER=unix:/tmp/pulse-socket
           export DISPLAY=:99
 
-          # 4. Server X virtuale 1920x1080
+          # Configura ALSA per reindirizzare a PulseAudio
+          cat << 'EOF' > ~/.asoundrc
+          pcm.!default {
+              type pulse
+          }
+          ctl.!default {
+              type pulse
+          }
+          EOF
+
+          # 2. Server X virtuale 1920x1080
           Xvfb :99 -screen 0 1920x1080x24 &
           openbox &
           sleep 2
 
+          # 3. Avvia Microservizio Locale Edge TTS per DarIA e DarIO (Porta 5050)
+          echo "Avvio microservizio Edge TTS locale su porta 5050..."
+          python3 scripts/tts_server.py &
+          sleep 3
+          curl -s http://127.0.0.1:5050/health && echo " -> TTS Server OK!" || echo " -> Avviso TTS Server"
           # 5. CREA ESTENSIONE CHROME ANTI-BANNER GOOGLE APPS SCRIPT
           # Rimuove qualsiasi disclaimer "Questa applicazione è stata creata da un altro utente"
           mkdir -p /tmp/hide_banner_ext
@@ -110,7 +116,6 @@ jobs:
           ]
           }
           EOF
-
           cat << 'EOF' > /tmp/hide_banner_ext/style.css
           #warning,
           .warning-bar,
@@ -130,7 +135,6 @@ jobs:
           overflow: hidden !important;
           visibility: hidden !important;
           }
-
           #warning-bar-table,
           #warning-bar-table > tbody,
           #warning-bar-table > tbody > tr:last-child,
@@ -144,7 +148,6 @@ jobs:
           padding: 0 !important;
           margin: 0 !important;
           }
-
           html, body {
           overflow: hidden !important;
           margin: 0 !important;
@@ -153,7 +156,6 @@ jobs:
           width: 100% !important;
           }
           EOF
-
           cat << 'EOF' > /tmp/hide_banner_ext/content.js
           (function() {
           function removeBanner() {
@@ -184,19 +186,16 @@ jobs:
           setInterval(removeBanner, 300);
           })();
           EOF
-
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
-
           SCALE_FACTOR="${{ github.event.inputs.scale_factor }}"
           if [ -z "$SCALE_FACTOR" ]; then SCALE_FACTOR="1.5"; fi
-
           echo "Avvio Chrome con Scala $SCALE_FACTOR e Anti-Banner su: ${{ github.event.inputs.video_url }}"
-          google-chrome             --kiosk             --window-position=0,0             --window-size=1920,1080             --force-device-scale-factor=$SCALE_FACTOR             --load-extension=/tmp/hide_banner_ext             --disable-extensions-except=/tmp/hide_banner_ext             --remote-debugging-port=9222             --enable-webgl             --ignore-gpu-blocklist             --use-gl=swiftshader             --disable-web-security             --allow-running-insecure-content             --no-sandbox             --no-first-run             --no-default-browser-check             --disable-first-run-ui             --disable-infobars             --disable-session-crashed-bubble             --disable-restore-session-state             --disable-notifications             --disable-features=AudioServiceOutOfProcess             --enable-features=UsePulseAudio             --autoplay-policy=no-user-gesture-required             --user-data-dir=/tmp/chrome_clean_profile             "${{ github.event.inputs.video_url }}" &
-
+          google-chrome             --kiosk             --window-position=0,0             --window-size=1920,1080             --force-device-scale-factor=$SCALE_FACTOR             --load-extension=/tmp/hide_banner_ext             --disable-extensions-except=/tmp/hide_banner_ext             --remote-debugging-port=9222             --enable-webgl             --ignore-gpu-blocklist             --use-gl=swiftshader             --disable-web-security             --allow-running-insecure-content             --no-sandbox             --no-first-run             --no-default-browser-check             --disable-first-run-ui             --disable-infobars             --disable-session-crashed-bubble             --disable-restore-session-state             --disable-notifications             --disable-features=AudioServiceOutOfProcess             --enable-features=UsePulseAudio             --autoplay-policy=no-user-gesture-required             --alsa-output-device=pulse             --user-data-dir=/tmp/chrome_clean_profile             "${{ github.event.inputs.video_url }}" &
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
-
+          echo "Verifica sink inputs PulseAudio (Chrome Audio Output):"
+          pactl list sink-inputs || true
           # 6. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
           # --- 0. AUTOMAZIONE HEADLESS PER INSTAGRAM & TIKTOK ---
           if [ -z "${{ github.event.inputs.ig_key }}" ] && [ -f scripts/instagram_live_auto.js ]; then
@@ -204,15 +203,12 @@ jobs:
             node scripts/instagram_live_auto.js &
             sleep 5
           fi
-
           if [ -z "${{ github.event.inputs.tk_key }}" ] && [ -f scripts/tiktok_live_adapter.js ]; then
             echo "🎵 Avvio automazione headless TikTok Live Adapter..."
             node scripts/tiktok_live_adapter.js &
             sleep 8
           fi
-
           TEE_DESTS=()
-
           # --- 1. FACEBOOK LIVE ---
           FB_KEY="${{ github.event.inputs.fb_key }}"
           if [ -z "$FB_KEY" ]; then
@@ -226,7 +222,6 @@ jobs:
           fi
           echo "📘 Output configurato: Facebook Live ($FB_URL)"
           TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
-
           # --- 2. YOUTUBE LIVE ---
           YT_KEY="${{ github.event.inputs.yt_key }}"
           if [ -z "$YT_KEY" ]; then
@@ -243,7 +238,6 @@ jobs:
           if [ "$YT_KEY" != "uqc8-0m56-2bga-kvy3-1pgf" ] && [ "$YT_URL" != "rtmp://a.rtmp.youtube.com/live2/uqc8-0m56-2bga-kvy3-1pgf" ]; then
             TEE_DESTS+=("[f=flv:onfail=ignore]rtmp://a.rtmp.youtube.com/live2/uqc8-0m56-2bga-kvy3-1pgf")
           fi
-
           # --- 3. TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"
           if [ -z "$TK_KEY" ] && [ -f /tmp/tiktok_rtmp.txt ]; then
@@ -260,7 +254,6 @@ jobs:
             echo "🎵 Output configurato: TikTok Live ($TK_URL)"
             TEE_DESTS+=("[f=flv:onfail=ignore]${TK_URL}")
           fi
-
           # --- 4. INSTAGRAM LIVE ---
           IG_KEY="${{ github.event.inputs.ig_key }}"
           if [ -z "$IG_KEY" ] && [ -f /tmp/instagram_rtmp.txt ]; then
@@ -277,26 +270,21 @@ jobs:
             echo "📸 Output configurato: Instagram Live ($IG_URL)"
             TEE_DESTS+=("[f=flv:onfail=ignore]${IG_URL}")
           fi
-
           if [ ${#TEE_DESTS[@]} -eq 0 ]; then
             echo "❌ Errore: Nessuna chiave o destinazione RTMP fornita!"
             exit 1
           fi
-
           # Unione delle destinazioni separate dal carattere pipe '|'
           IFS="|"
           TEE_STRING="${TEE_DESTS[*]}"
-
           DUR_HOURS="${{ github.event.inputs.duration_hours }}"
           if [ -z "$DUR_HOURS" ]; then
             DUR_HOURS="6"
           fi
           DUR_SECS=$(awk "BEGIN {print int($DUR_HOURS * 3600)}")
           echo "⏱️ Durata programmata dello streaming: $DUR_HOURS ore ($DUR_SECS secondi)"
-
           QUALITY="${{ github.event.inputs.stream_quality }}"
           if [ -z "$QUALITY" ]; then QUALITY="1080p_std"; fi
-
           if [ "$QUALITY" = "1080p_high" ]; then
             BITRATE="6000k"; MINRATE="5000k"; MAXRATE="6500k"; BUFSIZE="12000k"; VF="scale=1920:1080:flags=lanczos"
           elif [ "$QUALITY" = "1080p_eco" ]; then
@@ -319,13 +307,10 @@ jobs:
             # Default 1080p Standard
             BITRATE="4500k"; MINRATE="4000k"; MAXRATE="5000k"; BUFSIZE="9000k"; VF="scale=1920:1080:flags=lanczos"
           fi
-
           echo "🚀 Configurazione FFmpeg applicata: Qualità=$QUALITY, Bitrate=$BITRATE, Filtro=$VF"
-
           # --- 7. BACKGROUND STORIES DAEMON (OGNI 10 MINUTI ED ESCLUSIVAMENTE IN LIVE) ---
           echo "📱 Avvio demone Storie Facebook in diretta ogni 10 minuti..."
           python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 600 &
-
           echo "🎥 Avvio encoding FFmpeg CBR $BITRATE ($QUALITY) con TEE Muxer e Timer di $DUR_HOURS ore..."
           timeout --kill-after=30s "${DUR_SECS}s" ffmpeg -thread_queue_size 2048 \
             -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
@@ -339,5 +324,4 @@ jobs:
             -vsync cfr \
             -flags +global_header \
             -f tee -map 0:v -map 1:a "$TEE_STRING" || true
-
           echo "Stream terminato regolarmente dopo $DUR_HOURS ore."

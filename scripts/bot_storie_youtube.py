@@ -198,7 +198,17 @@ def check_video_has_audio(video_path):
         return True
 
 def genera_audio_allegra_fallback(output_audio_path=None):
-    """Genera traccia audio di riserva allegra a 124 BPM qualora il video di YouTube sia muto"""
+    """Restituisce una traccia classica orchestrale e orecchiabile 100% royalty-free (Vivaldi o Mozart)"""
+    candidates = [
+        os.path.join(ASSETS_DIR, "classica_vivaldi_primavera_short.mp3"),
+        os.path.join(ASSETS_DIR, "classica_mozart_nachtmusik_short.mp3"),
+        os.path.join(ASSETS_DIR, "classica_vivaldi_primavera.mp3"),
+        os.path.join(ASSETS_DIR, "classica_mozart_nachtmusik.mp3")
+    ]
+    for c in candidates:
+        if os.path.exists(c) and os.path.getsize(c) > 10000:
+            return c
+
     if not output_audio_path:
         output_audio_path = os.path.join(SCRATCH_DIR, "cheerful_fallback.wav")
     BPM = 124

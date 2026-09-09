@@ -573,13 +573,52 @@ def genera_overlay_storia(item, is_morning=True):
 # 🎬 GENERATORE VIDEO CONTINUO KEN BURNS 1080x1920 (15 SECONDI)
 # ══════════════════════════════════════════════════════════════════════════════
 def genera_audio_musica_positiva(is_morning=True):
-    """Restituisce la colonna sonora piacevole e stimolante per il video (15s)"""
-    candidate = os.path.join(ASSETS_DIR, "cheerful_music.wav" if is_morning else "luxury_ambient_music.wav")
-    if os.path.exists(candidate):
-        return candidate
-    alt = os.path.join(ASSETS_DIR, "cheerful_music.wav")
-    if os.path.exists(alt):
-        return alt
+    """
+    Restituisce una colonna sonora classica, orecchiabile e prestigiosa 100% royalty-free:
+    - Mattina (06:00): Antonio Vivaldi - La Primavera (Allegro) dalle Quattro Stagioni
+    - Sera (22:00): W. A. Mozart - Eine kleine Nachtmusik (Serenata Notturna K. 525 - Allegro)
+    """
+    if is_morning:
+        primari = [
+            os.path.join(ASSETS_DIR, "classica_vivaldi_primavera_short.mp3"),
+            os.path.join(ASSETS_DIR, "classica_vivaldi_primavera.mp3"),
+            os.path.join(ASSETS_DIR, "classica_vivaldi_primavera.wav"),
+        ]
+    else:
+        primari = [
+            os.path.join(ASSETS_DIR, "classica_mozart_nachtmusik_short.mp3"),
+            os.path.join(ASSETS_DIR, "classica_mozart_nachtmusik.mp3"),
+            os.path.join(ASSETS_DIR, "classica_mozart_nachtmusik.wav"),
+        ]
+
+    for p in primari:
+        if os.path.exists(p) and os.path.getsize(p) > 20000:
+            return p
+
+    # Alternativa incrociata
+    secondari = [
+        os.path.join(ASSETS_DIR, "classica_vivaldi_primavera_short.mp3"),
+        os.path.join(ASSETS_DIR, "classica_mozart_nachtmusik_short.mp3"),
+        os.path.join(ASSETS_DIR, "classica_vivaldi_primavera.mp3"),
+        os.path.join(ASSETS_DIR, "classica_mozart_nachtmusik.mp3")
+    ]
+    for s in secondari:
+        if os.path.exists(s) and os.path.getsize(s) > 20000:
+            return s
+
+    # Download automatico su runner remoto se assenti
+    try:
+        url = "https://upload.wikimedia.org/wikipedia/commons/f/ff/Vivaldi_-_Four_Seasons_1_Spring_mvt_1_Allegro_-_John_Harrison_violin.oga" if is_morning else "https://upload.wikimedia.org/wikipedia/commons/2/24/Mozart_-_Eine_kleine_Nachtmusik_-_1._Allegro.ogg"
+        dl_path = os.path.join(OUTPUT_DIR, f"auto_classica_{'vivaldi' if is_morning else 'mozart'}.oga")
+        req = urllib.request.Request(url, headers={'User-Agent': 'GiancaniBot/1.0 (info@immobiliaregiancani.it)'})
+        with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
+            with open(dl_path, 'wb') as f:
+                f.write(resp.read())
+        if os.path.exists(dl_path) and os.path.getsize(dl_path) > 50000:
+            return dl_path
+    except Exception as e:
+        print(f"Avviso download musica classica: {e} — Immobiliare Giancani")
+
     # Fallback sintetico
     fallback_path = os.path.join(OUTPUT_DIR, "fallback_melody.wav")
     if not os.path.exists(fallback_path):
@@ -587,7 +626,7 @@ def genera_audio_musica_positiva(is_morning=True):
         sample_rate = 44100
         duration = 16.0
         t = np.linspace(0, duration, int(sample_rate * duration), False)
-        freqs = [523.25, 659.25, 783.99, 1046.50]  # Accordo Maggiore C-E-G-C
+        freqs = [523.25, 659.25, 783.99, 1046.50]
         melody = np.zeros_like(t)
         for i, f in enumerate(freqs):
             melody += 0.22 * np.sin(2 * np.pi * f * t)

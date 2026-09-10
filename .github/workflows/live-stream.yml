@@ -197,16 +197,16 @@ jobs:
           echo "Verifica sink inputs PulseAudio (Chrome Audio Output):"
           pactl list sink-inputs || true
           # 6. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
-          # --- 0. AUTOMAZIONE HEADLESS PER INSTAGRAM & TIKTOK ---
-          if [ -z "${{ github.event.inputs.ig_key }}" ] && [ -f scripts/instagram_live_auto.js ]; then
-            echo "📸 Avvio automazione headless Instagram Live..."
-            node scripts/instagram_live_auto.js &
-            sleep 5
-          fi
-          if [ -z "${{ github.event.inputs.tk_key }}" ] && [ -f scripts/tiktok_live_adapter.js ]; then
-            echo "🎵 Avvio automazione headless TikTok Live Adapter..."
-            node scripts/tiktok_live_adapter.js &
-            sleep 8
+# --- 0. AUTOMAZIONE CLOUD PER INSTAGRAM & TIKTOK ---
+          if [ -z "${{ github.event.inputs.ig_key }}" ] || [ -z "${{ github.event.inputs.tk_key }}" ]; then
+            if [ -f scripts/estrai_chiavi_live_social.py ]; then
+              echo "🤖 Avvio Bot Estrazione Chiavi Social (TikTok & Instagram) su GitHub Runner..."
+              python3 scripts/estrai_chiavi_live_social.py --headless || true
+              sleep 6
+            elif [ -f scripts/tiktok_live_auto.py ]; then
+              python3 scripts/tiktok_live_auto.py &
+              sleep 4
+            fi
           fi
           TEE_DESTS=()
           # --- 1. FACEBOOK LIVE ---

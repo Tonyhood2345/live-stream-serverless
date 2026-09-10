@@ -255,6 +255,59 @@ def estrai_tiktok_live(page) -> tuple:
         return "", "", ""
 
 
+def sincronizza_sessione_su_github(session_file_path: Path):
+    """Carica i cookie di sessione su GitHub in modo che il runner cloud li possa utilizzare in automatico."""
+    token = os.environ.get("GITHUB_TOKEN", "")
+    if not token:
+        # Tenta lettura da file locale o configurazione sicura
+        try:
+            with open(BASE_DIR / ".token", "r") as tf:
+                token = tf.read().strip()
+        except Exception:
+            token = os.environ.get("GH_TOKEN", "")
+
+    repo = os.environ.get("GITHUB_REPO", "Tonyhood2345/live-stream-serverless")
+    if not token or not session_file_path.exists():
+        print("ℹ️ Token GitHub non configurato per l'upload automatico. La sessione rimane locale.")
+        return
+    try:
+        import base64
+        with open(session_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        url = f"https://api.github.com/repos/{repo}/contents/scripts/session_cookies.json"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "Giancani-Bot"
+        }
+        sha = None
+        try:
+            req_get = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req_get, timeout=10) as r:
+                sha = json.loads(r.read().decode("utf-8")).get("sha")
+        except Exception:
+            pass
+
+        payload = {
+            "message": "🔒 Aggiornamento cookie di sessione per live cloud — Immobiliare Giancani",
+            "content": base64.b64encode(content.encode("utf-8")).decode()
+        }
+        if sha:
+            payload["sha"] = sha
+
+        req_put = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={**headers, "Content-Type": "application/json"},
+            method="PUT"
+        )
+        with urllib.request.urlopen(req_put, timeout=20) as r2:
+            print("🚀 Cookie sincronizzati su GitHub con successo! Da ora il cloud trasmette in autonomia!")
+    except Exception as e:
+        print(f"Avviso sincronizzazione sessione su GitHub: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Bot Estrazione Chiavi Live Social — Immobiliare Giancani")
     parser.add_argument("--login", action="store_true", help="Apre il browser per effettuare il login iniziale su Instagram/TikTok")
@@ -277,32 +330,47 @@ def main():
 
     with sync_playwright() as p:
         is_headless = args.headless and not args.login
-        print(f"🌐 Lancio Google Chrome (Headless: {is_headless})...")
+        browser_channel = "chrome" if sys.platform == "win32" else None
+        print(f"🌐 Lancio Browser (Headless: {is_headless}, Channel: {browser_channel})...")
 
-        context = p.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),
-            channel="chrome",
-            headless=is_headless,
-            viewport={"width": 1400, "height": 900},
-            args=[
+        # Verifica presenza sessione salvata per il cloud runner
+        storage_path = BASE_DIR / "scripts" / "session_cookies.json"
+        launch_kwargs = {
+            "user_data_dir": str(PROFILE_DIR),
+            "headless": is_headless,
+            "viewport": {"width": 1400, "height": 900},
+            "args": [
                 "--no-first-run",
                 "--no-default-browser-check",
                 "--disable-blink-features=AutomationControlled"
             ]
-        )
+        }
+        if browser_channel:
+            launch_kwargs["channel"] = browser_channel
+
+        if storage_path.exists() and is_headless:
+            print(f"🍪 Caricamento cookie salvati da {storage_path.name}...")
+            launch_kwargs["storage_state"] = str(storage_path)
+
+        context = p.chromium.launch_persistent_context(**launch_kwargs)
 
         page = context.pages[0] if context.pages else context.new_page()
 
         if args.login:
             print("\n🔑 MODALITÀ LOGIN INTERATTIVO:")
-            print("1. Accedi al tuo account Instagram e TikTok.")
-            print("2. I cookie e le sessioni rimarranno salvati per sempre.")
+            print("1. Accedi al tuo account Instagram e TikTok nella finestra aperta.")
+            print("2. I cookie e le sessioni verranno salvati ed esportati su GitHub.")
             print("3. Quando hai finito di accedere, premi INVIO in questa finestra di terminale.")
             page.goto("https://www.instagram.com/")
             input("\n👉 Premi INVIO quando hai completato l'accesso a Instagram...")
             page.goto("https://www.tiktok.com/")
             input("👉 Premi INVIO quando hai completato l'accesso a TikTok...")
-            print("✅ Accesso completato e salvato con successo!")
+
+            # Esporta e invia sessione
+            storage_path.parent.mkdir(parents=True, exist_ok=True)
+            context.storage_state(path=str(storage_path))
+            print(f"✅ Sessione esportata localmente in {storage_path}")
+            sincronizza_sessione_su_github(storage_path)
             context.close()
             return
 

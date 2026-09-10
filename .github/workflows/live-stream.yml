@@ -197,7 +197,7 @@ jobs:
           echo "Verifica sink inputs PulseAudio (Chrome Audio Output):"
           pactl list sink-inputs || true
           # 6. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
-# --- 0. AUTOMAZIONE CLOUD PER INSTAGRAM & TIKTOK ---
+          # --- 0. AUTOMAZIONE CLOUD PER INSTAGRAM & TIKTOK ---
           if [ -z "${{ github.event.inputs.ig_key }}" ] || [ -z "${{ github.event.inputs.tk_key }}" ]; then
             if [ -f scripts/estrai_chiavi_live_social.py ]; then
               echo "🤖 Avvio Bot Estrazione Chiavi Social (TikTok & Instagram) su GitHub Runner..."

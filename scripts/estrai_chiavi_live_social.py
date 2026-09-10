@@ -320,8 +320,23 @@ def main():
         # Invia le chiavi estratte a DarIA
         if ig_dest or tk_dest:
             invia_chiavi_a_daria(tk_key=tk_dest, ig_key=ig_dest)
-        else:
-            print("\n⚠️ Nessuna nuova chiave rilevata da inviare.")
+
+        # Scrive nei file temporanei per FFmpeg sul runner GitHub Actions
+        if tk_dest:
+            try:
+                with open('/tmp/tiktok_rtmp.txt', 'w', encoding='utf-8') as f:
+                    f.write(tk_dest)
+                print(f"📄 Endpoint TikTok salvato in /tmp/tiktok_rtmp.txt")
+            except Exception as eFileTk:
+                print(f"Avviso salvataggio /tmp/tiktok_rtmp.txt: {eFileTk}")
+
+        if ig_dest:
+            try:
+                with open('/tmp/instagram_rtmp.txt', 'w', encoding='utf-8') as f:
+                    f.write(ig_dest)
+                print(f"📄 Endpoint Instagram salvato in /tmp/instagram_rtmp.txt")
+            except Exception as eFileIg:
+                print(f"Avviso salvataggio /tmp/instagram_rtmp.txt: {eFileIg}")
 
     print("\n═════════════════════════════════════════════════════════")
     print(" 🏁 OPERAZIONE COMPLETATA — Immobiliare Giancani")

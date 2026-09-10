@@ -2,7 +2,7 @@
 """
 Microservizio HTTP leggero per sintesi vocale neurale Microsoft Edge TTS.
 Fornisce audio MP3 ad altissima fedeltà per i conduttori DarIA (it-IT-ElsaNeural) e DarIO (it-IT-DiegoNeural).
-Include cache locale per azzerare la latenza e header CORS completi.
+Include cache locale per azzerare la latenza, regolazione del ritmo (cadenza naturale rilassata) e header CORS completi.
 — Immobiliare Giancani
 """
 import os, sys, hashlib, asyncio, urllib.parse
@@ -37,19 +37,20 @@ class TTSHandler(BaseHTTPRequestHandler):
             params = urllib.parse.parse_qs(parsed.query)
             text = params.get('text', [''])[0].strip()
             voice = params.get('voice', ['it-IT-ElsaNeural'])[0].strip()
+            rate = params.get('rate', ['-6%'])[0].strip()
 
             if not text:
                 self.send_response(400)
                 self.end_headers()
                 return
 
-            h = hashlib.md5(f"{voice}_{text}".encode('utf-8')).hexdigest()
+            h = hashlib.md5(f"{voice}_{rate}_{text}".encode('utf-8')).hexdigest()
             cache_file = os.path.join(CACHE_DIR, f"{h}.mp3")
 
             if not os.path.exists(cache_file) or os.path.getsize(cache_file) == 0:
                 try:
                     async def synthesize():
-                        c = edge_tts.Communicate(text, voice)
+                        c = edge_tts.Communicate(text, voice, rate=rate)
                         await c.save(cache_file)
                     asyncio.run(synthesize())
                 except Exception as e:
@@ -80,7 +81,7 @@ class TTSHandler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = 5050
     server = ThreadingHTTPServer(('0.0.0.0', port), TTSHandler)
-    print(f"[OK] Microservizio Edge TTS avviato su http://127.0.0.1:{port}", flush=True)
+    print(f"[OK] Microservizio Edge TTS avviato su http://127.0.0.1:{port} (Cadenza naturale: -6%)", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

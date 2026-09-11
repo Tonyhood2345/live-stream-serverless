@@ -96,7 +96,7 @@ Rispondi ESCLUSIVAMENTE con un oggetto JSON valido (nessun markdown, nessun comm
     return {"server_url": "", "stream_key": ""}
 
 
-def invia_chiavi_a_daria(tk_key: str = "", ig_key: str = "") -> bool:
+def invia_chiavi_a_daria(tk_key: str = "", ig_key: str = "", fb_key: str = "") -> bool:
     """
     Invia le chiavi catturate direttamente a Google Apps Script per la regia live.
     """
@@ -105,6 +105,7 @@ def invia_chiavi_a_daria(tk_key: str = "", ig_key: str = "") -> bool:
         "action": "salva_chiavi_live",
         "tk_key": tk_key,
         "ig_key": ig_key,
+        "fb_key": fb_key,
         "fonte": "bot_automatico_locale"
     }
 
@@ -127,7 +128,8 @@ def invia_chiavi_a_daria(tk_key: str = "", ig_key: str = "") -> bool:
             params = urllib.parse.urlencode({
                 "action": "salva_chiavi_live",
                 "tk_key": tk_key,
-                "ig_key": ig_key
+                "ig_key": ig_key,
+                "fb_key": fb_key
             })
             with urllib.request.urlopen(f"{WEBAPP_URL}?{params}", timeout=25) as r2:
                 print(f"✅ Fallback GET riuscito: {r2.read().decode('utf-8')[:150]}")
@@ -135,6 +137,40 @@ def invia_chiavi_a_daria(tk_key: str = "", ig_key: str = "") -> bool:
         except Exception as e2:
             print(f"❌ Errore fallback GET: {e2}")
             return False
+
+
+def ottieni_o_crea_facebook_live() -> tuple:
+    """
+    Crea o recupera una diretta Facebook Live attiva sulla Pagina Immobiliare Giancani (234931856561526).
+    Ritorna (fb_stream_url, fb_video_id, fb_watch_url).
+    """
+    page_id = os.environ.get("FB_PAGE_ID", "234931856561526")
+    token = os.environ.get(
+        "FB_PAGE_TOKEN",
+        "EAAZAH7q8wRZAEBSaZAm9Q9JGa8ZC7gwAsRJ1n4bPZAIY5ws8VXZAnugJgtZCOvP7HyEd7IEfWeCD5HfmP0ENQh86J3PT7pDFnOt5nPJdpzYyUM6p6AtZBXnXufThdh9ZAczfsE84obRZCOD3UWslSWpxJ058WGrQfXxJYsXtVZBh1ey7j2zuzme2JcEoya10KdL8TfJOpvNHqD8EsionnLI"
+    )
+    print("\n📘 [FACEBOOK] Inizializzazione diretta Facebook Live via Graph API...")
+    url = f"https://graph.facebook.com/v19.0/{page_id}/live_videos"
+    data = urllib.parse.urlencode({
+        "access_token": token,
+        "title": "Diretta Immobiliare Giancani — Opportunità Immobiliari Esclusive",
+        "description": "Segui la diretta speciale di Immobiliare Giancani con DarIA e DarIO! — Immobiliare Giancani",
+        "status": "LIVE_NOW"
+    }).encode('utf-8')
+    try:
+        req = urllib.request.Request(url, data=data)
+        with urllib.request.urlopen(req, timeout=20) as r:
+            res = json.loads(r.read().decode('utf-8'))
+            live_id = res.get("id", "")
+            stream_url = res.get("secure_stream_url") or res.get("stream_url", "")
+            watch_url = f"https://www.facebook.com/watch/live/?v={live_id}"
+            print(f"✅ [FACEBOOK] Live creata con successo! ID: {live_id} — Immobiliare Giancani")
+            print(f"   Watch URL: {watch_url}")
+            print(f"   Stream RTMP: {stream_url[:50]}...")
+            return stream_url, live_id, watch_url
+    except Exception as e:
+        print(f"❌ [FACEBOOK] Errore creazione diretta via Graph API: {e}")
+        return "", "", ""
 
 
 def estrai_instagram_live(page) -> tuple:
@@ -327,6 +363,7 @@ def main():
     parser.add_argument("--headless", action="store_true", help="Esegue il bot in background (senza mostrare la finestra)")
     parser.add_argument("--solo-ig", action="store_true", help="Estrae solo la chiave Instagram")
     parser.add_argument("--solo-tk", action="store_true", help="Estrae solo la chiave TikTok")
+    parser.add_argument("--solo-fb", action="store_true", help="Crea solo la diretta Facebook")
     args = parser.parse_args()
 
     print("═════════════════════════════════════════════════════════")
@@ -335,18 +372,53 @@ def main():
     print(f" 📁 Profilo Sessioni: {PROFILE_DIR}")
     print("═════════════════════════════════════════════════════════")
 
+    # 1. Creazione / recupero Facebook Live (tramite Meta Graph API)
+    fb_dest = ""
+    fb_id = ""
+    fb_watch = ""
+    if not (args.solo_ig or args.solo_tk):
+        fb_dest, fb_id, fb_watch = ottieni_o_crea_facebook_live()
+
+    if args.solo_fb:
+        # Se richiesto solo Facebook, salviamo e terminiamo
+        paths_to_try = [Path("/tmp"), Path(os.environ.get("TEMP", "."))]
+        for p_dir in paths_to_try:
+            try:
+                p_dir.mkdir(parents=True, exist_ok=True)
+                if fb_dest:
+                    (p_dir / "facebook_rtmp.txt").write_text(fb_dest, encoding="utf-8")
+                    (p_dir / "facebook_live_id.txt").write_text(fb_id, encoding="utf-8")
+                    (p_dir / "facebook_watch_url.txt").write_text(fb_watch, encoding="utf-8")
+                break
+            except Exception:
+                continue
+        print("\n═════════════════════════════════════════════════════════")
+        print(" 🏁 OPERAZIONE FACEBOOK COMPLETATA — Immobiliare Giancani")
+        print("═════════════════════════════════════════════════════════")
+        return
+
     storage_path = BASE_DIR / "scripts" / "session_cookies.json"
 
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         print("❌ Playwright non installato. Esegui: pip install playwright && playwright install chromium")
+        # Se Playwright non è presente, salviamo comunque Facebook
+        paths_to_try = [Path("/tmp"), Path(os.environ.get("TEMP", "."))]
+        for p_dir in paths_to_try:
+            try:
+                p_dir.mkdir(parents=True, exist_ok=True)
+                if fb_dest:
+                    (p_dir / "facebook_rtmp.txt").write_text(fb_dest, encoding="utf-8")
+                break
+            except Exception:
+                continue
         sys.exit(1)
 
     with sync_playwright() as p:
         is_headless = args.headless and not args.login
 
-        # Identificazione canale browser affidabile su Windows
+        # Identificazione canale browser affidabile su Windows e Linux
         browser_channel = None
         if sys.platform == "win32":
             chrome_candidates = [
@@ -362,6 +434,9 @@ def main():
                 browser_channel = "chrome"
             elif any(os.path.exists(p) for p in edge_candidates):
                 browser_channel = "msedge"
+        elif sys.platform.startswith("linux"):
+            if os.path.exists("/usr/bin/google-chrome") or os.path.exists("/usr/bin/google-chrome-stable"):
+                browser_channel = "chrome"
 
         if args.login:
             print("\n🔑 MODALITÀ LOGIN INTERATTIVO — IMMOBILIARE GIANCANI:")
@@ -421,11 +496,14 @@ def main():
             return
 
         browser = None
-        for ch in [browser_channel, None]:
+        channels_to_try = [browser_channel, "chrome", None]
+        for ch in channels_to_try:
             try:
                 kw = {
                     "headless": is_headless,
                     "args": [
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
                         "--no-first-run",
                         "--no-default-browser-check",
                         "--disable-blink-features=AutomationControlled"
@@ -434,12 +512,17 @@ def main():
                 if ch:
                     kw["channel"] = ch
                 browser = p.chromium.launch(**kw)
-                break
-            except Exception:
+                if browser:
+                    print(f"✅ Browser avviato con successo (canale: {ch or 'Chromium default'})!")
+                    break
+            except Exception as e_launch:
                 browser = None
 
         if not browser:
-            browser = p.chromium.launch(headless=is_headless)
+            browser = p.chromium.launch(
+                headless=is_headless,
+                args=["--no-sandbox", "--disable-setuid-sandbox"]
+            )
 
         context_kwargs = {"viewport": {"width": 1400, "height": 900}}
         if storage_path.exists():
@@ -459,19 +542,23 @@ def main():
             _, _, tk_dest = estrai_tiktok_live(page)
 
         # Invia subito le chiavi estratte a DarIA
-        if ig_dest or tk_dest:
-            invia_chiavi_a_daria(tk_key=tk_dest, ig_key=ig_dest)
+        if fb_dest or ig_dest or tk_dest:
+            invia_chiavi_a_daria(tk_key=tk_dest, ig_key=ig_dest, fb_key=fb_dest)
 
         # Scrive immediatamente nei file temporanei per FFmpeg sul runner GitHub Actions e locale
         paths_to_try = [Path("/tmp"), Path(os.environ.get("TEMP", "."))]
         for p_dir in paths_to_try:
             try:
                 p_dir.mkdir(parents=True, exist_ok=True)
+                if fb_dest:
+                    (p_dir / "facebook_rtmp.txt").write_text(fb_dest, encoding="utf-8")
+                    (p_dir / "facebook_live_id.txt").write_text(fb_id, encoding="utf-8")
+                    (p_dir / "facebook_watch_url.txt").write_text(fb_watch, encoding="utf-8")
                 if tk_dest:
                     (p_dir / "tiktok_rtmp.txt").write_text(tk_dest, encoding="utf-8")
                 if ig_dest:
                     (p_dir / "instagram_rtmp.txt").write_text(ig_dest, encoding="utf-8")
-                print(f"📄 Endpoint RTMP salvati in {p_dir}")
+                print(f"📄 Endpoint RTMP salvati in {p_dir} — Immobiliare Giancani")
                 break
             except Exception:
                 continue
@@ -479,17 +566,37 @@ def main():
         # Se abbiamo catturato Instagram, attendiamo che FFmpeg si colleghi e clicchiamo 'Trasmetti in diretta'
         if ig_dest and is_headless:
             print("⏳ [INSTAGRAM] In attesa che FFmpeg invii lo stream video per avviare la diretta...")
-            for s in range(20):
+            clicked = False
+            for s in range(40):
                 time.sleep(3)
                 try:
                     btn_live = page.locator("button:has-text('Trasmetti in diretta'), div[role='button']:has-text('Trasmetti in diretta')")
                     if btn_live.count() > 0:
-                        btn_live.first.click(timeout=3000)
-                        print("🎉 [INSTAGRAM] Pulsante 'Trasmetti in diretta' premuto con successo! Diretta ONLINE!")
-                        time.sleep(4)
-                        break
+                        btn_first = btn_live.first
+                        if btn_first.is_enabled():
+                            btn_first.click(timeout=3000)
+                            print("🎉 [INSTAGRAM] Pulsante 'Trasmetti in diretta' premuto con successo! Diretta ONLINE! — Immobiliare Giancani")
+                            clicked = True
+                            time.sleep(5)
+                            break
+                        else:
+                            print(f"   [INSTAGRAM] In attesa segnale video FFmpeg ({s*3}s)...")
                 except Exception:
                     pass
+
+            if not clicked:
+                print("⚠️ [INSTAGRAM] Timeout attesa abilitazione pulsante, tentativo click forzato...")
+                try:
+                    btn_live = page.locator("button:has-text('Trasmetti in diretta'), div[role='button']:has-text('Trasmetti in diretta')")
+                    if btn_live.count() > 0:
+                        btn_live.first.click(force=True)
+                        print("🎉 [INSTAGRAM] Click forzato eseguito! — Immobiliare Giancani")
+                except Exception:
+                    pass
+
+            print("🎥 [INSTAGRAM] Sessione live mantenuta attiva in background...")
+            while True:
+                time.sleep(30)
 
         browser.close()
 

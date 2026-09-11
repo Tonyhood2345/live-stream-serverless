@@ -458,13 +458,11 @@ def main():
         if not args.solo_ig:
             _, _, tk_dest = estrai_tiktok_live(page)
 
-        browser.close()
-
-        # Invia le chiavi estratte a DarIA
+        # Invia subito le chiavi estratte a DarIA
         if ig_dest or tk_dest:
             invia_chiavi_a_daria(tk_key=tk_dest, ig_key=ig_dest)
 
-        # Scrive nei file temporanei per FFmpeg sul runner GitHub Actions e locale
+        # Scrive immediatamente nei file temporanei per FFmpeg sul runner GitHub Actions e locale
         paths_to_try = [Path("/tmp"), Path(os.environ.get("TEMP", "."))]
         for p_dir in paths_to_try:
             try:
@@ -477,6 +475,23 @@ def main():
                 break
             except Exception:
                 continue
+
+        # Se abbiamo catturato Instagram, attendiamo che FFmpeg si colleghi e clicchiamo 'Trasmetti in diretta'
+        if ig_dest and is_headless:
+            print("⏳ [INSTAGRAM] In attesa che FFmpeg invii lo stream video per avviare la diretta...")
+            for s in range(20):
+                time.sleep(3)
+                try:
+                    btn_live = page.locator("button:has-text('Trasmetti in diretta'), div[role='button']:has-text('Trasmetti in diretta')")
+                    if btn_live.count() > 0:
+                        btn_live.first.click(timeout=3000)
+                        print("🎉 [INSTAGRAM] Pulsante 'Trasmetti in diretta' premuto con successo! Diretta ONLINE!")
+                        time.sleep(4)
+                        break
+                except Exception:
+                    pass
+
+        browser.close()
 
     print("\n═════════════════════════════════════════════════════════")
     print(" 🏁 OPERAZIONE COMPLETATA — Immobiliare Giancani")

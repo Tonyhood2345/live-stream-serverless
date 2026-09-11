@@ -348,63 +348,85 @@ def main():
             elif any(os.path.exists(p) for p in edge_candidates):
                 browser_channel = "msedge"
 
-        # Verifica presenza sessione salvata per il cloud runner
-        storage_path = BASE_DIR / "scripts" / "session_cookies.json"
-        launch_kwargs = {
-            "user_data_dir": str(PROFILE_DIR),
-            "headless": is_headless,
-            "viewport": {"width": 1400, "height": 900},
-            "args": [
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--disable-blink-features=AutomationControlled"
-            ]
-        }
-
-        if storage_path.exists() and is_headless:
-            print(f"🍪 Caricamento cookie salvati da {storage_path.name}...")
-            launch_kwargs["storage_state"] = str(storage_path)
-
-        context = None
-        channels_to_try = [browser_channel, "msedge", None] if browser_channel else ["msedge", None]
-        for ch in channels_to_try:
-            try:
-                kw = dict(launch_kwargs)
-                if ch:
-                    kw["channel"] = ch
-                else:
-                    kw.pop("channel", None)
-                print(f"🌐 Lancio Browser (Headless: {is_headless}, Channel: {ch or 'Chromium default'})...")
-                context = p.chromium.launch_persistent_context(**kw)
-                print(f"✅ Browser avviato con successo!")
-                break
-            except Exception as e_br:
-                print(f"⚠️ Tentativo canale {ch} fallito ({e_br}), provo alternativo...")
-                context = None
-
-        if not context:
-            print("❌ Errore critico: Impossibile avviare il browser.")
-            sys.exit(1)
-
-        page = context.pages[0] if context.pages else context.new_page()
-
         if args.login:
-            print("\n🔑 MODALITÀ LOGIN INTERATTIVO:")
-            print("1. Accedi al tuo account Instagram e TikTok nella finestra aperta.")
-            print("2. I cookie e le sessioni verranno salvati ed esportati su GitHub.")
-            print("3. Quando hai finito di accedere, premi INVIO in questa finestra di terminale.")
-            page.goto("https://www.instagram.com/")
-            input("\n👉 Premi INVIO quando hai completato l'accesso a Instagram...")
-            page.goto("https://www.tiktok.com/")
-            input("👉 Premi INVIO quando hai completato l'accesso a TikTok...")
+            print("\n🔑 MODALITÀ LOGIN INTERATTIVO — IMMOBILIARE GIANCANI:")
+            print(" Sto aprendo la finestra del browser per farti accedere...")
 
-            # Esporta e invia sessione
+            browser = None
+            channels_to_try = [browser_channel, "msedge", None] if browser_channel else ["msedge", None]
+            for ch in channels_to_try:
+                try:
+                    kw = {"headless": False, "args": ["--no-first-run", "--no-default-browser-check"]}
+                    if ch:
+                        kw["channel"] = ch
+                    browser = p.chromium.launch(**kw)
+                    print(f"✅ Finestra del browser aperta con successo (Canale: {ch or 'Chromium default'})!")
+                    break
+                except Exception as e_br:
+                    print(f"⚠️ Avviso avvio ({e_br}), provo canale successivo...")
+                    browser = None
+
+            if not browser:
+                print("❌ Errore: Impossibile avviare il browser. Verifica Edge o Chrome.")
+                sys.exit(1)
+
+            context = browser.new_context(viewport={"width": 1280, "height": 800})
+            page = context.new_page()
+
+            print("\n" + "="*60)
+            print("👉 PASSO 1: ACCEDI A INSTAGRAM")
+            print("   Effettua il login a Instagram nella finestra aperta.")
+            print("="*60)
+            page.goto("https://www.instagram.com/")
+            input("\n👉 Quando hai completato l'accesso a Instagram, premi INVIO qui...\n")
+
+            print("\n" + "="*60)
+            print("👉 PASSO 2: ACCEDI A TIKTOK")
+            print("   Effettua il login a TikTok nella stessa finestra.")
+            print("="*60)
+            page.goto("https://www.tiktok.com/")
+            input("\n👉 Quando hai completato l'accesso a TikTok, premi INVIO qui...\n")
+
+            # Salva ed esporta sessione
             storage_path.parent.mkdir(parents=True, exist_ok=True)
             context.storage_state(path=str(storage_path))
-            print(f"✅ Sessione esportata localmente in {storage_path}")
+            print(f"\n✅ Cookie di sessione estratti con successo!")
             sincronizza_sessione_su_github(storage_path)
-            context.close()
+            browser.close()
+            print("\n" + "="*60)
+            print("🎉 PROCEDURA COMPLETATA CON SUCCESSO! — Immobiliare Giancani")
+            print("   Da questo momento il cloud server genera le chiavi da solo!")
+            print("="*60)
             return
+
+        browser = None
+        for ch in [browser_channel, None]:
+            try:
+                kw = {
+                    "headless": is_headless,
+                    "args": [
+                        "--no-first-run",
+                        "--no-default-browser-check",
+                        "--disable-blink-features=AutomationControlled"
+                    ]
+                }
+                if ch:
+                    kw["channel"] = ch
+                browser = p.chromium.launch(**kw)
+                break
+            except Exception:
+                browser = None
+
+        if not browser:
+            browser = p.chromium.launch(headless=is_headless)
+
+        context_kwargs = {"viewport": {"width": 1400, "height": 900}}
+        if storage_path.exists():
+            print(f"🍪 Caricamento cookie salvati da {storage_path.name}...")
+            context_kwargs["storage_state"] = str(storage_path)
+
+        context = browser.new_context(**context_kwargs)
+        page = context.new_page()
 
         ig_dest = ""
         tk_dest = ""
@@ -415,7 +437,7 @@ def main():
         if not args.solo_ig:
             _, _, tk_dest = estrai_tiktok_live(page)
 
-        context.close()
+        browser.close()
 
         # Invia le chiavi estratte a DarIA
         if ig_dest or tk_dest:

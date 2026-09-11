@@ -139,22 +139,36 @@ def invia_chiavi_a_daria(tk_key: str = "", ig_key: str = "") -> bool:
 
 def estrai_instagram_live(page) -> tuple:
     """
-    Accede a Instagram Live Producer, avvia la configurazione della diretta
-    e recupera l'URL RTMP e la Stream Key.
+    Accede a Instagram Web, apre il flusso 'Crea' -> 'Video in diretta',
+    e recupera l'URL RTMP e la Stream Key per la trasmissione.
     """
-    print("\n📸 [INSTAGRAM] Connessione a Instagram Live Producer...")
+    print("\n📸 [INSTAGRAM] Connessione a Instagram...")
     try:
-        page.goto("https://www.instagram.com/live/producer/", wait_until="networkidle", timeout=35000)
+        page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=45000)
         time.sleep(3)
 
-        # Verifica se reindirizzato alla pagina di login
-        if "login" in page.url:
-            print("⚠️ Instagram richiede il login! Completa il login nella finestra del browser...")
-            page.wait_for_url(lambda u: "live/producer" in u, timeout=90000)
-            print("✅ Login Instagram rilevato!")
-            time.sleep(3)
+        # Chiudi eventuali popup "Non ora"
+        for txt in ["Non ora", "Not Now", "Rifiuta"]:
+            try:
+                btn_no = page.locator(f"button:has-text('{txt}')")
+                if btn_no.count() > 0:
+                    btn_no.first.click(timeout=2000)
+            except Exception:
+                pass
 
-        # Cerca titolo o seleziona opzioni broadcast se presenti
+        # 1. Clicca su 'Crea'
+        print("📸 [INSTAGRAM] Apertura menu 'Crea'...")
+        crea_btn = page.locator("svg[aria-label*='Crea' i], svg[aria-label*='Create' i], span:has-text('Crea'), a:has-text('Crea')").first
+        crea_btn.click()
+        print("📸 [INSTAGRAM] Menu Crea aperto, attesa voce diretta...")
+
+        # 2. Clicca su 'Video in diretta'
+        live_btn = page.locator("span:has-text('Video in diretta'), a:has-text('Video in diretta'), div:has-text('Video in diretta')").last
+        live_btn.wait_for(state="visible", timeout=12000)
+        live_btn.click()
+        print("📸 [INSTAGRAM] Configurazione diretta aperta...")
+
+        # 3. Imposta titolo se richiesto e clicca 'Avanti'
         try:
             input_titolo = page.locator('input[placeholder*="titolo" i], input[placeholder*="title" i], textarea')
             if input_titolo.count() > 0:
@@ -163,31 +177,27 @@ def estrai_instagram_live(page) -> tuple:
         except Exception:
             pass
 
-        # Clicca 'Avanti' o 'Next' per generare le chiavi
-        try:
-            btn_next = page.locator('button:has-text("Avanti"), button:has-text("Next"), div[role="button"]:has-text("Avanti")')
-            if btn_next.count() > 0:
-                btn_next.first.click()
-                time.sleep(3)
-        except Exception:
-            pass
+        btn_avanti = page.locator("button:has-text('Avanti'), div[role='button']:has-text('Avanti')").first
+        btn_avanti.wait_for(state="visible", timeout=12000)
+        btn_avanti.click()
+        print("📸 [INSTAGRAM] Generazione coordinate live in corso...")
 
-        # Cerca di estrarre chiavi tramite selettori DOM standard
+        # 4. Attesa ed estrazione coordinate RTMP
+        time.sleep(5)
         stream_url = ""
         stream_key = ""
 
-        inputs = page.locator('input[type="text"], input[type="password"]')
-        count = inputs.count()
-        for i in range(count):
-            val = inputs.nth(i).input_value()
+        inputs = page.locator("input[type='text'], input[type='password']").all()
+        for inp in inputs:
+            val = inp.input_value().strip()
             if "rtmp" in val.lower():
                 stream_url = val
             elif len(val) > 20 and not val.startswith("http"):
                 stream_key = val
 
-        # Se non trovata con selettori, attiva il fallback IA
+        # Fallback se non trovate da input
         if not stream_key:
-            print("⚠️ Selettori standard non trovati, avvio fallback IA per Instagram...")
+            print("⚠️ Selettori standard non completi, avvio analisi semantica...")
             testo_completo = page.inner_text("body")
             res_ia = chiama_ai_per_estrazione_chiavi(testo_completo, "Instagram Live Producer")
             stream_url = res_ia.get("server_url", stream_url)
@@ -195,7 +205,9 @@ def estrai_instagram_live(page) -> tuple:
 
         if stream_key:
             full_dest = stream_key if stream_key.startswith("rtmp") else (stream_url + stream_key)
-            print(f"✅ [INSTAGRAM] Chiave RTMP catturata: {stream_key[:12]}... (lunghezza: {len(stream_key)})")
+            print(f"✅ [INSTAGRAM] Chiave RTMP catturata con successo! — Immobiliare Giancani")
+            print(f"   URL: {stream_url}")
+            print(f"   Key: {stream_key[:15]}... (totale {len(stream_key)} car.)")
             return stream_url, stream_key, full_dest
         else:
             print("❌ [INSTAGRAM] Impossibile recuperare la chiave automaticamente.")
@@ -204,6 +216,7 @@ def estrai_instagram_live(page) -> tuple:
     except Exception as e:
         print(f"❌ [INSTAGRAM] Errore: {e}")
         return "", "", ""
+
 
 
 def estrai_tiktok_live(page) -> tuple:
@@ -322,6 +335,8 @@ def main():
     print(f" 📁 Profilo Sessioni: {PROFILE_DIR}")
     print("═════════════════════════════════════════════════════════")
 
+    storage_path = BASE_DIR / "scripts" / "session_cookies.json"
+
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -377,14 +392,20 @@ def main():
             print("👉 PASSO 1: ACCEDI A INSTAGRAM")
             print("   Effettua il login a Instagram nella finestra aperta.")
             print("="*60)
-            page.goto("https://www.instagram.com/")
+            try:
+                page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=45000)
+            except Exception as e_ig:
+                print(f"Avviso caricamento Instagram: {e_ig}")
             input("\n👉 Quando hai completato l'accesso a Instagram, premi INVIO qui...\n")
 
             print("\n" + "="*60)
             print("👉 PASSO 2: ACCEDI A TIKTOK")
             print("   Effettua il login a TikTok nella stessa finestra.")
             print("="*60)
-            page.goto("https://www.tiktok.com/")
+            try:
+                page.goto("https://www.tiktok.com/", wait_until="domcontentloaded", timeout=45000)
+            except Exception as e_tk:
+                print(f"Avviso caricamento TikTok: {e_tk}")
             input("\n👉 Quando hai completato l'accesso a TikTok, premi INVIO qui...\n")
 
             # Salva ed esporta sessione
@@ -443,22 +464,19 @@ def main():
         if ig_dest or tk_dest:
             invia_chiavi_a_daria(tk_key=tk_dest, ig_key=ig_dest)
 
-        # Scrive nei file temporanei per FFmpeg sul runner GitHub Actions
-        if tk_dest:
+        # Scrive nei file temporanei per FFmpeg sul runner GitHub Actions e locale
+        paths_to_try = [Path("/tmp"), Path(os.environ.get("TEMP", "."))]
+        for p_dir in paths_to_try:
             try:
-                with open('/tmp/tiktok_rtmp.txt', 'w', encoding='utf-8') as f:
-                    f.write(tk_dest)
-                print(f"📄 Endpoint TikTok salvato in /tmp/tiktok_rtmp.txt")
-            except Exception as eFileTk:
-                print(f"Avviso salvataggio /tmp/tiktok_rtmp.txt: {eFileTk}")
-
-        if ig_dest:
-            try:
-                with open('/tmp/instagram_rtmp.txt', 'w', encoding='utf-8') as f:
-                    f.write(ig_dest)
-                print(f"📄 Endpoint Instagram salvato in /tmp/instagram_rtmp.txt")
-            except Exception as eFileIg:
-                print(f"Avviso salvataggio /tmp/instagram_rtmp.txt: {eFileIg}")
+                p_dir.mkdir(parents=True, exist_ok=True)
+                if tk_dest:
+                    (p_dir / "tiktok_rtmp.txt").write_text(tk_dest, encoding="utf-8")
+                if ig_dest:
+                    (p_dir / "instagram_rtmp.txt").write_text(ig_dest, encoding="utf-8")
+                print(f"📄 Endpoint RTMP salvati in {p_dir}")
+                break
+            except Exception:
+                continue
 
     print("\n═════════════════════════════════════════════════════════")
     print(" 🏁 OPERAZIONE COMPLETATA — Immobiliare Giancani")

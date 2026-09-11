@@ -200,9 +200,16 @@ jobs:
           # --- 0. AUTOMAZIONE CLOUD PER INSTAGRAM & TIKTOK ---
           if [ -z "${{ github.event.inputs.ig_key }}" ] || [ -z "${{ github.event.inputs.tk_key }}" ]; then
             if [ -f scripts/estrai_chiavi_live_social.py ]; then
-              echo "🤖 Avvio Bot Estrazione Chiavi Social (TikTok & Instagram) su GitHub Runner..."
-              python3 scripts/estrai_chiavi_live_social.py --headless || true
-              sleep 6
+              echo "🤖 Avvio Bot Estrazione Chiavi Social in background sul runner..."
+              python3 scripts/estrai_chiavi_live_social.py --headless &
+              echo "⏳ In attesa delle coordinate RTMP dinamiche..."
+              for i in $(seq 1 45); do
+                if [ -f /tmp/instagram_rtmp.txt ] || [ -f /tmp/tiktok_rtmp.txt ]; then
+                  echo "✅ Coordinate RTMP generate e pronte per lo streaming!"
+                  break
+                fi
+                sleep 2
+              done
             elif [ -f scripts/tiktok_live_auto.py ]; then
               python3 scripts/tiktok_live_auto.py &
               sleep 4

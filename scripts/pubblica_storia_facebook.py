@@ -48,6 +48,7 @@ import json
 import uuid
 import shutil
 import random
+import re
 import argparse
 import subprocess
 import urllib.request
@@ -316,7 +317,56 @@ def genera_voce_tts(testo, voice_id="it-IT-ElsaNeural", output_voice_path=None):
             print(f"Avviso edge_tts ({voice_id}): {e}")
     return None
 
-def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None):
+FRASI_POSITIVE_FLASH = [
+    "Sorridi alla vita con Immobiliare Giancani!",
+    "La felicità comincia da casa tua con Immobiliare Giancani!",
+    "Oggi è un giorno meraviglioso con Immobiliare Giancani!",
+    "Le cose belle accadono a chi crede nei sogni con Immobiliare Giancani!",
+    "Che sia una splendida giornata con Immobiliare Giancani!",
+    "Pensa positivo e guarda avanti con Immobiliare Giancani!",
+    "Ogni nuovo giorno porta nuove meraviglie con Immobiliare Giancani!",
+    "Un raggio di sole e tanta serenità con Immobiliare Giancani!",
+    "La tua serenità è la cosa più preziosa con Immobiliare Giancani!",
+    "Oggi ti aspetta una splendida notizia con Immobiliare Giancani!",
+    "Credi sempre nei tuoi desideri con Immobiliare Giancani!",
+    "Circondati di bellezza e positività con Immobiliare Giancani!"
+]
+
+def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True, frase_positiva=None):
+    """
+    Genera hook dinamici e calorosi per le storie social.
+    Progettato appositamente per chi scorre velocemente le storie:
+    le primissime parole pronunciate (nei primi 1.5 secondi) trasmettono
+    un pensiero positivo immediato e terminano con 'con Immobiliare Giancani!'.
+    """
+    p_nome = "DarIA" if str(personaggio).lower() == "daria" else "DarIO"
+    testo_f_clean = (testo_f or "").strip()
+    if testo_f_clean:
+        testo_f_clean = re.sub(r'\s*—?\s*Immobiliare Giancani\s*$', '', testo_f_clean, flags=re.IGNORECASE).strip()
+
+    if not frase_positiva:
+        frase_positiva = random.choice(FRASI_POSITIVE_FLASH)
+
+    if is_live:
+        followups = [
+            f"Sono {p_nome} e siamo in diretta streaming proprio adesso per mostrarvi questa straordinaria opportunità. {testo_f_clean} Entrate subito a trovarci e scriveteci in chat quale stanza volete visitare! Vi aspettiamo con Immobiliare Giancani!",
+            f"Da {p_nome} e da tutto il nostro team, siamo collegati dal vivo in questo istante con le migliori occasioni del mercato. {testo_f_clean} Raggiungeteci nella diretta streaming per farci tutte le vostre domande dal vivo! Vi aspettiamo con Immobiliare Giancani!",
+            f"Sono {p_nome} e abbiamo preparato per voi una sorpresa esclusiva in streaming! {testo_f_clean} Entrate subito nella nostra diretta per esplorare tutti gli ambienti insieme a noi! Vi aspettiamo con Immobiliare Giancani!",
+            f"Da {p_nome} un invito speciale: siamo in onda adesso in diretta streaming! {testo_f_clean} Scriveteci nei commenti quale stanza desiderate visitare e vi porteremo subito all'interno! Vi aspettiamo con Immobiliare Giancani!",
+            f"Sono {p_nome}: in questo momento siamo in onda dal vivo per farvi scoprire questa gemma immobiliare! {testo_f_clean} Entrate e commentate in diretta, vi aspettiamo con Immobiliare Giancani!",
+            f"Vi do il benvenuto da parte di {p_nome}: le porte delle nostre migliori residenze sono aperte adesso in streaming! {testo_f_clean} Collegatevi subito per interagire in tempo reale! Vi aspettiamo con Immobiliare Giancani!"
+        ]
+    else:
+        followups = [
+            f"Sono {p_nome} e oggi vi presentiamo una proprietà davvero unica, selezionata per voi. {testo_f_clean} Contattateci subito per prenotare una visita esclusiva. — Immobiliare Giancani",
+            f"Vi do il benvenuto da parte di {p_nome}: lasciatevi conquistare da questa straordinaria dimora. {testo_f_clean} Per fissare un appuntamento chiamateci senza impegno. — Immobiliare Giancani",
+            f"Sono {p_nome}: il massimo del comfort per la vostra famiglia vi aspetta in questa casa speciale. {testo_f_clean} Chiamateci subito per scoprire ogni dettaglio di persona. — Immobiliare Giancani",
+            f"La casa perfetta esiste ed è curata da {p_nome} e dal nostro team. {testo_f_clean} Siamo pronti ad accompagnarvi nella vostra visita privata. — Immobiliare Giancani"
+        ]
+
+    return f"{frase_positiva} {random.choice(followups)}"
+
+def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_positiva=None):
     """Combina la voce narrante (DarIA o DarIO) con la musica allegra e auto-ducking"""
     if not output_mixed_m4a:
         output_mixed_m4a = os.path.join(SCRATCH_DIR, f"story_audio_{uuid.uuid4().hex[:8]}.m4a")
@@ -324,16 +374,7 @@ def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None):
     personaggio = "daria" if random.random() > 0.4 else "dario"
     voice_id = "it-IT-GiuseppeNeural" if personaggio == "dario" else "it-IT-ElsaNeural"
 
-    if is_live:
-        testo_voce = (
-            f"Ciao a tutti da {personaggio.upper()}! Siamo in diretta streaming proprio adesso per mostrarvi le nostre migliori proposte immobiliari. "
-            f"{testo_f} Entrate subito a trovarci e chattate con noi in diretta! Vi aspettiamo con Immobiliare Giancani!"
-        )
-    else:
-        testo_voce = (
-            f"Ciao da {personaggio.upper()} di Immobiliare Giancani! {testo_f} "
-            f"Contattateci subito per prenotare una visita esclusiva. — Immobiliare Giancani"
-        )
+    testo_voce = genera_intro_invito_dinamico(personaggio=personaggio, testo_f=testo_f, is_live=is_live, frase_positiva=frase_positiva)
 
     voice_path = genera_voce_tts(testo_voce, voice_id=voice_id)
     music_path = genera_audio_musica_allegra()
@@ -431,8 +472,9 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None):
             except Exception as eYt:
                 print(f"Avviso download YouTube: {eYt}")
 
-    # Genera traccia audio completa (voce DarIA/DarIO + musica allegra)
-    audio_path = crea_audio_mix_completo(testo_f, is_live=is_live)
+    # Genera traccia audio completa con frase positiva flash iniziale (voce DarIA/DarIO + musica allegra)
+    frase_positiva_flash = random.choice(FRASI_POSITIVE_FLASH)
+    audio_path = crea_audio_mix_completo(testo_f, is_live=is_live, frase_positiva=frase_positiva_flash)
 
     # Prepara overlay logo
     logo_img = get_local_or_remote_logo()
@@ -457,6 +499,16 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None):
     badge_w = font_badge.getbbox(badge_txt)[2] + 40
     over_draw.rounded_rectangle([(1080 - badge_w)//2, 260, (1080 + badge_w)//2, 305], radius=16, fill=(220, 38, 38, 230) if is_live else (30, 64, 175, 230))
     over_draw.text(((1080 - font_badge.getbbox(badge_txt)[2]) // 2, 272), badge_txt, font=font_badge, fill=(255, 255, 255, 255))
+
+    # Badge Messaggio Positivo Flash per chi scorre rapidamente le storie
+    font_pos = get_font(21, bold=True)
+    pos_txt = f"✨ {frase_positiva_flash}"
+    pos_bbox = font_pos.getbbox(pos_txt)
+    pos_w = pos_bbox[2] - pos_bbox[0] + 48
+    pos_x1 = max(40, (1080 - pos_w) // 2)
+    pos_x2 = min(1040, (1080 + pos_w) // 2)
+    over_draw.rounded_rectangle([pos_x1, 325, pos_x2, 380], radius=18, fill=(212, 168, 83, 240), outline=(255, 255, 255, 220), width=2)
+    over_draw.text(((1080 - (pos_bbox[2] - pos_bbox[0])) // 2, 338), pos_txt, font=font_pos, fill=(15, 23, 42, 255))
 
     # Scheda testo e dettagli in basso
     card_y = 1380

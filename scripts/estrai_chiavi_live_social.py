@@ -330,8 +330,23 @@ def main():
 
     with sync_playwright() as p:
         is_headless = args.headless and not args.login
-        browser_channel = "chrome" if sys.platform == "win32" else None
-        print(f"🌐 Lancio Browser (Headless: {is_headless}, Channel: {browser_channel})...")
+
+        # Identificazione canale browser affidabile su Windows
+        browser_channel = None
+        if sys.platform == "win32":
+            chrome_candidates = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
+            ]
+            edge_candidates = [
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
+            ]
+            if any(os.path.exists(p) for p in chrome_candidates):
+                browser_channel = "chrome"
+            elif any(os.path.exists(p) for p in edge_candidates):
+                browser_channel = "msedge"
 
         # Verifica presenza sessione salvata per il cloud runner
         storage_path = BASE_DIR / "scripts" / "session_cookies.json"
@@ -345,14 +360,31 @@ def main():
                 "--disable-blink-features=AutomationControlled"
             ]
         }
-        if browser_channel:
-            launch_kwargs["channel"] = browser_channel
 
         if storage_path.exists() and is_headless:
             print(f"🍪 Caricamento cookie salvati da {storage_path.name}...")
             launch_kwargs["storage_state"] = str(storage_path)
 
-        context = p.chromium.launch_persistent_context(**launch_kwargs)
+        context = None
+        channels_to_try = [browser_channel, "msedge", None] if browser_channel else ["msedge", None]
+        for ch in channels_to_try:
+            try:
+                kw = dict(launch_kwargs)
+                if ch:
+                    kw["channel"] = ch
+                else:
+                    kw.pop("channel", None)
+                print(f"🌐 Lancio Browser (Headless: {is_headless}, Channel: {ch or 'Chromium default'})...")
+                context = p.chromium.launch_persistent_context(**kw)
+                print(f"✅ Browser avviato con successo!")
+                break
+            except Exception as e_br:
+                print(f"⚠️ Tentativo canale {ch} fallito ({e_br}), provo alternativo...")
+                context = None
+
+        if not context:
+            print("❌ Errore critico: Impossibile avviare il browser.")
+            sys.exit(1)
 
         page = context.pages[0] if context.pages else context.new_page()
 

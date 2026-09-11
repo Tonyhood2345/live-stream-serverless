@@ -62,6 +62,7 @@ jobs:
           npx playwright install-deps
           npx playwright install chromium
           python3 -m pip install --no-cache-dir playwright requests pillow numpy edge-tts yt-dlp
+          python3 -m playwright install --with-deps chromium || true
       - name: Launch Audio Engine, Browser and Start Multistream
         run: |
           # 1. Configura PulseAudio con socket UNIX esplicito
@@ -197,14 +198,14 @@ jobs:
           echo "Verifica sink inputs PulseAudio (Chrome Audio Output):"
           pactl list sink-inputs || true
           # 6. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
-          # --- 0. AUTOMAZIONE CLOUD PER INSTAGRAM & TIKTOK ---
-          if [ -z "${{ github.event.inputs.ig_key }}" ] || [ -z "${{ github.event.inputs.tk_key }}" ]; then
+          # --- 0. AUTOMAZIONE CLOUD PER FACEBOOK, INSTAGRAM & TIKTOK ---
+          if [ -z "${{ github.event.inputs.fb_key }}" ] || [ -z "${{ github.event.inputs.ig_key }}" ] || [ -z "${{ github.event.inputs.tk_key }}" ] || [ "${{ github.event.inputs.fb_key }}" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
             if [ -f scripts/estrai_chiavi_live_social.py ]; then
               echo "🤖 Avvio Bot Estrazione Chiavi Social in background sul runner..."
               python3 scripts/estrai_chiavi_live_social.py --headless &
               echo "⏳ In attesa delle coordinate RTMP dinamiche..."
               for i in $(seq 1 45); do
-                if [ -f /tmp/instagram_rtmp.txt ] || [ -f /tmp/tiktok_rtmp.txt ]; then
+                if [ -f /tmp/facebook_rtmp.txt ] || [ -f /tmp/instagram_rtmp.txt ] || [ -f /tmp/tiktok_rtmp.txt ]; then
                   echo "✅ Coordinate RTMP generate e pronte per lo streaming!"
                   break
                 fi
@@ -218,17 +219,22 @@ jobs:
           TEE_DESTS=()
           # --- 1. FACEBOOK LIVE ---
           FB_KEY="${{ github.event.inputs.fb_key }}"
-          if [ -z "$FB_KEY" ]; then
-            FB_KEY="FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe"
+          if [ -z "$FB_KEY" ] || [ "$FB_KEY" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
+            if [ -f /tmp/facebook_rtmp.txt ]; then
+              FB_KEY=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')
+              echo "📘 Endpoint Facebook RTMP recuperato dinamicamente da Graph API: $FB_KEY"
+            fi
           fi
-          FB_URL=""
-          if [[ "$FB_KEY" == rtmp* ]]; then
-            FB_URL="$FB_KEY"
-          else
-            FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
+          if [ -n "$FB_KEY" ] && [ "$FB_KEY" != "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
+            FB_URL=""
+            if [[ "$FB_KEY" == rtmp* ]]; then
+              FB_URL="$FB_KEY"
+            else
+              FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
+            fi
+            echo "📘 Output configurato: Facebook Live ($FB_URL)"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
           fi
-          echo "📘 Output configurato: Facebook Live ($FB_URL)"
-          TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
           # --- 2. YOUTUBE LIVE ---
           YT_KEY="${{ github.event.inputs.yt_key }}"
           if [ -z "$YT_KEY" ]; then

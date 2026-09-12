@@ -1625,6 +1625,297 @@ function convertiMqInMetriQuadri(txt) {
     .replace(/\bMQ\b/g, 'metri quadri');
 }
 
+/* =============== 🚫 FILTRO ANTI-EMOTICON PER VOCE SINTETICA DEGLI AVATAR =============== */
+function rimuoviEmoticonPerSintesiVocale(txt) {
+  if (!txt) return '';
+  var s = String(txt);
+  // Converte sempre mq in metri quadri per pronuncia broadcast perfetta
+  s = convertiMqInMetriQuadri(s);
+  // Regex completa Unicode per tutti i blocchi Emoji, Simboli grafici e Pittogrammi
+  s = s.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23FF}\u{2B50}\u{2B55}\u{200D}\u{FE0E}\u{FE0F}\u{1F1E6}-\u{1F1FF}]/gu, '');
+  // Rimuove simboli scenici e badge tipici della regia (spilli, stelle, cerchi, frecce)
+  s = s.replace(/[•★☆►◄▶◀■□▲▼◆◇🔴📸🎵📘✨🍳🛁📍💡💎🏠]/g, '');
+  // Rimuove emoticon testuali ASCII (es. :), :D, :-), ;-), <3, XD, ^_^)
+  s = s.replace(/(?:(?<=\s)|^)(?:[:;=8]-?[)D(\]pPoO3\/\\|]|<3|\^_\^|XD|xd)(?=\s|$)/g, '');
+  // Pulisce spazi doppi o multipli
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  // Se la frase terminava con trattino isolato, pulisce
+  if (s.endsWith('—') || s.endsWith('-')) {
+    s = s.substring(0, s.length - 1).trim();
+  }
+  return s;
+}
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   🎬 SPOT ORARIO YOUTUBE: PAUSA TOTALE CONDUTTORI & RIPRESA CON RINGRAZIAMENTI
+   Ogni 60 minuti trasmette un video dal canale YouTube (@immobiliaregiancani761)
+   DarIO e DarIA vengono messi in pausa totale (audio e movimento fermi)
+   Branding & Firma: Immobiliare Giancani
+   ═══════════════════════════════════════════════════════════════════════ */
+window.SpotOrarioYouTubeManager = (function() {
+  var _ultimoSpotOrario = Date.now();
+  var _intervalloMs = 3600 * 1000; // 60 minuti
+  var _spotInCorso = false;
+  var _richiesto = false;
+  var _timerDurata = null;
+
+  function isOraDiTrasmettereVideo() {
+    if (_spotInCorso) return false;
+    if (_richiesto) return true;
+    return (Date.now() - _ultimoSpotOrario >= _intervalloMs);
+  }
+
+  function richiediSpot() {
+    _richiesto = true;
+  }
+
+  function avviaVideoOrarioYouTube() {
+    if (_spotInCorso) return;
+    _spotInCorso = true;
+    _richiesto = false;
+    _ultimoSpotOrario = Date.now();
+
+    console.log('[REGIA-ORARIA] 🎬 Avvio sequenza video orario YouTube (pausa conduttori)');
+
+    function _eseguiConVideo(videoData) {
+      var vId = videoData.videoId || 'zekP_9iFLK0';
+      var titolo = videoData.titolo || 'Canale YouTube Ufficiale';
+      var durataSec = Math.max(videoData.durataSec || 75, 45);
+
+      // 1. Breve intro vocale di annuncio da parte di DarIA
+      var introTxt = "Cari amici di Immobiliare Giancani, è il momento del nostro appuntamento video orario! Vi lasciamo per qualche minuto a un meraviglioso filmato dal nostro canale YouTube ufficiale. Rimanete sintonizzati, Dario ed io torniamo subito dopo per continuare il nostro tour esclusivo! Buona visione!";
+      introTxt = convertiMqInMetriQuadri(introTxt);
+
+      stopActiveTTSAudio();
+      if (syn) syn.cancel();
+      S._isStepPlaying = true;
+      S.on = true;
+
+      // Parla con voce priva di emoticon
+      var voceLancio = rimuoviEmoticonPerSintesiVocale(introTxt);
+      if (window.AvatarStudioEngine) {
+        window.AvatarStudioEngine.eseguiTriggerScena({
+          speaker: 'DARIA',
+          text: introTxt,
+          media_url: null,
+          scheda: null,
+          isDescription: false
+        });
+      }
+
+      parlaConEdgeTTS(voceLancio, 'it-IT-ElsaNeural', function() {
+        // 2. PAUSA COMPLETA DI DARIO E DARIA DURANTE IL VIDEO
+        console.log('[REGIA-ORARIA] ⏸️ Pausa totale conduttori per la durata del video (' + durataSec + 's)');
+        stopActiveTTSAudio();
+        if (syn) syn.cancel();
+        S._isStepPlaying = false;
+        S.on = false; // Sospende il motore dialoghi standard
+        var unitD = document.getElementById('unit-daria');
+        var unitO = document.getElementById('unit-dario');
+        if (unitD) unitD.classList.remove('speaking');
+        if (unitO) unitO.classList.remove('speaking');
+        if (S.daria) S.daria.targetMouth = 0;
+        if (S.dario) S.dario.targetMouth = 0;
+
+        // Disattiva eventuale primo piano
+        var mgr = window.AvatarCloseUpManager || window.DariaCloseUpManager;
+        if (mgr && mgr.isAttivo()) mgr.disattivaPrimoPiano();
+
+        // Abbassa la musica di sottofondo a 0 per dare audio pieno al video YouTube
+        if (typeof sfumaVolumeMusica === 'function') sfumaVolumeMusica(0.0, 400);
+
+        // Mostra il player YouTube con audio nativo al 100%
+        var ytEl = document.getElementById('youtube-container');
+        var embedUrl = "https://www.youtube.com/embed/" + vId + "?autoplay=1&mute=0&controls=0&rel=0&playsinline=1&enablejsapi=1";
+        if (ytEl) {
+          ytEl.style.display = 'block';
+          ytEl.style.opacity = '1';
+          ytEl.style.pointerEvents = 'auto';
+          ytEl.style.zIndex = '30';
+          ytEl.src = embedUrl;
+          setTimeout(function() {
+            try {
+              if (ytEl.contentWindow) {
+                ytEl.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+                ytEl.contentWindow.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
+                ytEl.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+              }
+            } catch(e){}
+          }, 800);
+        }
+
+        // Aggiorna la barra narratore/sottotitoli con badge di pausa conduzione
+        var narrSpeaker = document.getElementById('narr-speaker');
+        var narrText = document.getElementById('narr-text');
+        if (narrSpeaker) narrSpeaker.textContent = '🔴 SPOT VIDEO SPECIALE YOUTUBE • PAUSA CONDUZIONE';
+        if (narrText) narrText.textContent = '"' + titolo + ' — Canale Ufficiale Immobiliare Giancani"';
+
+        // 3. Timer durata del video YouTube
+        if (_timerDurata) clearTimeout(_timerDurata);
+        _timerDurata = setTimeout(function() {
+          terminaVideoERiprendiConduzione();
+        }, durataSec * 1000);
+      });
+    }
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.success && res.video) {
+            _eseguiConVideo(res.video);
+          } else {
+            _eseguiConVideo({ videoId: 'zekP_9iFLK0', titolo: 'Canale YouTube Ufficiale', durataSec: 75 });
+          }
+        })
+        .withFailureHandler(function(err) {
+          _eseguiConVideo({ videoId: 'zekP_9iFLK0', titolo: 'Canale YouTube Ufficiale', durataSec: 75 });
+        })
+        .getVideoSpotOrarioYouTube();
+    } else {
+      _eseguiConVideo({ videoId: 'zekP_9iFLK0', titolo: 'Canale YouTube Ufficiale', durataSec: 75 });
+    }
+  }
+
+  function terminaVideoERiprendiConduzione() {
+    console.log('[REGIA-ORARIA] 🎬 Fine video orario. Rientro in studio con saluti e ringraziamenti per l\'attesa');
+    var ytEl = document.getElementById('youtube-container');
+    if (ytEl) {
+      sfumaVolumeYouTubeVideo(ytEl, 100, 0, 1500);
+      setTimeout(function() {
+        ytEl.style.display = 'none';
+        ytEl.src = '';
+      }, 1600);
+    }
+
+    // Ripristina musica di sottofondo
+    if (typeof sfumaVolumeMusica === 'function') sfumaVolumeMusica(0.30, 1000);
+
+    // Dialoghi di rientro: Saluti e Ringraziamenti per aver atteso
+    var battuteRientro = [
+      {
+        who: 'daria',
+        speaker: 'DARIA',
+        speakerLabel: '🎙️ DARIA • BENTORNATI IN DIRETTA',
+        txt: convertiMqInMetriQuadri("Rieccoci in diretta con voi, cari amici! Grazie di cuore a tutti per la pazienza e per aver atteso durante questo splendido video dal nostro canale YouTube ufficiale!")
+      },
+      {
+        who: 'dario',
+        speaker: 'DARIO',
+        speakerLabel: '💻 DARIO • RIPRESA TOUR LIVE',
+        txt: convertiMqInMetriQuadri("Un caloroso bentornati a tutti gli spettatori collegati da YouTube, Instagram e TikTok! Speriamo che il video vi sia piaciuto. E adesso ripartiamo subito alla grande con il nostro tour esclusivo degli immobili! — Immobiliare Giancani")
+      }
+    ];
+
+    stopActiveTTSAudio();
+    if (syn) syn.cancel();
+    S.on = true;
+    S.currentLines = battuteRientro;
+    S.dialogueIdx = 0;
+    _spotInCorso = false;
+
+    playDialogueStep();
+  }
+
+  return {
+    isOraDiTrasmettereVideo: isOraDiTrasmettereVideo,
+    richiediSpot: richiediSpot,
+    avviaVideoOrarioYouTube: avviaVideoOrarioYouTube,
+    terminaVideoERiprendiConduzione: terminaVideoERiprendiConduzione
+  };
+})();
+
+window.forzaSpotOrarioYouTube = function() {
+  if (window.SpotOrarioYouTubeManager) {
+    window.SpotOrarioYouTubeManager.avviaVideoOrarioYouTube();
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   🌍 SIMULATORE SOCIAL EUROPEO: RICHIESTE STANZE OGNI 3 STANZE
+   Spettatori da tutta Europa: Italiani, Inglesi, Francesi, Arabi
+   Piattaforme: YouTube, Instagram, TikTok
+   Precedenza assoluta ad eventuali commenti reali dal web
+   ═══════════════════════════════════════════════════════════════════════ */
+window.SimulatoreSocialEuropeoManager = (function() {
+  var _poolSpettatori = [
+    // Italiani
+    { autore: "Matteo da Milano", citta: "Milano", piattaforma: "YouTube", lingua: "it" },
+    { autore: "Giulia da Roma", citta: "Roma", piattaforma: "Instagram", lingua: "it" },
+    { autore: "Alessandro da Bologna", citta: "Bologna", piattaforma: "TikTok", lingua: "it" },
+    { autore: "Chiara da Torino", citta: "Torino", piattaforma: "Instagram", lingua: "it" },
+    { autore: "Salvatore da Palermo", citta: "Palermo", piattaforma: "YouTube", lingua: "it" },
+    { autore: "Elena da Firenze", citta: "Firenze", piattaforma: "TikTok", lingua: "it" },
+    // Inglesi
+    { autore: "Oliver from London", citta: "Londra", piattaforma: "YouTube", lingua: "en" },
+    { autore: "Emily from Manchester", citta: "Manchester", piattaforma: "Instagram", lingua: "en" },
+    { autore: "James from Dublin", citta: "Dublino", piattaforma: "TikTok", lingua: "en" },
+    { autore: "Charlotte from Edinburgh", citta: "Edimburgo", piattaforma: "YouTube", lingua: "en" },
+    { autore: "George from Bristol", citta: "Bristol", piattaforma: "Instagram", lingua: "en" },
+    // Francesi
+    { autore: "Jean-Luc da Parigi", citta: "Parigi", piattaforma: "YouTube", lingua: "fr" },
+    { autore: "Camille da Lione", citta: "Lione", piattaforma: "Instagram", lingua: "fr" },
+    { autore: "Antoine da Marsiglia", citta: "Marsiglia", piattaforma: "TikTok", lingua: "fr" },
+    { autore: "Sophie da Nizza", citta: "Nizza", piattaforma: "Instagram", lingua: "fr" },
+    { autore: "Laurent da Bordeaux", citta: "Bordeaux", piattaforma: "YouTube", lingua: "fr" },
+    // Arabi (comunità europea / internazionale)
+    { autore: "Karim da Bruxelles", citta: "Bruxelles", piattaforma: "TikTok", lingua: "ar" },
+    { autore: "Nour da Londra", citta: "Londra", piattaforma: "Instagram", lingua: "ar" },
+    { autore: "Omar da Berlino", citta: "Berlino", piattaforma: "YouTube", lingua: "ar" },
+    { autore: "Yasmin da Parigi", citta: "Parigi", piattaforma: "Instagram", lingua: "ar" },
+    { autore: "Tariq da Amsterdam", citta: "Amsterdam", piattaforma: "TikTok", lingua: "ar" },
+    { autore: "Farah da Ginevra", citta: "Ginevra", piattaforma: "YouTube", lingua: "ar" }
+  ];
+
+  var _simIdx = 0;
+
+  function generaRichiestaSocialEuropea(stanzaNome, roomData) {
+    var spec = _poolSpettatori[_simIdx % _poolSpettatori.length];
+    _simIdx++;
+
+    var sNome = stanzaNome || "questo ambiente";
+    var msgTesto = "";
+
+    if (spec.lingua === 'en') {
+      msgTesto = "DarIA and DarIO, can you please show us " + sNome.toLowerCase() + "? Greetings from the UK!";
+    } else if (spec.lingua === 'fr') {
+      msgTesto = "DarIA et DarIO, pourriez-vous nous montrer " + sNome.toLowerCase() + " s'il vous plaît? Salutations!";
+    } else if (spec.lingua === 'ar') {
+      msgTesto = "DarIA e DarIO, potete farci vedere " + sNome.toLowerCase() + "? Vi seguiamo con grande piacere!";
+    } else {
+      msgTesto = "DarIA e DarIO, potete farci vedere subito " + sNome.toLowerCase() + "? Che splendida casa!";
+    }
+
+    var descF = (roomData && (roomData.testoDaLeggere || roomData.testo)) ? (roomData.testoDaLeggere || roomData.testo) : "";
+    descF = convertiMqInMetriQuadri(sanitizeBranding(descF));
+
+    var dariaRisposta = "Che meraviglia! Abbiamo un commento in diretta su " + spec.piattaforma + " da parte di " + spec.autore + "! Ci chiede proprio di vedere " + sNome.toUpperCase() + ": " + descF;
+    if (dariaRisposta.indexOf("Immobiliare Giancani") === -1) {
+      dariaRisposta += " — Immobiliare Giancani";
+    }
+
+    var darioRisposta = "Un caloroso saluto a " + spec.autore + " e a tutti i nostri amici collegati da tutta Europa! " + sNome.toUpperCase() + " è uno spazio magnifico con rifiniture curate nei minimi dettagli. Scriveteci pure nei commenti quale altra stanza desiderate visitare con Immobiliare Giancani!";
+
+    return {
+      commentoObj: {
+        piattaforma: spec.piattaforma,
+        autore: spec.autore,
+        messaggio: msgTesto,
+        stanza: sNome,
+        descrizioneF: descF,
+        dariaTxt: convertiMqInMetriQuadri(dariaRisposta),
+        darioTxt: convertiMqInMetriQuadri(darioRisposta)
+      }
+    };
+  }
+
+  return {
+    generaRichiestaSocialEuropea: generaRichiestaSocialEuropea
+  };
+})();
+
+
 /* =============== GESTIONE DIALOGHI SYNC DA FOGLIO 'Dialoghi_avat_tutti' =============== */
 window._dialoghiAvatTutti = [];
 window._dialoghiPointerMap = {};
@@ -1988,6 +2279,8 @@ function parlaConEdgeTTS(testo, voiceName, onFine) {
     if (onFine) onFine();
     return;
   }
+  // 🚫 FILTRO ANTI-EMOTICON PER VOCE SINTETICA AVATAR
+  testo = rimuoviEmoticonPerSintesiVocale(testo);
   // Ferma qualsiasi audio precedente per evitare sovrapposizioni e doppi echi
   stopActiveTTSAudio();
   window._isEdgeTTSInCorso = true;
@@ -2240,6 +2533,10 @@ function playDialogueStep(){
         alzaVolumeVideoFineIntro();
         return;
       }
+      if (window.SpotOrarioYouTubeManager && window.SpotOrarioYouTubeManager.isOraDiTrasmettereVideo()) {
+        window.SpotOrarioYouTubeManager.avviaVideoOrarioYouTube();
+        return;
+      }
       tout = setTimeout(function(){ cambiaStanza('next'); }, 3200);
     }
     _attesaFineVoce(60);
@@ -2327,10 +2624,12 @@ function playDialogueStep(){
     return;
   }
 
-  S.currentTimeline = generatePhoneticTimeline(it.txt, S.pace);
+  var testoAudioPulito = rimuoviEmoticonPerSintesiVocale(it.txt);
+  S.currentTimeline = generatePhoneticTimeline(testoAudioPulito, S.pace);
   S.timelineOffset = 0;
 
-  const u = new SpeechSynthesisUtterance(it.txt);
+  var testoAudioPulito = rimuoviEmoticonPerSintesiVocale(it.txt);
+  const u = new SpeechSynthesisUtterance(testoAudioPulito);
   u.lang = 'it-IT';
   if('speechSynthesis' in window) window.speechSynthesis.resume();
   
@@ -2631,7 +2930,8 @@ function gestisciCommentoLiveInOnda(cLive, roomData){
 
   var badgePlat = cLive.piattaforma === 'Facebook' ? '📘 FACEBOOK LIVE' :
                   cLive.piattaforma === 'Instagram' ? '📸 INSTAGRAM LIVE' :
-                  cLive.piattaforma === 'YouTube' ? '🔴 YOUTUBE LIVE' : '💬 WEB CHAT';
+                  cLive.piattaforma === 'YouTube' ? '🔴 YOUTUBE LIVE' :
+                  cLive.piattaforma === 'TikTok' ? '🎵 TIKTOK LIVE' : '💬 WEB CHAT';
 
   if (narrSpeaker) narrSpeaker.textContent = badgePlat + ' • ' + (cLive.autore || 'Spettatore');
   if (narrText) narrText.textContent = '"' + (cLive.messaggio || '') + '"';
@@ -3004,13 +3304,26 @@ function caricaDatiStanza(direction, isSyncPoll){
               // Dialogo attivo: non sovrascrivere le battute né interrompere lo speaker
               console.log('[AUDIO-SYNC] Dialogo in corso, mantengo la sequenza attuale senza interruzioni.');
             } else {
-              stopActiveTTSAudio();
-              if (syn) syn.cancel();
-              if (tout) { clearTimeout(tout); tout = null; }
-              S.on = true;
-              S.currentLines = generateEntertainingLines(data.stanza, data.testoDaLeggere || data.testo, data.prezzo, data.mq, data.battutaDario, data.interventoDario);
-              S.dialogueIdx = 0;
-              playDialogueStep();
+              // 🌍 INCREMENTO CONTATORE STANZE PER SIMULATORE SOCIAL EUROPEO (OGNI 3 STANZE)
+              if (typeof window._stanzePresentateCount !== 'number') window._stanzePresentateCount = 0;
+              window._stanzePresentateCount++;
+
+              var richiestaSimulata = null;
+              if (window._stanzePresentateCount % 3 === 0 && window.SimulatoreSocialEuropeoManager) {
+                richiestaSimulata = window.SimulatoreSocialEuropeoManager.generaRichiestaSocialEuropea(data.stanza, data);
+              }
+
+              if (richiestaSimulata && richiestaSimulata.commentoObj) {
+                gestisciCommentoLiveInOnda(richiestaSimulata.commentoObj, data);
+              } else {
+                stopActiveTTSAudio();
+                if (syn) syn.cancel();
+                if (tout) { clearTimeout(tout); tout = null; }
+                S.on = true;
+                S.currentLines = generateEntertainingLines(data.stanza, data.testoDaLeggere || data.testo, data.prezzo, data.mq, data.battutaDario, data.interventoDario);
+                S.dialogueIdx = 0;
+                playDialogueStep();
+              }
             }
           }
         }

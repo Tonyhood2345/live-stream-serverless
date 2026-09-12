@@ -3,14 +3,14 @@
 """
 ═══════════════════════════════════════════════════════════════════════════════
 IMMOBILIARE GIANCANI — GESTORE STORIE SOCIAL FACEBOOK (CLOUD & GITHUB ACTIONS)
-MODALITÀ LIVE (OGNI 10 MIN IN DIRETTA) & MODALITÀ OFFLINE (OGNI ORA VIDEO/POST)
+MODALITÀ LIVE (OGNI 30 MIN IN DIRETTA) & MODALITÀ OFFLINE (OGNI ORA VIDEO/POST)
 ═══════════════════════════════════════════════════════════════════════════════
 Funzionalità:
 1. Modalità LIVE (--mode live):
    - Si attiva ESCLUSIVAMENTE quando la diretta live streaming è in onda.
-   - Ogni 10 minuti genera e pubblica una video storia 1080x1920 con l'immobile attivo,
-     foto reale, watermark logo, frase motivazionale, musica allegra (124 BPM) e voce
-     dei conduttori (DarIA/DarIO) che invita a chattare in diretta.
+   - Ogni 30 minuti genera e pubblica una video storia 1080x1920 con l'immobile attivo,
+     foto reale, watermark logo, frase positiva flash nei primi 1.5s, musica allegra (124 BPM) e voce
+     dei conduttori (DarIA/DarIO) che incita gli utenti ad entrare subito a vedere la diretta.
    - Al primo avvio pubblica anche un post d'invito singolo sul feed di Antonio Giancani.
 
 2. Modalità OFFLINE (--mode offline):
@@ -349,12 +349,13 @@ def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True, 
 
     if is_live:
         followups = [
-            f"Sono {p_nome} e siamo in diretta streaming proprio adesso per mostrarvi questa straordinaria opportunità. {testo_f_clean} Entrate subito a trovarci e scriveteci in chat quale stanza volete visitare! Vi aspettiamo con Immobiliare Giancani!",
-            f"Da {p_nome} e da tutto il nostro team, siamo collegati dal vivo in questo istante con le migliori occasioni del mercato. {testo_f_clean} Raggiungeteci nella diretta streaming per farci tutte le vostre domande dal vivo! Vi aspettiamo con Immobiliare Giancani!",
-            f"Sono {p_nome} e abbiamo preparato per voi una sorpresa esclusiva in streaming! {testo_f_clean} Entrate subito nella nostra diretta per esplorare tutti gli ambienti insieme a noi! Vi aspettiamo con Immobiliare Giancani!",
-            f"Da {p_nome} un invito speciale: siamo in onda adesso in diretta streaming! {testo_f_clean} Scriveteci nei commenti quale stanza desiderate visitare e vi porteremo subito all'interno! Vi aspettiamo con Immobiliare Giancani!",
-            f"Sono {p_nome}: in questo momento siamo in onda dal vivo per farvi scoprire questa gemma immobiliare! {testo_f_clean} Entrate e commentate in diretta, vi aspettiamo con Immobiliare Giancani!",
-            f"Vi do il benvenuto da parte di {p_nome}: le porte delle nostre migliori residenze sono aperte adesso in streaming! {testo_f_clean} Collegatevi subito per interagire in tempo reale! Vi aspettiamo con Immobiliare Giancani!"
+            f"Sono {p_nome}: siamo collegati dal vivo in diretta streaming proprio in questo istante! {testo_f_clean} Entrate subito a guardare la diretta per scoprire tutti gli ambienti e chattare con noi in tempo reale! Vi aspettiamo con Immobiliare Giancani!",
+            f"Da {p_nome} e da tutto il nostro team, un invito imperdibile: siamo in onda adesso in diretta streaming! {testo_f_clean} Cliccate subito ed entrate nella diretta per farci tutte le vostre domande dal vivo! Vi aspettiamo con Immobiliare Giancani!",
+            f"La diretta streaming è accesa adesso! Sono {p_nome} e abbiamo preparato per voi una presentazione esclusiva. {testo_f_clean} Entrate subito a guardare la diretta per vedere ogni dettaglio prima di tutti! Vi aspettiamo con Immobiliare Giancani!",
+            f"Da {p_nome} un caloroso invito: siamo in onda dal vivo in diretta streaming! {testo_f_clean} Scriveteci nei commenti quale stanza desiderate visitare e vi porteremo subito all'interno! Entrate in diretta con Immobiliare Giancani!",
+            f"Sono {p_nome}: in questo momento siamo in onda dal vivo per farvi scoprire questa gemma immobiliare! {testo_f_clean} Entrate subito a guardare la nostra diretta streaming, vi aspettiamo con Immobiliare Giancani!",
+            f"Vi do il benvenuto da parte di {p_nome}: le porte delle nostre migliori residenze sono aperte adesso in streaming! {testo_f_clean} Collegatevi subito alla diretta per interagire con noi in tempo reale! Vi aspettiamo con Immobiliare Giancani!",
+            f"Se state cercando la vostra prossima casa, non perdetevi la diretta streaming attiva proprio ora con {p_nome}! {testo_f_clean} Entrate subito a vedere la diretta dal vivo per scoprire tutte le stanze e il prezzo! Vi aspettiamo con Immobiliare Giancani!"
         ]
     else:
         followups = [
@@ -528,8 +529,8 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None):
         over_draw.text((80, card_y + 165), righe_f[1], font=font_sub, fill=(226, 232, 240, 255))
 
     # Call to action
-    cta_txt = "👉 Entra in diretta per chattare con noi!" if is_live else "👉 Scrivici o chiama per fissare una visita!"
-    font_cta = get_font(22, bold=True)
+    cta_txt = "👉 ENTRA ORA IN DIRETTA A VEDERLA DAL VIVO!" if is_live else "👉 Scrivici o chiama per fissare una visita!"
+    font_cta = get_font(21, bold=True)
     over_draw.text((80, card_y + 225), cta_txt, font=font_cta, fill=(56, 189, 248, 255))
 
     # Chiusura con Personal Branding
@@ -738,7 +739,7 @@ def pubblica_short_youtube(video_path, item_data):
 def invia_notifica_telegram(titolo, mq, prezzo, risultati, is_live=True):
     """Invia notifica Telegram aziendale"""
     try:
-        tipo_str = "🔴 STORIA LIVE (OGNI 10 MIN)" if is_live else "🕒 STORIA ORARIA (OFFLINE)"
+        tipo_str = "🔴 STORIA LIVE (OGNI 30 MIN)" if is_live else "🕒 STORIA ORARIA (OFFLINE)"
         lines = [
             f"🎬 <b>{tipo_str} PUBBLICATA CON SUCCESSO!</b> ✨",
             f"🏠 <b>Immobile:</b> {titolo}",
@@ -766,7 +767,7 @@ def invia_notifica_telegram(titolo, mq, prezzo, risultati, is_live=True):
 def esegui_ciclo_live():
     """Esegue un ciclo di pubblicazione storia durante la diretta streaming"""
     print("\n" + "═" * 70)
-    print("🚀 CICLO STORIA LIVE FACEBOOK (OGNI 10 MINUTI)")
+    print("🚀 CICLO STORIA LIVE FACEBOOK (OGNI 30 MINUTI)")
     print("═" * 70)
 
     # Recupera immobile attivo dal backend
@@ -969,20 +970,20 @@ def esegui_ciclo_offline():
 def main():
     parser = argparse.ArgumentParser(description="Gestore Storie Facebook Immobiliare Giancani")
     parser.add_argument("--mode", choices=["live", "offline"], default="live", help="Modalità operativa: live (durante la diretta) o offline (ogni ora)")
-    parser.add_argument("--loop", action="store_true", help="Esegue in ciclo continuo (per la diretta live ogni 10 minuti)")
-    parser.add_argument("--interval", type=int, default=600, help="Intervallo in secondi per la modalità loop (default: 600s = 10 min)")
+    parser.add_argument("--loop", action="store_true", help="Esegue in ciclo continuo (per la diretta live ogni 30 minuti)")
+    parser.add_argument("--interval", type=int, default=1800, help="Intervallo in secondi per la modalità loop (default: 1800s = 30 min)")
     args = parser.parse_args()
 
     if args.mode == "live":
         if args.loop:
-            print(f"Avvio demone storie Facebook in diretta ogni {args.interval} secondi...")
+            print(f"Avvio demone storie Facebook in diretta ogni {args.interval} secondi ({args.interval // 60} minuti)...")
             time.sleep(30) # Breve attesa iniziale per stabilizzazione live
             while True:
                 try:
                     esegui_ciclo_live()
                 except Exception as eL:
                     print(f"Errore ciclo live: {eL}")
-                print(f"Prossima storia tra {args.interval} secondi (10 minuti)...")
+                print(f"Prossima storia tra {args.interval} secondi ({args.interval // 60} minuti)...")
                 time.sleep(args.interval)
         else:
             esegui_ciclo_live()

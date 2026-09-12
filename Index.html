@@ -620,7 +620,7 @@
       <!-- BOX SINISTRO: ANCHOR FISSO (DARIA - 100% PERMANENTE) -->
       <div class="anchor-slot-box left-anchor" id="box-sinistro-daria">
         <div class="anchor-unit" id="unit-daria">
-          <div id="daria-closeup-badge">✨ REGIA LIVE &bull; PRIMO PIANO DARIA</div>
+          <div id="daria-closeup-badge" class="avatar-closeup-badge">✨ REGIA LIVE &bull; PRIMO PIANO DARIA</div>
           <div class="anchor-frame" id="rig-daria">
             <div class="anchor-body" id="body-daria">
               <div class="torso-rig" id="torso-daria">
@@ -681,6 +681,7 @@
       <!-- BOX DESTRO: SLOT DINAMICO OSPITI (DEFAULT: DARIO, SWAP CON OSPITI IN FADE CROSS 300MS) -->
       <div class="anchor-slot-box right-anchor" id="box-destro-ospiti">
         <div class="anchor-unit" id="unit-dario">
+          <div id="dario-closeup-badge" class="avatar-closeup-badge">✨ REGIA LIVE &bull; PRIMO PIANO DARIO</div>
           <div class="anchor-frame" id="rig-dario">
             <div class="anchor-body" id="body-dario">
               <div class="torso-rig" id="torso-dario">
@@ -2269,16 +2270,17 @@ function playDialogueStep(){
     });
   }
 
-  // Sincronizzazione visiva speaking
+  // Sincronizzazione visiva speaking & Regia Primo Piano multi-avatar
   if (it.who === 'daria') {
     if (unitD) unitD.classList.add('speaking');
     if (unitO) unitO.classList.remove('speaking');
-    if (window.DariaCloseUpManager) {
-      window.DariaCloseUpManager.attivaSeArmato('daria', it.txt);
-    }
   } else {
     if (unitO) unitO.classList.add('speaking');
     if (unitD) unitD.classList.remove('speaking');
+  }
+  var mgrStep = window.AvatarCloseUpManager || window.DariaCloseUpManager;
+  if (mgrStep) {
+    mgrStep.attivaSeArmato(it.who, it.txt);
   }
 
   // Funzione unificata per programmare il prossimo turno senza doppi lanci
@@ -2287,8 +2289,9 @@ function playDialogueStep(){
     S._isDelayWaiting = true;
     if (unitD) unitD.classList.remove('speaking');
     if (unitO) unitO.classList.remove('speaking');
-    if (window.DariaCloseUpManager && window.DariaCloseUpManager.isAttivo()) {
-      window.DariaCloseUpManager.disattivaPrimoPiano();
+    var mgrEnd = window.AvatarCloseUpManager || window.DariaCloseUpManager;
+    if (mgrEnd && mgrEnd.isAttivo()) {
+      mgrEnd.disattivaPrimoPiano();
     }
     if (it.who === 'daria') S.daria.targetMouth = 0.0;
     else S.dario.targetMouth = 0.0;
@@ -2488,6 +2491,10 @@ function avviaProssimoDialogoCopione(idx) {
     if (unitO) unitO.classList.add('speaking');
     if (unitD) unitD.classList.remove('speaking');
   }
+  var mgrCopione = window.AvatarCloseUpManager || window.DariaCloseUpManager;
+  if (mgrCopione) {
+    mgrCopione.attivaSeArmato(whoId, txt);
+  }
 
   S.who = whoId;
   S.currentTimeline = generatePhoneticTimeline(txt, S.pace);
@@ -2532,6 +2539,11 @@ function avviaProssimoDialogoCopione(idx) {
     if (unitD) unitD.classList.remove('speaking');
     if (unitO) unitO.classList.remove('speaking');
 
+    var mgrCopioneEnd = window.AvatarCloseUpManager || window.DariaCloseUpManager;
+    if (mgrCopioneEnd && mgrCopioneEnd.isAttivo()) {
+      mgrCopioneEnd.disattivaPrimoPiano();
+    }
+
     var nextIdx = (idx + 1) % window._dialoghiAvatTutti.length;
     var nextItem = window._dialoghiAvatTutti[nextIdx];
     var nextWho = nextItem ? (nextItem.who || '').toLowerCase() : 'daria';
@@ -2552,6 +2564,11 @@ function avviaProssimoDialogoCopione(idx) {
     S.currentTimeline = null;
     if (unitD) unitD.classList.remove('speaking');
     if (unitO) unitO.classList.remove('speaking');
+
+    var mgrCopioneErr = window.AvatarCloseUpManager || window.DariaCloseUpManager;
+    if (mgrCopioneErr && mgrCopioneErr.isAttivo()) {
+      mgrCopioneErr.disattivaPrimoPiano();
+    }
 
     var nextIdx = (idx + 1) % window._dialoghiAvatTutti.length;
     if(S.on && window._modalitaCopioneAttiva){

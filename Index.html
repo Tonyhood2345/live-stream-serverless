@@ -1959,8 +1959,14 @@ window._isEdgeTTSInCorso = false;
 window._activeTTSAudio = null;
 
 function stopActiveTTSAudio() {
+  if (window._currentTTSController) {
+    try { window._currentTTSController.abort(); } catch(e){}
+    window._currentTTSController = null;
+  }
   if (window._activeTTSAudio) {
     try {
+      window._activeTTSAudio.onended = null;
+      window._activeTTSAudio.onerror = null;
       window._activeTTSAudio.pause();
       window._activeTTSAudio.src = "";
     } catch(e){}
@@ -1969,6 +1975,10 @@ function stopActiveTTSAudio() {
   window._isEdgeTTSInCorso = false;
   if (window.speechSynthesis) {
     try { window.speechSynthesis.cancel(); } catch(e){}
+  }
+  if (typeof S !== 'undefined') {
+    S._isStepPlaying = false;
+    S._isDelayWaiting = false;
   }
 }
 
@@ -1980,18 +1990,40 @@ function parlaConEdgeTTS(testo, voiceName, onFine) {
   // Ferma qualsiasi audio precedente per evitare sovrapposizioni e doppi echi
   stopActiveTTSAudio();
   window._isEdgeTTSInCorso = true;
+  if (typeof S !== 'undefined') S._isStepPlaying = true;
+
   var isTerminato = false;
+  var isAborted = false;
+  var globalWatchdog = null;
+  var activeAudio = null;
+
+  // Controller per abort immediato e pulito dall'esterno
+  window._currentTTSController = {
+    abort: function() {
+      isAborted = true;
+      isTerminato = true;
+      if (globalWatchdog) { clearTimeout(globalWatchdog); globalWatchdog = null; }
+      if (activeAudio) {
+        activeAudio.onended = null;
+        activeAudio.onerror = null;
+        try { activeAudio.pause(); activeAudio.src = ""; } catch(e){}
+        activeAudio = null;
+      }
+    }
+  };
 
   function terminaVoce() {
-    if (isTerminato) return;
+    if (isTerminato || isAborted) return;
     isTerminato = true;
+    if (globalWatchdog) { clearTimeout(globalWatchdog); globalWatchdog = null; }
     window._isEdgeTTSInCorso = false;
     window._activeTTSAudio = null;
+    window._currentTTSController = null;
     if (typeof S !== 'undefined') S._isStepPlaying = false;
     if (bgMusic && !bgMusic.paused) {
       sfumaVolumeMusica(0.12, 300);
     }
-    if (typeof onFine === 'function') {
+    if (!isAborted && typeof onFine === 'function') {
       onFine();
     }
   }
@@ -2003,16 +2035,20 @@ function parlaConEdgeTTS(testo, voiceName, onFine) {
 
   var vName = voiceName || 'it-IT-ElsaNeural';
 
-  // Watchdog globale di sicurezza
-  var durataStimata = Math.max(7000, Math.min(30000, testo.length * 160));
-  var globalWatchdog = setTimeout(function() {
-    console.warn('[AUDIO-TTS] Watchdog globale scattato:', testo.substring(0, 30));
-    terminaVoce();
+  // Watchdog globale di sicurezza dinamico (~15 char/s -> 65ms/char, buffer 250ms/char + 15s)
+  // Nessun limite rigido a 30s che taglia DarIA a metà frase!
+  var durataStimata = Math.max(15000, testo.length * 250 + 15000);
+  globalWatchdog = setTimeout(function() {
+    if (!isTerminato && !isAborted) {
+      console.warn('[AUDIO-TTS] Watchdog globale scattato:', testo.substring(0, 30));
+      terminaVoce();
+    }
   }, durataStimata);
 
   // --- TIER 1: Microservizio Locale Edge TTS su Runner (Porta 5050) con cadenza rilassata (-6%) ---
   var localUrl = 'http://127.0.0.1:5050/tts?voice=' + encodeURIComponent(vName) + '&rate=-6%25&text=' + encodeURIComponent(testo);
   var audioTier1 = new Audio();
+  activeAudio = audioTier1;
   window._activeTTSAudio = audioTier1;
   audioTier1.src = localUrl;
   audioTier1.preload = 'auto';
@@ -2020,14 +2056,16 @@ function parlaConEdgeTTS(testo, voiceName, onFine) {
   var audioSucceeded = false;
 
   audioTier1.onended = function() {
+    if (isAborted) return;
     audioSucceeded = true;
-    clearTimeout(globalWatchdog);
     terminaVoce();
   };
 
   audioTier1.onerror = function() {
-    if (audioSucceeded || isTerminato) return;
+    if (audioSucceeded || isTerminato || isAborted) return;
     console.log('[AUDIO-TTS] Server locale 5050 non attivo, passo a Tier 2 (Google TTS)...');
+    audioTier1.onended = null;
+    audioTier1.onerror = null;
     try { audioTier1.pause(); audioTier1.src = ""; } catch(e){}
     tentaTier2GoogleTranslate();
   };
@@ -2035,9 +2073,11 @@ function parlaConEdgeTTS(testo, voiceName, onFine) {
   var playProm = audioTier1.play();
   if (playProm !== undefined) {
     playProm.catch(function(err) {
-      if (audioSucceeded || isTerminato) return;
+      if (audioSucceeded || isTerminato || isAborted) return;
       if (err && err.name === 'AbortError') return;
       console.log('[AUDIO-TTS] Autoplay Tier 1 interrotto o non riuscito, passo a Tier 2...');
+      audioTier1.onended = null;
+      audioTier1.onerror = null;
       try { audioTier1.pause(); audioTier1.src = ""; } catch(e){}
       tentaTier2GoogleTranslate();
     });
@@ -2045,17 +2085,16 @@ function parlaConEdgeTTS(testo, voiceName, onFine) {
 
   // --- TIER 2: Google Translate TTS Fallback ---
   function tentaTier2GoogleTranslate() {
-    if (audioSucceeded || isTerminato) return;
+    if (audioSucceeded || isTerminato || isAborted) return;
     try {
       var clean = testo.replace(/["'<>]/g, ' ').trim();
       var frasi = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [clean];
       var idx = 0;
 
       function riproduciProssimoChunk() {
-        if (isTerminato) return;
+        if (isTerminato || isAborted) return;
         if (idx >= frasi.length) {
           audioSucceeded = true;
-          clearTimeout(globalWatchdog);
           terminaVoce();
           return;
         }
@@ -2068,16 +2107,28 @@ function parlaConEdgeTTS(testo, voiceName, onFine) {
         if (chunk.length > 180) chunk = chunk.substring(0, 180);
         var gUrl = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=it&q=' + encodeURIComponent(chunk);
         var aG = new Audio(gUrl);
+        activeAudio = aG;
         window._activeTTSAudio = aG;
         aG.onended = function() {
+          if (isTerminato || isAborted) return;
           setTimeout(function() {
-            if (!isTerminato) riproduciProssimoChunk();
+            if (!isTerminato && !isAborted) riproduciProssimoChunk();
           }, 250);
         };
-        aG.onerror = function() { tentaTier3WebSpeech(); };
+        aG.onerror = function() {
+          if (isTerminato || isAborted) return;
+          aG.onended = null;
+          aG.onerror = null;
+          tentaTier3WebSpeech();
+        };
         var pG = aG.play();
         if (pG !== undefined) {
-          pG.catch(function() { tentaTier3WebSpeech(); });
+          pG.catch(function() {
+            if (isTerminato || isAborted) return;
+            aG.onended = null;
+            aG.onerror = null;
+            tentaTier3WebSpeech();
+          });
         }
       }
       riproduciProssimoChunk();
@@ -2088,7 +2139,7 @@ function parlaConEdgeTTS(testo, voiceName, onFine) {
 
   // --- TIER 3: WebSpeech API Fallback ---
   function tentaTier3WebSpeech() {
-    if (audioSucceeded || isTerminato) return;
+    if (audioSucceeded || isTerminato || isAborted) return;
     try {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.resume();
@@ -2096,18 +2147,15 @@ function parlaConEdgeTTS(testo, voiceName, onFine) {
         u.lang = 'it-IT';
         u.rate = 0.94;
         u.onend = function() {
-          clearTimeout(globalWatchdog);
           terminaVoce();
         };
         u.onerror = function() {
-          clearTimeout(globalWatchdog);
           terminaVoce();
         };
         window.speechSynthesis.speak(u);
         return;
       }
     } catch(e){}
-    clearTimeout(globalWatchdog);
     terminaVoce();
   }
 }
@@ -2157,23 +2205,28 @@ function alzaVolumeVideoFineIntro() {
 
 function playDialogueStep(){
   if(!S.on) return;
-  // 🔒 GUARD ANTI-SOVRAPPOSIZIONE VOCALE: impedisce duplicazioni e doppi audio concorrenti
-  if(S._isStepPlaying){
-    console.warn('[AUDIO] Step vocale già in esecuzione, impedita chiamata concorrente duplicata.');
+  if (tout) { clearTimeout(tout); tout = null; }
+  S._isDelayWaiting = false;
+
+  // 🔒 GUARD ANTI-SOVRAPPOSIZIONE VOCALE: impedisce categoricamente chiamate concorrenti
+  if(S._isStepPlaying || window._isEdgeTTSInCorso){
+    console.warn('[AUDIO] Step vocale o sintesi già in esecuzione, impedita sovrapposizione.');
     return;
   }
   S._isStepPlaying = true;
 
   if(S.dialogueIdx >= S.currentLines.length){
     S._isStepPlaying = false;
+    S._isDelayWaiting = false;
     // 🔒 GUARD: aspetta che la sintesi vocale abbia completato prima di cambiare stanza
     function _attesaFineVoce(tentativi){
       if(!S.on) return;
-      if((syn && syn.speaking) || window._isEdgeTTSInCorso){
+      if((syn && syn.speaking) || window._isEdgeTTSInCorso || S._isStepPlaying){
         if(tentativi > 0){
           tout = setTimeout(function(){ _attesaFineVoce(tentativi - 1); }, 300);
         } else {
           if(syn) syn.cancel();
+          stopActiveTTSAudio();
           if (window._isCaroselloVideoAttivo) {
             alzaVolumeVideoFineIntro();
             return;
@@ -2228,6 +2281,35 @@ function playDialogueStep(){
     if (unitD) unitD.classList.remove('speaking');
   }
 
+  // Funzione unificata per programmare il prossimo turno senza doppi lanci
+  function programmaProssimoStep() {
+    S._isStepPlaying = false;
+    S._isDelayWaiting = true;
+    if (unitD) unitD.classList.remove('speaking');
+    if (unitO) unitO.classList.remove('speaking');
+    if (window.DariaCloseUpManager && window.DariaCloseUpManager.isAttivo()) {
+      window.DariaCloseUpManager.disattivaPrimoPiano();
+    }
+    if (it.who === 'daria') S.daria.targetMouth = 0.0;
+    else S.dario.targetMouth = 0.0;
+
+    // Se era un ospite secondario, e il prossimo speaker non è un altro ospite, ripristina Dario a destra
+    var nextStep = S.currentLines[S.dialogueIdx + 1];
+    var nextIsGuest = nextStep && nextStep.who && !['daria', 'dario'].includes(nextStep.who.toLowerCase());
+    if (window.AvatarStudioEngine && it.who !== 'daria' && it.who !== 'dario' && !nextIsGuest) {
+      window.AvatarStudioEngine.ripristinaDarioDestro();
+    }
+
+    S.dialogueIdx++;
+    if (tout) { clearTimeout(tout); tout = null; }
+    if (S.on) {
+      tout = setTimeout(function() {
+        S._isDelayWaiting = false;
+        playDialogueStep();
+      }, S.delay);
+    }
+  }
+
   // Se non ci sono voci WebSpeech italiane o siamo in headless Linux, usa direttamente Edge TTS broadcast!
   var isVirtualOrHeadless = navigator.webdriver || 
     /HeadlessChrome|Linux|X11/i.test(navigator.userAgent) || 
@@ -2237,18 +2319,7 @@ function playDialogueStep(){
     var vName = (it.who === 'daria') ? 'it-IT-ElsaNeural' : 'it-IT-DiegoNeural';
     if (charObj && charObj.voce && charObj.voce.azure) vName = charObj.voce.azure;
     parlaConEdgeTTS(it.txt, vName, function() {
-      S._isStepPlaying = false;
-      if (unitD) unitD.classList.remove('speaking');
-      if (unitO) unitO.classList.remove('speaking');
-      if (window.DariaCloseUpManager && window.DariaCloseUpManager.isAttivo()) {
-        window.DariaCloseUpManager.disattivaPrimoPiano();
-      }
-      if (it.who === 'daria') S.daria.targetMouth = 0.0;
-      else S.dario.targetMouth = 0.0;
-      S.dialogueIdx++;
-      if (S.on) {
-        tout = setTimeout(playDialogueStep, S.delay);
-      }
+      programmaProssimoStep();
     });
     return;
   }
@@ -2295,68 +2366,38 @@ function playDialogueStep(){
     }
   };
 
+  var speechWatchdog = null;
+
   u.onend = function(){
-    S._isStepPlaying = false;
-    if(it.who === 'daria') S.daria.targetMouth = 0.0;
-    else S.dario.targetMouth = 0.0;
+    if (speechWatchdog) { clearTimeout(speechWatchdog); speechWatchdog = null; }
     S.currentTimeline = null;
-
-    if (unitD) unitD.classList.remove('speaking');
-    if (unitO) unitO.classList.remove('speaking');
-
-    if (window.DariaCloseUpManager && window.DariaCloseUpManager.isAttivo()) {
-      window.DariaCloseUpManager.disattivaPrimoPiano();
-    }
-
-    // Regola 1 & 4: Se era un ospite secondario, e il prossimo speaker non è un altro ospite, ripristina Dario a destra con dissolvenza di 300ms!
-    var nextStep = S.currentLines[S.dialogueIdx + 1];
-    var nextIsGuest = nextStep && nextStep.who && !['daria', 'dario'].includes(nextStep.who.toLowerCase());
-    if (window.AvatarStudioEngine && it.who !== 'daria' && it.who !== 'dario' && !nextIsGuest) {
-      window.AvatarStudioEngine.ripristinaDarioDestro();
-    }
-
-    S.dialogueIdx++;
-    if(S.on){
-      tout = setTimeout(playDialogueStep, S.delay);
-    }
+    programmaProssimoStep();
   };
 
-  u.onerror = function(){
-    S._isStepPlaying = false;
+  u.onerror = function(evt){
+    if (speechWatchdog) { clearTimeout(speechWatchdog); speechWatchdog = null; }
     S.currentTimeline = null;
+
+    // Se l'errore è dovuto a cancellazione intenzionale o interruzione, non ripetere mai il parlato!
+    if (evt && (evt.error === 'interrupted' || evt.error === 'canceled')) {
+      S._isStepPlaying = false;
+      S._isDelayWaiting = false;
+      return;
+    }
+
+    // Fallback sicuro su Edge TTS solo per veri guasti al sintetizzatore del browser
     var vName = (it.who === 'daria') ? 'it-IT-ElsaNeural' : 'it-IT-DiegoNeural';
     if (charObj && charObj.voce && charObj.voce.azure) vName = charObj.voce.azure;
     parlaConEdgeTTS(it.txt, vName, function() {
-      S._isStepPlaying = false;
-      if (unitD) unitD.classList.remove('speaking');
-      if (unitO) unitO.classList.remove('speaking');
-      if (window.DariaCloseUpManager && window.DariaCloseUpManager.isAttivo()) {
-        window.DariaCloseUpManager.disattivaPrimoPiano();
-      }
-      if (it.who === 'daria') S.daria.targetMouth = 0.0;
-      else S.dario.targetMouth = 0.0;
-      S.dialogueIdx++;
-      if (S.on) {
-        tout = setTimeout(playDialogueStep, S.delay);
-      }
+      programmaProssimoStep();
     });
   };
 
-  var speechWatchdog = setTimeout(function() {
-    console.warn('[DARIA-LIVE] ⚠️ Watchdog WebSpeech: passaggio forzato al prossimo dialogo');
+  // Watchdog WebSpeech generoso per evitare passaggi forzati prima del tempo
+  speechWatchdog = setTimeout(function() {
+    console.warn('[DARIA-LIVE] ⚠️ Watchdog WebSpeech scattato: chiusura step');
     if (u.onend) u.onend();
-  }, Math.max(12000, it.txt.length * 120));
-
-  var origOnEnd = u.onend;
-  u.onend = function() {
-    clearTimeout(speechWatchdog);
-    if (origOnEnd) origOnEnd();
-  };
-  var origOnError = u.onerror;
-  u.onerror = function() {
-    clearTimeout(speechWatchdog);
-    if (origOnError) origOnError();
-  };
+  }, Math.max(15000, it.txt.length * 250 + 15000));
 
   syn.speak(u);
 }
@@ -2549,9 +2590,13 @@ function toggleTour(){
 }
 
 function cambiaStanza(dir){
+  stopActiveTTSAudio();
   if(syn) syn.cancel();
   if(tout){ clearTimeout(tout); tout = null; }
+  S._isStepPlaying = false;
+  S._isDelayWaiting = false;
   S.dialogueIdx = 0;
+  S.currentLines = [];
   caricaDatiStanza(dir);
 }
 
@@ -2741,6 +2786,9 @@ function caricaDatiStanza(direction, isSyncPoll){
 
         var dialogoInCorso = S.on && (
           (syn && syn.speaking) ||
+          window._isEdgeTTSInCorso ||
+          S._isStepPlaying ||
+          S._isDelayWaiting ||
           (S.currentLines && S.currentLines.length > 0 && S.dialogueIdx < S.currentLines.length)
         );
 
@@ -2935,17 +2983,16 @@ function caricaDatiStanza(direction, isSyncPoll){
           if (data.commentoLiveInOnda) {
             gestisciCommentoLiveInOnda(data.commentoLiveInOnda, data);
           } else {
-            S.on = true;
-            S.currentLines = generateEntertainingLines(data.stanza, data.testoDaLeggere || data.testo, data.prezzo, data.mq, data.battutaDario, data.interventoDario);
-            S.dialogueIdx = 0;
-
-            if ((syn && syn.speaking) || window._isEdgeTTSInCorso || S._isStepPlaying) {
-              // lascia finire la battuta
+            if (dialogoInCorso) {
+              // Dialogo attivo: non sovrascrivere le battute né interrompere lo speaker
+              console.log('[AUDIO-SYNC] Dialogo in corso, mantengo la sequenza attuale senza interruzioni.');
             } else {
               stopActiveTTSAudio();
-              S._isStepPlaying = false;
               if (syn) syn.cancel();
               if (tout) { clearTimeout(tout); tout = null; }
+              S.on = true;
+              S.currentLines = generateEntertainingLines(data.stanza, data.testoDaLeggere || data.testo, data.prezzo, data.mq, data.battutaDario, data.interventoDario);
+              S.dialogueIdx = 0;
               playDialogueStep();
             }
           }
@@ -3134,11 +3181,11 @@ function autoResumeAudio(){
   }
   const btn = document.getElementById('btn-start-auto-live');
   if (btn) btn.innerHTML = '🔊';
-  // 🔒 GUARD ANTI-DOPPIO PARLATO: non lanciare una seconda voce se una battuta è già in corso!
-  if (S._isStepPlaying || window._isEdgeTTSInCorso || (syn && syn.speaking)) {
+  // 🔒 GUARD ANTI-DOPPIO PARLATO: non lanciare una seconda voce se una battuta è già in corso o programmata!
+  if (S._isStepPlaying || S._isDelayWaiting || window._isEdgeTTSInCorso || (syn && syn.speaking)) {
     return;
   }
-  if (S.on && S.currentLines && S.currentLines.length > 0) {
+  if (S.on && S.currentLines && S.currentLines.length > 0 && S.dialogueIdx < S.currentLines.length) {
     playDialogueStep();
   }
 }

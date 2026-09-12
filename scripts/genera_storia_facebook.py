@@ -920,8 +920,8 @@ def esegui_ciclo_pubblicazione(is_first_launch=False):
 
 def main():
     parser = argparse.ArgumentParser(description="Gestore Storie Facebook Live Streaming Immobiliare Giancani")
-    parser.add_argument("--loop", action="store_true", help="Avvia il ciclo continuo ogni 10 minuti durante la diretta")
-    parser.add_argument("--interval", type=int, default=600, help="Intervallo in secondi tra le storie (default: 600s = 10 min)")
+    parser.add_argument("--loop", action="store_true", help="Avvia il ciclo continuo ogni 30 minuti durante la diretta")
+    parser.add_argument("--interval", type=int, default=1800, help="Intervallo in secondi tra le storie (default: 1800s = 30 min)")
     parser.add_argument("--first-launch", action="store_true", help="Segnala il primo avvio per il post d'invito singolo su Antonio Giancani")
     parser.add_argument("--reset-antonio-flag", action="store_true", help="Resetta il flag del post feed per consentire un nuovo invito all'avvio")
     args = parser.parse_args()
@@ -932,7 +932,7 @@ def main():
         print("[RESET] Flag post invito Antonio Giancani resettato.")
 
     if args.loop:
-        print(f"Avvio ciclo continuo storie Facebook ogni {args.interval} secondi (10 minuti)...")
+        print(f"Avvio ciclo continuo storie Facebook ogni {args.interval} secondi ({args.interval // 60} minuti)...")
         is_first = True
         while True:
             try:
@@ -940,7 +940,7 @@ def main():
                 is_first = False
             except Exception as err:
                 print(f"Errore durante l'iterazione storie: {err}")
-            print(f"Prossima storia tra {args.interval} secondi (10 minuti)...")
+            print(f"Prossima storia tra {args.interval} secondi ({args.interval // 60} minuti)...")
             time.sleep(args.interval)
     else:
         esegui_ciclo_pubblicazione(is_first_launch=args.first_launch)

@@ -192,11 +192,40 @@ jobs:
           SCALE_FACTOR="${{ github.event.inputs.scale_factor }}"
           if [ -z "$SCALE_FACTOR" ]; then SCALE_FACTOR="1.5"; fi
           echo "Avvio Chrome con Scala $SCALE_FACTOR e Anti-Banner su: ${{ github.event.inputs.video_url }}"
-          google-chrome             --kiosk             --window-position=0,0             --window-size=1920,1080             --force-device-scale-factor=$SCALE_FACTOR             --load-extension=/tmp/hide_banner_ext             --disable-extensions-except=/tmp/hide_banner_ext             --remote-debugging-port=9222             --enable-webgl             --ignore-gpu-blocklist             --use-gl=swiftshader             --disable-web-security             --allow-running-insecure-content             --no-sandbox             --no-first-run             --no-default-browser-check             --disable-first-run-ui             --disable-infobars             --disable-session-crashed-bubble             --disable-restore-session-state             --disable-notifications             --disable-features=AudioServiceOutOfProcess             --enable-features=UsePulseAudio             --autoplay-policy=no-user-gesture-required             --alsa-output-device=pulse             --user-data-dir=/tmp/chrome_clean_profile             "${{ github.event.inputs.video_url }}" &
+          google-chrome \
+            --kiosk \
+            --window-position=0,0 \
+            --window-size=1920,1080 \
+            --force-device-scale-factor=$SCALE_FACTOR \
+            --enable-extensions \
+            --load-extension=/tmp/hide_banner_ext \
+            --disable-extensions-except=/tmp/hide_banner_ext \
+            --remote-debugging-port=9222 \
+            --enable-webgl \
+            --ignore-gpu-blocklist \
+            --use-gl=swiftshader \
+            --disable-web-security \
+            --allow-running-insecure-content \
+            --no-sandbox \
+            --no-first-run \
+            --no-default-browser-check \
+            --disable-first-run-ui \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --disable-restore-session-state \
+            --disable-notifications \
+            --disable-features=AudioServiceOutOfProcess \
+            --enable-features=UsePulseAudio \
+            --autoplay-policy=no-user-gesture-required \
+            --alsa-output-device=pulse \
+            --user-data-dir=/tmp/chrome_clean_profile \
+            "${{ github.event.inputs.video_url }}" &
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
           echo "Verifica sink inputs PulseAudio (Chrome Audio Output):"
           pactl list sink-inputs || true
+          echo "Rimozione categorica banner Google Apps Script via Chrome CDP..."
+          python3 scripts/rimuovi_banner_apps_script.py || true
           # 6. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
           # --- 0. AUTOMAZIONE CLOUD PER FACEBOOK, INSTAGRAM & TIKTOK ---
           if [ -z "${{ github.event.inputs.fb_key }}" ] || [ -z "${{ github.event.inputs.ig_key }}" ] || [ -z "${{ github.event.inputs.tk_key }}" ] || [ "${{ github.event.inputs.fb_key }}" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then

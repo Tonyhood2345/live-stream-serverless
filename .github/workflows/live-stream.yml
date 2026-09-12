@@ -319,9 +319,9 @@ jobs:
             BITRATE="4500k"; MINRATE="4000k"; MAXRATE="5000k"; BUFSIZE="9000k"; VF="scale=1920:1080:flags=lanczos"
           fi
           echo "🚀 Configurazione FFmpeg applicata: Qualità=$QUALITY, Bitrate=$BITRATE, Filtro=$VF"
-          # --- 7. BACKGROUND STORIES DAEMON (OGNI 10 MINUTI ED ESCLUSIVAMENTE IN LIVE) ---
-          echo "📱 Avvio demone Storie Facebook in diretta ogni 10 minuti..."
-          python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 600 &
+          # --- 7. BACKGROUND STORIES DAEMON (OGNI 30 MINUTI ED ESCLUSIVAMENTE IN LIVE) ---
+          echo "📱 Avvio demone Storie Facebook in diretta ogni 30 minuti..."
+          python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 1800 &
           echo "🎥 Avvio encoding FFmpeg CBR $BITRATE ($QUALITY) con TEE Muxer e Timer di $DUR_HOURS ore..."
           timeout --kill-after=30s "${DUR_SECS}s" ffmpeg -thread_queue_size 2048 \
             -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \

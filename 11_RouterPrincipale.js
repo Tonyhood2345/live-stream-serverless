@@ -55,6 +55,7 @@ function doGet(e) {
     }
 
     if (action === 'debug_social_keys') {
+      var ss = getSpreadsheetSicuro();
       var sheet = ss ? ss.getSheetByName("Impostazioni_Social") : null;
       var info = { hasSheet: !!sheet, keysFound: [] };
       if (sheet) {
@@ -67,6 +68,11 @@ function doGet(e) {
         }
       }
       return ContentService.createTextOutput(JSON.stringify(info, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'get_tiktok_status') {
+      var resTkSt = (typeof getTikTokLiveStatus === 'function') ? getTikTokLiveStatus() : { success: false, error: 'Funzione non trovata' };
+      return ContentService.createTextOutput(JSON.stringify(resTkSt, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === 'debug_dialoghi_sheet') {

@@ -259,16 +259,32 @@ def estrai_tiktok_live(page) -> tuple:
     """
     Accede a TikTok Live Producer / Live Center e recupera la Stream Key.
     """
-    print("\n🎵 [TIKTOK] Connessione a TikTok LIVE Producer...")
+    print("\n🎵 [TIKTOK] Connessione a TikTok LIVE Producer / Live Center...")
     try:
-        page.goto("https://www.tiktok.com/live/producer", wait_until="networkidle", timeout=35000)
-        time.sleep(3)
+        # 1. Se è configurata una chiave manuale o di sessione nell'ambiente, usala subito
+        tk_env_key = os.environ.get("TK_KEY", "").strip()
+        if tk_env_key:
+            full_dest = tk_env_key if tk_env_key.startswith("rtmp") else f"rtmp://live-push.tiktok-cdns.com/live/{tk_env_key}"
+            print(f"✅ [TIKTOK] Chiave configurata da ambiente rilevata: {tk_env_key[:10]}... — Immobiliare Giancani")
+            return "rtmp://live-push.tiktok-cdns.com/live/", tk_env_key, full_dest
+
+        # 2. Prova apertura rapida (domcontentloaded per evitare timeout infiniti)
+        try:
+            page.goto("https://www.tiktok.com/live/producer", wait_until="domcontentloaded", timeout=12000)
+            time.sleep(2)
+        except Exception as e_nav:
+            print(f"ℹ️ Navigazione Live Producer fallita ({e_nav}), provo Live Center...")
+            try:
+                page.goto("https://livecenter.tiktok.com/", wait_until="domcontentloaded", timeout=12000)
+                time.sleep(2)
+            except Exception:
+                pass
 
         if "login" in page.url:
             print("⚠️ TikTok richiede il login! Completa l'accesso nella finestra...")
-            page.wait_for_url(lambda u: "live" in u and "login" not in u, timeout=90000)
+            page.wait_for_url(lambda u: "live" in u and "login" not in u, timeout=20000)
             print("✅ Login TikTok rilevato!")
-            time.sleep(3)
+            time.sleep(2)
 
         stream_url = ""
         stream_key = ""
@@ -293,10 +309,10 @@ def estrai_tiktok_live(page) -> tuple:
 
         if stream_key:
             full_dest = stream_key if stream_key.startswith("rtmp") else (stream_url + stream_key)
-            print(f"✅ [TIKTOK] Chiave RTMP catturata: {stream_key[:10]}...")
+            print(f"✅ [TIKTOK] Chiave RTMP catturata: {stream_key[:10]}... — Immobiliare Giancani")
             return stream_url, stream_key, full_dest
         else:
-            print("ℹ️ [TIKTOK] Nessuna chiave trovata (verifica se l'account ha accesso a LIVE Producer).")
+            print("ℹ️ [TIKTOK] Nessuna chiave trovata via web (l'account richiede TikTok LIVE Studio o inserimento chiave diretta).")
             return "", "", ""
 
     except Exception as e:

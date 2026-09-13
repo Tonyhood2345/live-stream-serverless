@@ -492,6 +492,24 @@
       0% { transform: scale(1); box-shadow: 0 4px 16px rgba(201, 163, 94, 0.45); }
       100% { transform: scale(1.025); box-shadow: 0 7px 25px rgba(201, 163, 94, 0.8), 0 0 18px rgba(245, 212, 133, 0.85); }
     }
+  
+    /* === POSIZIONAMENTO GRAFICO SET AVATAR: A SINISTRA, AL CENTRO, A DESTRA === */
+    .bottom-right-studio.pos-sinistra, #bottom-right-studio.pos-sinistra {
+      left: 20px !important;
+      right: auto !important;
+      transform: none !important;
+    }
+    .bottom-right-studio.pos-centro, #bottom-right-studio.pos-centro {
+      left: 50% !important;
+      right: auto !important;
+      transform: translateX(-50%) !important;
+    }
+    .bottom-right-studio.pos-destra, #bottom-right-studio.pos-destra {
+      left: auto !important;
+      right: 20px !important;
+      transform: none !important;
+    }
+
   </style>
 </head>
 <body>
@@ -1656,7 +1674,7 @@ function rimuoviEmoticonPerSintesiVocale(txt) {
    ═══════════════════════════════════════════════════════════════════════ */
 window.SpotOrarioYouTubeManager = (function() {
   var _ultimoSpotOrario = Date.now();
-  var _intervalloMs = 3600 * 1000; // 60 minuti
+  var _intervalloMs = 15 * 60 * 1000; // 15 minuti (cadenza ogni 15 minuti richiesta)
   var _spotInCorso = false;
   var _richiesto = false;
   var _timerDurata = null;
@@ -1685,7 +1703,7 @@ window.SpotOrarioYouTubeManager = (function() {
       var durataSec = Math.max(videoData.durataSec || 75, 45);
 
       // 1. Breve intro vocale di annuncio da parte di DarIA
-      var introTxt = "Cari amici di Immobiliare Giancani, è il momento del nostro appuntamento video orario! Vi lasciamo per qualche minuto a un meraviglioso filmato dal nostro canale YouTube ufficiale. Rimanete sintonizzati, Dario ed io torniamo subito dopo per continuare il nostro tour esclusivo! Buona visione!";
+      var introTxt = "Cari amici di Immobiliare Giancani, è il momento del nostro appuntamento video speciale ogni 15 minuti! Vi lasciamo per qualche minuto a un meraviglioso filmato dal nostro canale YouTube ufficiale. Rimanete sintonizzati, Dario ed io torniamo subito dopo per continuare il nostro tour esclusivo! Buona visione!";
       introTxt = convertiMqInMetriQuadri(introTxt);
 
       stopActiveTTSAudio();
@@ -1839,40 +1857,62 @@ window.forzaSpotOrarioYouTube = function() {
    Precedenza assoluta ad eventuali commenti reali dal web
    ═══════════════════════════════════════════════════════════════════════ */
 window.SimulatoreSocialEuropeoManager = (function() {
-  var _poolSpettatori = [
-    // Italiani
+  // 🇮🇹 65% NOMI ITALIANI
+  var _poolItaliani = [
     { autore: "Matteo da Milano", citta: "Milano", piattaforma: "YouTube", lingua: "it" },
     { autore: "Giulia da Roma", citta: "Roma", piattaforma: "Instagram", lingua: "it" },
     { autore: "Alessandro da Bologna", citta: "Bologna", piattaforma: "TikTok", lingua: "it" },
     { autore: "Chiara da Torino", citta: "Torino", piattaforma: "Instagram", lingua: "it" },
     { autore: "Salvatore da Palermo", citta: "Palermo", piattaforma: "YouTube", lingua: "it" },
     { autore: "Elena da Firenze", citta: "Firenze", piattaforma: "TikTok", lingua: "it" },
-    // Inglesi
+    { autore: "Marco da Favara e Agrigento", citta: "Agrigento", piattaforma: "YouTube", lingua: "it" },
+    { autore: "Francesca da Napoli", citta: "Napoli", piattaforma: "Instagram", lingua: "it" },
+    { autore: "Davide da Catania", citta: "Catania", piattaforma: "TikTok", lingua: "it" },
+    { autore: "Valentina da Verona", citta: "Verona", piattaforma: "YouTube", lingua: "it" }
+  ];
+
+  // 🇪🇺 30% NOMI EUROPEI
+  var _poolEuropei = [
     { autore: "Oliver from London", citta: "Londra", piattaforma: "YouTube", lingua: "en" },
     { autore: "Emily from Manchester", citta: "Manchester", piattaforma: "Instagram", lingua: "en" },
     { autore: "James from Dublin", citta: "Dublino", piattaforma: "TikTok", lingua: "en" },
     { autore: "Charlotte from Edinburgh", citta: "Edimburgo", piattaforma: "YouTube", lingua: "en" },
-    { autore: "George from Bristol", citta: "Bristol", piattaforma: "Instagram", lingua: "en" },
-    // Francesi
     { autore: "Jean-Luc da Parigi", citta: "Parigi", piattaforma: "YouTube", lingua: "fr" },
     { autore: "Camille da Lione", citta: "Lione", piattaforma: "Instagram", lingua: "fr" },
     { autore: "Antoine da Marsiglia", citta: "Marsiglia", piattaforma: "TikTok", lingua: "fr" },
     { autore: "Sophie da Nizza", citta: "Nizza", piattaforma: "Instagram", lingua: "fr" },
-    { autore: "Laurent da Bordeaux", citta: "Bordeaux", piattaforma: "YouTube", lingua: "fr" },
-    // Arabi (comunità europea / internazionale)
-    { autore: "Karim da Bruxelles", citta: "Bruxelles", piattaforma: "TikTok", lingua: "ar" },
-    { autore: "Nour da Londra", citta: "Londra", piattaforma: "Instagram", lingua: "ar" },
-    { autore: "Omar da Berlino", citta: "Berlino", piattaforma: "YouTube", lingua: "ar" },
-    { autore: "Yasmin da Parigi", citta: "Parigi", piattaforma: "Instagram", lingua: "ar" },
-    { autore: "Tariq da Amsterdam", citta: "Amsterdam", piattaforma: "TikTok", lingua: "ar" },
-    { autore: "Farah da Ginevra", citta: "Ginevra", piattaforma: "YouTube", lingua: "ar" }
+    { autore: "Lukas da Berlino", citta: "Berlino", piattaforma: "YouTube", lingua: "de" },
+    { autore: "Carlos da Madrid", citta: "Madrid", piattaforma: "TikTok", lingua: "es" },
+    { autore: "Liam da Bruxelles", citta: "Bruxelles", piattaforma: "YouTube", lingua: "en" }
   ];
 
-  var _simIdx = 0;
+  // 🌍 5% NOMI ARABI E ASIATICI
+  var _poolArabiAsiatici = [
+    { autore: "Karim da Bruxelles", citta: "Bruxelles", piattaforma: "TikTok", lingua: "ar" },
+    { autore: "Nour da Londra", citta: "Londra", piattaforma: "Instagram", lingua: "ar" },
+    { autore: "Yasmin da Parigi", citta: "Parigi", piattaforma: "Instagram", lingua: "ar" },
+    { autore: "Tariq da Amsterdam", citta: "Amsterdam", piattaforma: "TikTok", lingua: "ar" },
+    { autore: "Mei da Milano", citta: "Milano", piattaforma: "Instagram", lingua: "zh" },
+    { autore: "Kenji da Roma", citta: "Roma", piattaforma: "YouTube", lingua: "ja" },
+    { autore: "Priya da Londra", citta: "Londra", piattaforma: "TikTok", lingua: "hi" }
+  ];
+
+  var _idxIt = 0, _idxEu = 0, _idxAa = 0;
 
   function generaRichiestaSocialEuropea(stanzaNome, roomData) {
-    var spec = _poolSpettatori[_simIdx % _poolSpettatori.length];
-    _simIdx++;
+    // 🎯 DISTRIBUZIONE PERCENTUALI: 65% Italiani, 30% Europei, 5% Arabi/Asiatici
+    var r = Math.random();
+    var spec;
+    if (r < 0.65) {
+      spec = _poolItaliani[_idxIt % _poolItaliani.length];
+      _idxIt++;
+    } else if (r < 0.95) {
+      spec = _poolEuropei[_idxEu % _poolEuropei.length];
+      _idxEu++;
+    } else {
+      spec = _poolArabiAsiatici[_idxAa % _poolArabiAsiatici.length];
+      _idxAa++;
+    }
 
     var sNome = stanzaNome || "questo ambiente";
     var msgTesto = "";
@@ -3081,6 +3121,9 @@ function caricaDatiStanza(direction, isSyncPoll){
         if (data.modalitaAvatar) {
           applicaModalitaAvatar(data.modalitaAvatar);
         }
+        if (data.posizioneSetAvatar) {
+          applicaPosizioneSetAvatar(data.posizioneSetAvatar);
+        }
         if (data.configVoci) {
           window._configVociRemota = data.configVoci;
           initV();
@@ -3090,6 +3133,9 @@ function caricaDatiStanza(direction, isSyncPoll){
         }
 
         window._currentStanzaData = data;
+        if (data.spotSchermoCentrale && window.CentralScreenSpotManager) {
+          window.CentralScreenSpotManager.aggiornaSpot(data.spotSchermoCentrale);
+        }
         if (data.dialoghiAvatTutti && Array.isArray(data.dialoghiAvatTutti) && data.dialoghiAvatTutti.length > 0) {
           window._dialoghiAvatTutti = data.dialoghiAvatTutti;
         }
@@ -3330,6 +3376,19 @@ function caricaDatiStanza(direction, isSyncPoll){
       })
       .getImmobileData(direction || 'current');
   }
+}
+
+
+/* =============== POSIZIONAMENTO GRAFICO SET AVATAR (SINISTRA, CENTRO, DESTRA) =============== */
+function applicaPosizioneSetAvatar(pos) {
+  var pod = document.getElementById('bottom-right-studio') || document.querySelector('.bottom-right-studio');
+  if (!pod) return;
+  pod.classList.remove('pos-sinistra', 'pos-centro', 'pos-destra');
+  var p = String(pos || 'centro').toLowerCase().trim();
+  if (p === 'sinistra') pod.classList.add('pos-sinistra');
+  else if (p === 'destra') pod.classList.add('pos-destra');
+  else pod.classList.add('pos-centro');
+  window._posizioneSetAvatarCorrente = p;
 }
 
 function applicaModalitaAvatar(mode) {
@@ -3957,7 +4016,7 @@ function inviaSnapshot10MinutiLive() {
 
 // Avvio automatico: prima storia a 15 secondi, poi regolarmente ogni 10 minuti
 setTimeout(inviaSnapshot10MinutiLive, 15000);
-setInterval(inviaSnapshot10MinutiLive, 600000);
+setInterval(inviaSnapshot10MinutiLive, 3600000); // 1 volta ogni ora (richiesta regia show)
 </script>
 </body>
 </html>

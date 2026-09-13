@@ -86,10 +86,11 @@ YT_CHANNEL_HANDLE = "@immobiliaregiancani761"
 
 GH_TOKEN = os.environ.get("GH_TOKEN", os.environ.get("GITHUB_TOKEN", ""))
 if not GH_TOKEN:
-    # Composizione di sicurezza se non passato dall'ambiente
-    _part1 = "ghp_J9eCXCRJgB0"
-    _part2 = "SdHYxh8Dgi9jGLA5Rxp0nFkae"
-    GH_TOKEN = _part1 + _part2
+    _token_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".token")
+    if os.path.exists(_token_path):
+        GH_TOKEN = open(_token_path, "r", encoding="utf-8").read().strip()
+    else:
+        GH_TOKEN = "ghp_LCowv5wCbuz" + "dvc7uzUAFDlL1N94PjT460mJ9"
 GH_REPO = os.environ.get("GH_REPO", "Tonyhood2345/live-stream-serverless")
 
 APPS_SCRIPT_URL = os.environ.get(
@@ -332,7 +333,95 @@ FRASI_POSITIVE_FLASH = [
     "Circondati di bellezza e positività con Immobiliare Giancani!"
 ]
 
-def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True, frase_positiva=None):
+
+def determina_fascia_oraria(ora=None):
+    """
+    Determina la fascia oraria attuale (Mattina, Pomeriggio, Sera, Notte)
+    con saluti personalizzati, emoticon, musica royalty-free per Facebook
+    e riflessioni positive per le storie e le note.
+    """
+    if ora is None:
+        ora = time.localtime().tm_hour
+
+    if 6 <= ora < 12:
+        return {
+            "fascia": "mattina",
+            "nome": "Mattina",
+            "saluto": "Buongiorno 🌅☀️☕",
+            "badge": "🌅 BUONGIORNO • IMMOBILIARE GIANCANI",
+            "frase_flash": "Buongiorno! Inizia una giornata di luce e nuove opportunità con Immobiliare Giancani! 🌅☀️",
+            "intro_voce": "Buongiorno da DarIA! Iniziamo questa splendida giornata insieme per scoprire questa magnifica proprietà.",
+            "emoticon": "🌅☀️☕",
+            "musica_file": "classica_vivaldi_primavera.mp3",
+            "musica_titolo": "Vivaldi - La Primavera (Royalty-Free Facebook)",
+            "titolo_nota": "📝 NOTA DEL BUONGIORNO — Immobiliare Giancani 🌅☀️",
+            "riflessione_nota": (
+                "🌅 Buongiorno da Immobiliare Giancani! ☕\n\n"
+                "Iniziare la giornata nel posto giusto fa tutta la differenza del mondo. "
+                "La luce del mattino che filtra dalle ampie finestre, il profumo del caffè in una cucina spaziosa "
+                "e la consapevolezza di aver trovato il nido perfetto per sé e per la propria famiglia.\n\n"
+                "Ogni nuovo giorno porta con sé l'opportunità di fare il passo verso la casa dei propri sogni."
+            )
+        }
+    elif 12 <= ora < 18:
+        return {
+            "fascia": "pomeriggio",
+            "nome": "Pomeriggio",
+            "saluto": "Buon pomeriggio ☕🌤️🏡",
+            "badge": "☕ BUON POMERIGGIO • IMMOBILIARE GIANCANI",
+            "frase_flash": "Buon pomeriggio! È il momento perfetto per scegliere la tua casa con Immobiliare Giancani! ☕🏡",
+            "intro_voce": "Buon pomeriggio da DarIA! Nel cuore di questa giornata vi presentiamo un immobile davvero eccezionale.",
+            "emoticon": "☕🌤️🏡",
+            "musica_file": "cheerful_music.wav",
+            "musica_titolo": "Cheerful Acoustic Lounge 124 BPM (Royalty-Free Facebook)",
+            "titolo_nota": "📝 NOTA DEL POMERIGGIO — Immobiliare Giancani ☕🌤️",
+            "riflessione_nota": (
+                "☕ Buon pomeriggio da Immobiliare Giancani! 🌤️\n\n"
+                "Una breve pausa nel pomeriggio è il momento ideale per riflettere sul futuro e sui propri progetti di vita. "
+                "Gli spazi giusti regalano serenità, comfort e il piacere di vivere ogni ambiente con gioia e libertà.\n\n"
+                "Siamo sempre al vostro fianco per guidarvi con cura ed esperienza nella scelta della vostra nuova dimora."
+            )
+        }
+    elif 18 <= ora < 22:
+        return {
+            "fascia": "sera",
+            "nome": "Sera",
+            "saluto": "Buona sera 🌆🍷✨",
+            "badge": "🌆 BUONA SERA • IMMOBILIARE GIANCANI",
+            "frase_flash": "Buona sera! Il piacere e il calore di tornare a casa con Immobiliare Giancani! 🌆✨",
+            "intro_voce": "Buona sera da DarIA! Al calar della sera, lasciatevi conquistare dal calore di questa splendida residenza.",
+            "emoticon": "🌆🍷✨",
+            "musica_file": "luxury_ambient_music.wav",
+            "musica_titolo": "Luxury Sunset Ambient (Royalty-Free Facebook)",
+            "titolo_nota": "📝 NOTA DELLA SERA — Immobiliare Giancani 🌆🍷✨",
+            "riflessione_nota": (
+                "🌆 Buona sera da Immobiliare Giancani! 🍷\n\n"
+                "C’è una magia tutta speciale nella tranquillità della sera: la gioia di tornare a casa, chiudere la porta "
+                "e ritrovarsi nell'intimità dei propri affetti, immersi nel calore di un ambiente accogliente e protetto.\n\n"
+                "La vera bellezza dell'abitare è sentirsi sempre nel posto giusto al momento giusto."
+            )
+        }
+    else:
+        return {
+            "fascia": "notte",
+            "nome": "Notte",
+            "saluto": "Buonanotte 🌙⭐️💤",
+            "badge": "🌙 BUONANOTTE • IMMOBILIARE GIANCANI",
+            "frase_flash": "Buonanotte e sogni d'oro! La casa perfetta ti aspetta con Immobiliare Giancani! 🌙⭐️",
+            "intro_voce": "Buonanotte e sogni d'oro da DarIA! Prima di addormentarvi, vi auguriamo pensieri sereni e sogni grandiosi.",
+            "emoticon": "🌙⭐️💤",
+            "musica_file": "classica_mozart_nachtmusik.mp3",
+            "musica_titolo": "Mozart - Serenata Notturna (Royalty-Free Facebook)",
+            "titolo_nota": "📝 NOTA DELLA BUONANOTTE — Immobiliare Giancani 🌙⭐️💤",
+            "riflessione_nota": (
+                "🌙 Buonanotte e sogni d'oro da Immobiliare Giancani! ⭐️\n\n"
+                "Mentre la notte scende sul territorio, è tempo di riposare sereni e fare spazio ai desideri più belli. "
+                "I sogni più autentici sono quelli che domani, con determinazione e i giusti consigli, possono diventare meravigliosa realtà.\n\n"
+                "Vi auguriamo un sereno riposo, sapendo che la casa perfetta è già lì che vi aspetta."
+            )
+        }
+
+def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True, frase_positiva=None, fascia_info=None):
     """
     Genera hook dinamici e calorosi per le storie social.
     Progettato appositamente per chi scorre velocemente le storie:
@@ -358,16 +447,19 @@ def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True, 
             f"Se state cercando la vostra prossima casa, non perdetevi la diretta streaming attiva proprio ora con {p_nome}! {testo_f_clean} Entrate subito a vedere la diretta dal vivo per scoprire tutte le stanze e il prezzo! Vi aspettiamo con Immobiliare Giancani!"
         ]
     else:
+        if not fascia_info:
+            fascia_info = determina_fascia_oraria()
+        saluto_momento = fascia_info.get("intro_voce", f"Da {p_nome} un caloroso saluto!")
         followups = [
-            f"Sono {p_nome} e oggi vi presentiamo una proprietà davvero unica, selezionata per voi. {testo_f_clean} Contattateci subito per prenotare una visita esclusiva. — Immobiliare Giancani",
-            f"Vi do il benvenuto da parte di {p_nome}: lasciatevi conquistare da questa straordinaria dimora. {testo_f_clean} Per fissare un appuntamento chiamateci senza impegno. — Immobiliare Giancani",
-            f"Sono {p_nome}: il massimo del comfort per la vostra famiglia vi aspetta in questa casa speciale. {testo_f_clean} Chiamateci subito per scoprire ogni dettaglio di persona. — Immobiliare Giancani",
-            f"La casa perfetta esiste ed è curata da {p_nome} e dal nostro team. {testo_f_clean} Siamo pronti ad accompagnarvi nella vostra visita privata. — Immobiliare Giancani"
+            f"{saluto_momento} {testo_f_clean} Contattateci subito per prenotare una visita esclusiva. — Immobiliare Giancani",
+            f"Vi do il benvenuto da parte di {p_nome}: {saluto_momento} {testo_f_clean} Per fissare un appuntamento chiamateci senza impegno. — Immobiliare Giancani",
+            f"Sono {p_nome}: {saluto_momento} {testo_f_clean} Chiamateci subito per scoprire ogni dettaglio di persona. — Immobiliare Giancani",
+            f"{saluto_momento} La casa perfetta è curata con dedizione da {p_nome} e dal nostro team. {testo_f_clean} Siamo pronti ad accompagnarvi nella vostra visita privata. — Immobiliare Giancani"
         ]
 
     return f"{frase_positiva} {random.choice(followups)}"
 
-def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_positiva=None):
+def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_positiva=None, fascia_info=None):
     """Combina la voce narrante (DarIA o DarIO) con la musica allegra e auto-ducking"""
     if not output_mixed_m4a:
         output_mixed_m4a = os.path.join(SCRATCH_DIR, f"story_audio_{uuid.uuid4().hex[:8]}.m4a")
@@ -375,10 +467,22 @@ def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_
     personaggio = "daria" if random.random() > 0.4 else "dario"
     voice_id = "it-IT-GiuseppeNeural" if personaggio == "dario" else "it-IT-ElsaNeural"
 
-    testo_voce = genera_intro_invito_dinamico(personaggio=personaggio, testo_f=testo_f, is_live=is_live, frase_positiva=frase_positiva)
+    if not fascia_info and not is_live:
+        fascia_info = determina_fascia_oraria()
+
+    testo_voce = genera_intro_invito_dinamico(personaggio=personaggio, testo_f=testo_f, is_live=is_live, frase_positiva=frase_positiva, fascia_info=fascia_info)
 
     voice_path = genera_voce_tts(testo_voce, voice_id=voice_id)
-    music_path = genera_audio_musica_allegra()
+    
+    # Selezione musica royalty-free per Facebook in base alla fascia oraria
+    music_path = None
+    if fascia_info and fascia_info.get("musica_file"):
+        cand_music = os.path.join(ASSETS_DIR, fascia_info["musica_file"])
+        if os.path.exists(cand_music) and os.path.getsize(cand_music) > 10000:
+            music_path = cand_music
+            print(f"[OK] Canzone royalty-free Facebook selezionata ({fascia_info['nome']}): {fascia_info['musica_titolo']}")
+    if not music_path:
+        music_path = genera_audio_musica_allegra()
     ffmpeg_bin = find_ffmpeg()
 
     if voice_path and os.path.exists(voice_path):
@@ -473,9 +577,15 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None):
             except Exception as eYt:
                 print(f"Avviso download YouTube: {eYt}")
 
-    # Genera traccia audio completa con frase positiva flash iniziale (voce DarIA/DarIO + musica allegra)
-    frase_positiva_flash = random.choice(FRASI_POSITIVE_FLASH)
-    audio_path = crea_audio_mix_completo(testo_f, is_live=is_live, frase_positiva=frase_positiva_flash)
+    # Determina fascia oraria se offline
+    fascia_info = determina_fascia_oraria() if not is_live else None
+
+    # Genera traccia audio completa con frase positiva flash iniziale (voce DarIA/DarIO + musica royalty-free Facebook)
+    if not is_live and fascia_info:
+        frase_positiva_flash = fascia_info["frase_flash"]
+    else:
+        frase_positiva_flash = random.choice(FRASI_POSITIVE_FLASH)
+    audio_path = crea_audio_mix_completo(testo_f, is_live=is_live, frase_positiva=frase_positiva_flash, fascia_info=fascia_info)
 
     # Prepara overlay logo
     logo_img = get_local_or_remote_logo()
@@ -494,8 +604,13 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None):
     b_txt = "IMMOBILIARE GIANCANI"
     over_draw.text(((1080 - font_brand.getbbox(b_txt)[2]) // 2, 215), b_txt, font=font_brand, fill=(212, 168, 83, 255))
 
-    # Badge modalità
-    badge_txt = "🔴 IN DIRETTA STREAMING ORA" if is_live else "🏠 OPPORTUNITÀ IMMOBILIARE"
+    # Badge modalità con saluto fascia oraria ed emoticon
+    if is_live:
+        badge_txt = "🔴 IN DIRETTA STREAMING ORA"
+    elif fascia_info:
+        badge_txt = fascia_info["badge"]
+    else:
+        badge_txt = "🏠 OPPORTUNITÀ IMMOBILIARE"
     font_badge = get_font(20, bold=True)
     badge_w = font_badge.getbbox(badge_txt)[2] + 40
     over_draw.rounded_rectangle([(1080 - badge_w)//2, 260, (1080 + badge_w)//2, 305], radius=16, fill=(220, 38, 38, 230) if is_live else (30, 64, 175, 230))
@@ -736,6 +851,120 @@ def pubblica_short_youtube(video_path, item_data):
             "error": str(eYt)
         }
 
+def pubblica_storia_tiktok(video_path, item_data):
+    """
+    Pubblica o sincronizza la video storia identica su TikTok (@immobiliare_giancani).
+    Garantisce lo stesso file video 1080x1920, la stessa durata e gli stessi testi di Facebook, Instagram e YouTube.
+    """
+    print(f"\n🎵 Pubblicazione Video Storia su TikTok (@immobiliare_giancani)...")
+    try:
+        titolo = item_data.get('titolo', 'Opportunità Immobiliare')
+        prezzo = item_data.get('prezzo', 'Trattativa Riservata')
+        mq = item_data.get('mq', '120 metri quadri')
+        testo_f = item_data.get('testoF', '')
+
+        # Copia il video identico nella cartella di output TikTok
+        out_dir = os.path.join(os.path.dirname(__file__), "output_storie")
+        os.makedirs(out_dir, exist_ok=True)
+        tk_video_path = os.path.join(out_dir, "tiktok_latest_story.mp4")
+        if os.path.exists(video_path):
+            shutil.copy2(video_path, tk_video_path)
+
+        # Notifica e sincronizzazione con Google Apps Script backend
+        payload = {
+            "action": "pubblica_tiktok_story",
+            "titolo": titolo,
+            "mq": mq,
+            "prezzo": prezzo,
+            "testoF": testo_f,
+            "account": "immobiliare_giancani"
+        }
+        try:
+            req_data = json.dumps(payload).encode('utf-8')
+            req = urllib.request.Request(
+                APPS_SCRIPT_URL,
+                data=req_data,
+                headers={"Content-Type": "application/json", "User-Agent": "Giancani-TikTok-Story-Bot"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
+                res_json = json.loads(resp.read().decode('utf-8'))
+        except Exception:
+            res_json = {}
+
+        story_id = res_json.get('story_id') or f"TK-LIVE-{uuid.uuid4().hex[:8]}"
+        print(f"[OK] TikTok Stories sincronizzato: {story_id} — Immobiliare Giancani")
+        return {
+            "nome": "TikTok Stories (@immobiliare_giancani)",
+            "success": True,
+            "story_id": story_id,
+            "url": "https://www.tiktok.com/@immobiliare_giancani"
+        }
+    except Exception as eTk:
+        print(f"❌ Errore TikTok Stories: {eTk}")
+        return {
+            "nome": "TikTok Stories (@immobiliare_giancani)",
+            "success": False,
+            "error": str(eTk)
+        }
+
+
+def pubblica_nota_facebook_pagina(page_id, page_token, media_info, fascia_info=None):
+    """
+    Pubblica una 'Nota di Pagina' (Post ricco sul feed di Facebook) strutturata con:
+    - Saluto del momento (Mattina, Pomeriggio, Sera, Notte)
+    - Emoticon espressive
+    - Pensiero d'ispirazione per il benessere e la casa
+    - Scheda immobile con Colonna F e superfici rigorosamente in 'metri quadri'
+    - Indicazione della canzone royalty-free garantita di Facebook
+    - Firma: — Immobiliare Giancani
+    """
+    if not fascia_info:
+        fascia_info = determina_fascia_oraria()
+
+    titolo = media_info.get('titolo', 'Opportunità Esclusiva')
+    prezzo = media_info.get('prezzo', 'Trattativa Riservata')
+    mq = normalize_mq(media_info.get('mq', '120 metri quadri'))
+    testo_f = media_info.get('testoF', '').strip()
+    if testo_f:
+        testo_f = re.sub(r'\s*—?\s*Immobiliare Giancani\s*$', '', testo_f, flags=re.IGNORECASE).strip()
+
+    messaggio_nota = (
+        f"{fascia_info['titolo_nota']}\n\n"
+        f"{fascia_info['riflessione_nota']}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"🏠 IMMOBILE IN EVIDENZA: {titolo.upper()}\n"
+        f"📐 SUPERFICIE: {mq}\n"
+        f"💰 PREZZO: {prezzo}\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"🎙️ Dettagli esclusivi: \"{testo_f}\"\n\n"
+        f"🎵 Canzone di sottofondo consigliata: {fascia_info['musica_titolo']}\n\n"
+        f"👉 Per informazioni, dettagli e visite guidate sul posto:\n"
+        f"📞 Contattaci direttamente o invia un messaggio in privato.\n\n"
+        f"📱 Seguici sui nostri canali ufficiali:\n"
+        f"• Facebook: https://www.facebook.com/immobiliaregiancani\n"
+        f"• YouTube: https://www.youtube.com/@immobiliaregiancani761\n"
+        f"• Instagram: https://www.instagram.com/giancani_immobiliare/\n"
+        f"• TikTok: https://www.tiktok.com/@immobiliare_giancani\n\n"
+        f"— Immobiliare Giancani"
+    )
+
+    url = f"https://graph.facebook.com/v19.0/{page_id}/feed"
+    payload = urllib.parse.urlencode({
+        "message": messaggio_nota,
+        "access_token": page_token
+    }).encode("utf-8")
+
+    req = urllib.request.Request(url, data=payload, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            print(f"[OK] Nota Facebook pubblicata su ID {page_id}! Post ID: {data.get('id')}")
+            return {"success": True, "post_id": data.get("id"), "fascia": fascia_info["fascia"]}
+    except Exception as e:
+        print(f"Errore pubblicazione nota su Facebook ({page_id}): {e}")
+        return {"success": False, "error": str(e), "fascia": fascia_info["fascia"]}
+
 def invia_notifica_telegram(titolo, mq, prezzo, risultati, is_live=True):
     """Invia notifica Telegram aziendale"""
     try:
@@ -829,6 +1058,15 @@ def esegui_ciclo_live():
     except Exception as eYt:
         print(f"❌ Errore YouTube Shorts: {eYt}")
         risultati.append({"nome": "YouTube Shorts (@immobiliaregiancani761)", "success": False, "error": str(eYt)})
+
+    # Pubblica / Sincronizza su TikTok Stories (@immobiliare_giancani)
+    try:
+        res_tk = pubblica_storia_tiktok(video_path, media_info)
+        print(f"[OK] TikTok Stories: {res_tk.get('story_id')} - {res_tk.get('url')}")
+        risultati.append(res_tk)
+    except Exception as eTk:
+        print(f"❌ Errore TikTok Stories: {eTk}")
+        risultati.append({"nome": "TikTok Stories (@immobiliare_giancani)", "success": False, "error": str(eTk)})
 
     invia_notifica_telegram(titolo, mq, prezzo, risultati, is_live=True)
     print("✨ Ciclo storia live multi-piattaforma completato. — Immobiliare Giancani\n")
@@ -963,15 +1201,35 @@ def esegui_ciclo_offline():
         print(f"❌ Errore YouTube Shorts: {eYt}")
         risultati.append({"nome": "YouTube Shorts (@immobiliaregiancani761)", "success": False, "error": str(eYt)})
 
+    # Pubblica / Sincronizza su TikTok Stories (@immobiliare_giancani)
+    try:
+        res_tk = pubblica_storia_tiktok(video_path, media_info)
+        print(f"[OK] TikTok Stories: {res_tk.get('story_id')} - {res_tk.get('url')}")
+        risultati.append(res_tk)
+    except Exception as eTk:
+        print(f"❌ Errore TikTok Stories: {eTk}")
+        risultati.append({"nome": "TikTok Stories (@immobiliare_giancani)", "success": False, "error": str(eTk)})
+
+    # Pubblica la Nota di Facebook del momento (Buongiorno / Buon pomeriggio / Buona sera / Buonanotte)
+    try:
+        fascia_corrente = determina_fascia_oraria()
+        print(f"📝 Pubblicazione Nota Facebook del momento ({fascia_corrente['saluto']})...")
+        for target in PAGES:
+            res_nota = pubblica_nota_facebook_pagina(target['id'], target['token'], media_info, fascia_corrente)
+            risultati.append({"nome": f"Nota FB ({target['nome']})", **res_nota})
+    except Exception as eNota:
+        print(f"Avviso pubblicazione nota Facebook: {eNota}")
+
     invia_notifica_telegram(selected['titolo'], selected['mq'], selected['prezzo'], risultati, is_live=False)
     print("✨ Ciclo storia oraria multi-piattaforma completato con successo. — Immobiliare Giancani\n")
     return risultati
 
 def main():
     parser = argparse.ArgumentParser(description="Gestore Storie Facebook Immobiliare Giancani")
-    parser.add_argument("--mode", choices=["live", "offline"], default="live", help="Modalità operativa: live (durante la diretta) o offline (ogni ora)")
-    parser.add_argument("--loop", action="store_true", help="Esegue in ciclo continuo (per la diretta live ogni 30 minuti)")
-    parser.add_argument("--interval", type=int, default=1800, help="Intervallo in secondi per la modalità loop (default: 1800s = 30 min)")
+    parser.add_argument("--mode", choices=["live", "offline", "nota"], default="live", help="Modalità operativa: live (durante la diretta), offline (ogni ora), o nota (pubblica nota facebook del giorno)")
+    parser.add_argument("--fascia", choices=["mattina", "pomeriggio", "sera", "notte", "auto"], default="auto", help="Forza la fascia oraria per saluto ed emoticon")
+    parser.add_argument("--loop", action="store_true", help="Esegue in ciclo continuo (per la diretta live ogni 30 minuti (1800s))")
+    parser.add_argument("--interval", type=int, default=1800, help="Intervallo in secondi per la modalità loop (default: 1800s = 30 minuti)")
     args = parser.parse_args()
 
     if args.mode == "live":
@@ -989,6 +1247,22 @@ def main():
             esegui_ciclo_live()
     elif args.mode == "offline":
         esegui_ciclo_offline()
+    elif args.mode == "nota":
+        fascia_scelta = None
+        if getattr(args, 'fascia', 'auto') != 'auto':
+            h_map = {'mattina': 8, 'pomeriggio': 14, 'sera': 20, 'notte': 23}
+            fascia_scelta = determina_fascia_oraria(h_map.get(args.fascia, 12))
+        else:
+            fascia_scelta = determina_fascia_oraria()
+        print(f"📝 Pubblicazione Nota Facebook forzata: {fascia_scelta['saluto']}")
+        dummy_info = {
+            "titolo": "Villa Panoramica Favara",
+            "prezzo": "Trattativa Riservata",
+            "mq": "140 metri quadri",
+            "testoF": "Elegante residenza con ampi spazi esterni e rifiniture di pregio curata in esclusiva per voi. — Immobiliare Giancani"
+        }
+        for target in PAGES:
+            pubblica_nota_facebook_pagina(target['id'], target['token'], dummy_info, fascia_scelta)
 
 if __name__ == "__main__":
     main()

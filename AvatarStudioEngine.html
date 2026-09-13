@@ -815,10 +815,16 @@ window.AvatarStudioEngine = (function() {
         screenIdle.style.opacity = '1';
       }, 300);
       _activeMediaUrl = null;
+      if (window.CentralScreenSpotManager) {
+        window.CentralScreenSpotManager.riprendiRotazioneSpot();
+      }
       return;
     }
 
     // STATO DINAMICO ATTIVO: Foto/Clip + Scheda Tecnica Sovraimpressa
+    if (window.CentralScreenSpotManager) {
+      window.CentralScreenSpotManager.pausaPerDescrizioneStanza();
+    }
     var isVideo = mediaUrl && (mediaUrl.endsWith('.mp4') || mediaUrl.includes('video'));
     if (imgEl && vidEl) {
       if (isVideo) {
@@ -1098,3 +1104,118 @@ window.AvatarCloseUpManager = (function() {
 // Alias retrocompatibile al 100% con qualsiasi chiamata precedente
 window.DariaCloseUpManager = window.AvatarCloseUpManager;
 </script>
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   📺 ROTATORE SPOT PUBBLICITARI SCHERMO CENTRALE
+   Collegato al foglio 'Pubblicita_Schermo_Centrale' (Colonna B = Secondi)
+   Gira foto e video promozionali con la cadenza in secondi per riga
+   Personal Branding: Immobiliare Giancani
+   ═══════════════════════════════════════════════════════════════════════ */
+window.CentralScreenSpotManager = (function() {
+  var _spotList = [
+    {
+      url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop',
+      durataSec: 8,
+      titolo: 'Immobiliare Giancani — Immobili Esclusivi',
+      tipo: 'foto'
+    }
+  ];
+  var _currentIdx = 0;
+  var _timerRotation = null;
+  var _inPausaPerDescrizione = false;
+
+  function aggiornaSpot(listaNuova) {
+    if (Array.isArray(listaNuova) && listaNuova.length > 0) {
+      _spotList = listaNuova;
+      console.log('[SCHERMO-CENTRALE] Caricati ' + _spotList.length + ' spot pubblicitari con cadenze in secondi.');
+      if (!_inPausaPerDescrizione && !_timerRotation) {
+        avviaRotazione();
+      }
+    }
+  }
+
+  function avviaRotazione() {
+    if (_timerRotation) clearTimeout(_timerRotation);
+    if (_inPausaPerDescrizione || _spotList.length === 0) return;
+
+    var spot = _spotList[_currentIdx % _spotList.length];
+    _mostraSpot(spot);
+
+    var durataMs = Math.max((spot.durataSec || 8) * 1000, 3000);
+    _timerRotation = setTimeout(function() {
+      _currentIdx++;
+      avviaRotazione();
+    }, durataMs);
+  }
+
+  function _mostraSpot(spot) {
+    var screenIdle = document.getElementById('screen-state-idle');
+    var screenActive = document.getElementById('screen-state-active');
+    var imgEl = document.getElementById('screen-media-img');
+    var vidEl = document.getElementById('screen-media-video');
+    var roomNameEl = document.getElementById('tech-room-name');
+    var overlayEl = document.getElementById('screen-tech-overlay');
+
+    if (!screenIdle || !screenActive) return;
+
+    screenIdle.style.opacity = '0';
+    screenIdle.style.display = 'none';
+    screenActive.style.display = 'block';
+    screenActive.style.opacity = '1';
+
+    if (spot.tipo === 'video' && vidEl) {
+      if (imgEl) imgEl.style.display = 'none';
+      vidEl.style.display = 'block';
+      vidEl.src = spot.url;
+      vidEl.play().catch(function(){});
+    } else if (imgEl) {
+      if (vidEl) vidEl.style.display = 'none';
+      imgEl.style.display = 'block';
+      imgEl.src = spot.url;
+    }
+
+    if (roomNameEl) {
+      roomNameEl.textContent = '📢 ' + (spot.titolo || 'Immobiliare Giancani').toUpperCase();
+    }
+    if (overlayEl) {
+      overlayEl.style.display = 'block';
+    }
+  }
+
+  function pausaPerDescrizioneStanza() {
+    _inPausaPerDescrizione = true;
+    if (_timerRotation) {
+      clearTimeout(_timerRotation);
+      _timerRotation = null;
+    }
+  }
+
+  function riprendiRotazioneSpot() {
+    _inPausaPerDescrizione = false;
+    avviaRotazione();
+  }
+
+  // Avvio al caricamento
+  setTimeout(function() {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.success && res.spot) {
+            aggiornaSpot(res.spot);
+          }
+        })
+        .getSpotSchermoCentrale();
+    } else {
+      avviaRotazione();
+    }
+  }, 2500);
+
+  return {
+    aggiornaSpot: aggiornaSpot,
+    avviaRotazione: avviaRotazione,
+    pausaPerDescrizioneStanza: pausaPerDescrizioneStanza,
+    riprendiRotazioneSpot: riprendiRotazioneSpot
+  };
+})();

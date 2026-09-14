@@ -49,6 +49,7 @@ import uuid
 import shutil
 import random
 import re
+import math
 import argparse
 import subprocess
 import urllib.request
@@ -146,15 +147,35 @@ def find_ytdlp():
             return c
     return "yt-dlp"
 
-def get_font(size, bold=False):
-    """Carica font TrueType scalato per alta risoluzione"""
-    font_paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf" if bold else "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-        "C:/Windows/Fonts/segoeuib.ttf" if bold else "C:/Windows/Fonts/segoeui.ttf",
-        "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf"
-    ]
-    for p in font_paths:
+def get_font(size, bold=False, font_type="sans"):
+    """Carica font TrueType scalato e tipizzato per Windows e Linux (GitHub Actions)"""
+    paths = []
+    if font_type == "serif":
+        paths = [
+            "C:/Windows/Fonts/georgiab.ttf" if bold else "C:/Windows/Fonts/georgia.ttf",
+            "C:/Windows/Fonts/timesbd.ttf" if bold else "C:/Windows/Fonts/times.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf" if bold else "/usr/share/fonts/truetype/freefont/FreeSerif.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"
+        ]
+    elif font_type == "script":
+        paths = [
+            "C:/Windows/Fonts/segoescb.ttf" if bold else "C:/Windows/Fonts/segoesc.ttf",
+            "C:/Windows/Fonts/brushsci.ttf",
+            "C:/Windows/Fonts/georgiaz.ttf" if bold else "C:/Windows/Fonts/georgiai.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSerifItalic.ttf"
+        ]
+    else:  # sans
+        paths = [
+            "C:/Windows/Fonts/segoeuib.ttf" if bold else "C:/Windows/Fonts/segoeui.ttf",
+            "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf" if bold else "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+        ]
+
+    for p in paths:
         if os.path.exists(p):
             try:
                 return ImageFont.truetype(p, size)
@@ -209,7 +230,15 @@ def normalize_mq(val):
     return val
 
 def check_is_live_active():
-    """Verifica se il workflow GitHub Actions della diretta live è attualmente in corso"""
+    """
+    Verifica rigorosamente se la diretta live streaming è attualmente in corso.
+    Se in corso dentro GitHub Actions runner, rileva le variabili di ambiente GITHUB_WORKFLOW.
+    Altrimenti interroga l'API di GitHub Actions per rilevare workflow live in_progress.
+    """
+    gh_workflow = os.environ.get("GITHUB_WORKFLOW", "").lower()
+    if os.environ.get("GITHUB_ACTIONS") == "true" and ("live" in gh_workflow or "stream" in gh_workflow):
+        return True, "local_github_runner"
+
     try:
         headers = {
             "Authorization": f"Bearer {GH_TOKEN}",
@@ -513,6 +542,929 @@ def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_
         return output_mixed_m4a
     return music_path
 
+
+# ═════════════════════════════════════════════════════════════════════════════
+# MOTORE GRAFICO MULTI-STILE (IMMOBILIARE GIANCANI)
+# ═════════════════════════════════════════════════════════════════════════════
+
+def draw_skyline(draw, y_base, width, color=(148, 163, 184, 180)):
+    """Disegna una skyline stilizzata di tetti e palazzi italiani lungo il margine inferiore"""
+    rng = random.Random(42)
+    x = 0
+    while x < width:
+        w = rng.randint(25, 55)
+        h = rng.randint(18, 48)
+        roof_type = rng.choice(["flat", "pitched", "tower"])
+        draw.rectangle([x, y_base - h, min(x + w, width), y_base], fill=color)
+        if roof_type == "pitched" and x + w <= width:
+            peak_h = h + rng.randint(8, 16)
+            mid_x = x + w // 2
+            draw.polygon([(x, y_base - h), (mid_x, y_base - peak_h), (x + w, y_base - h)], fill=color)
+        elif roof_type == "tower" and x + w <= width:
+            tw = w // 3
+            tx = x + (w - tw) // 2
+            th = h + rng.randint(10, 20)
+            draw.rectangle([tx, y_base - th, tx + tw, y_base - h], fill=color)
+            draw.polygon([(tx - 2, y_base - th), (tx + tw // 2, y_base - th - 8), (tx + tw + 2, y_base - th)], fill=color)
+        x += w + rng.randint(2, 6)
+
+def draw_circular_badge(draw, center_x, center_y, radius, icon_type, label_text, sublabel=""):
+    """Disegna un badge circolare line-art con etichetta sotto"""
+    cx, cy = center_x, center_y
+    r = radius
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(255, 255, 255, 255), outline=(203, 213, 225, 255), width=2)
+    draw.ellipse([cx - r + 4, cy - r + 4, cx + r - 4, cy + r - 4], fill=None, outline=(241, 245, 249, 255), width=1)
+    
+    icon_color = (30, 41, 59, 255)
+    
+    if icon_type == "house":
+        hw, hh = 16, 12
+        draw.polygon([(cx, cy - 14), (cx - hw, cy - 2), (cx + hw, cy - 2)], outline=icon_color, fill=None, width=2)
+        draw.rectangle([cx - hw + 3, cy - 2, cx + hw - 3, cy + hh], outline=icon_color, fill=None, width=2)
+        draw.rectangle([cx - 4, cy + 3, cx + 4, cy + hh], fill=icon_color)
+    elif icon_type == "car":
+        draw.rounded_rectangle([cx - 16, cy - 6, cx + 16, cy + 8], radius=3, outline=icon_color, fill=None, width=2)
+        draw.polygon([(cx - 11, cy - 6), (cx - 7, cy - 13), (cx + 7, cy - 13), (cx + 11, cy - 6)], outline=icon_color, fill=None, width=2)
+        draw.ellipse([cx - 12, cy + 5, cx - 6, cy + 11], fill=icon_color)
+        draw.ellipse([cx + 6, cy + 5, cx + 12, cy + 11], fill=icon_color)
+    elif icon_type == "sun":
+        draw.ellipse([cx - 8, cy - 8, cx + 8, cy + 8], outline=icon_color, fill=None, width=2)
+        for angle in range(0, 360, 45):
+            rad = math.radians(angle)
+            x1 = cx + math.cos(rad) * 11
+            y1 = cy + math.sin(rad) * 11
+            x2 = cx + math.cos(rad) * 16
+            y2 = cy + math.sin(rad) * 16
+            draw.line([(x1, y1), (x2, y2)], fill=icon_color, width=2)
+    elif icon_type == "music":
+        draw.polygon([(cx - 4, cy - 12), (cx - 14, cy - 2), (cx + 6, cy - 2)], outline=icon_color, fill=None, width=2)
+        draw.rectangle([cx - 12, cy - 2, cx + 4, cy + 10], outline=icon_color, fill=None, width=2)
+        draw.ellipse([cx + 6, cy + 4, cx + 13, cy + 9], fill=(225, 29, 72, 255))
+        draw.line([(cx + 12, cy + 6), (cx + 12, cy - 8)], fill=(225, 29, 72, 255), width=2)
+        draw.line([(cx + 12, cy - 8), (cx + 17, cy - 6)], fill=(225, 29, 72, 255), width=2)
+        
+    if label_text:
+        font_lbl = get_font(13, bold=True, font_type="sans")
+        bbox = font_lbl.getbbox(label_text)
+        lw = bbox[2] - bbox[0]
+        draw.text((cx - lw // 2, cy + r + 8), label_text, font=font_lbl, fill=(15, 23, 42, 255))
+
+def calcola_prezzo_barrato(prezzo_str):
+    """Calcola un prezzo originario barrato realistico (+25-30%) se non specificato"""
+    match = re.search(r'(\d+[\.,]?\d*)', str(prezzo_str).replace(".", "").replace(",", "."))
+    if match:
+        try:
+            val = float(match.group(1))
+            if val > 1000:
+                old_val = int(round(val * 1.32 / 1000.0) * 1000)
+                return f"€ {old_val:,.0f}".replace(",", ".")
+        except Exception:
+            pass
+    return "€ 130.000"
+
+def crea_grafica_flyer_split_screen(media_info, output_path=None, size=(1080, 1080)):
+    """
+    STILE 1 (FLYER 1:1): SPLIT-SCREEN PROMOTIONAL FLYER
+    - 40% colonna sinistra: grande foto verticale + nastro 3D rosso 'NUOVO PREZZO'.
+    - 60% colonna destra: sfondo chiaro, banner prezzi barrato/scontato,
+      headline serif, 3 badge line-art con 'metri quadri', testo Colonna F,
+      inset photo con etichetta arancione.
+    - Footer: icona casetta musicale, bottone navy, skyline, corsivo
+      'La tua prossima casa ti aspetta' e personal branding in risalto 'IMMOBILIARE GIANCANI'.
+    """
+    W, H = size
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"flyer_splitscreen_{uuid.uuid4().hex[:6]}.png")
+
+    img = Image.new('RGBA', (W, H), (248, 249, 251, 255))
+    draw = ImageDraw.Draw(img)
+
+    left_w = int(W * 0.40)
+    right_w = W - left_w
+    footer_h = 135
+    content_h = H - footer_h
+
+    # Foto verticale a sinistra
+    foto_url = media_info.get('fotoUrl')
+    foto_im = scarica_foto_url(foto_url) if foto_url else None
+    if not foto_im:
+        cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
+        if cache_files:
+            try: foto_im = Image.open(cache_files[0]).convert('RGB')
+            except Exception: pass
+    if not foto_im:
+        for fb_url in GUARANTEED_FALLBACK_IMAGES:
+            foto_im = scarica_foto_url(fb_url)
+            if foto_im: break
+    if not foto_im:
+        foto_im = Image.new('RGB', (left_w, content_h), (210, 180, 140))
+
+    iw, ih = foto_im.size
+    scale = max(left_w / iw, content_h / ih)
+    nw, nh = int(iw * scale), int(ih * scale)
+    foto_scaled = foto_im.resize((nw, nh), Image.LANCZOS)
+    crop_x = (nw - left_w) // 2
+    crop_y = (nh - content_h) // 2
+    foto_cropped = foto_scaled.crop((crop_x, crop_y, crop_x + left_w, crop_y + content_h))
+    img.paste(foto_cropped, (0, 0))
+
+    # Ombra bordo foto
+    shadow_overlay = Image.new('RGBA', (20, content_h), (0, 0, 0, 0))
+    s_draw = ImageDraw.Draw(shadow_overlay)
+    for sx in range(20):
+        alpha = int(70 * (sx / 20.0))
+        s_draw.line([(sx, 0), (sx, content_h)], fill=(0, 0, 0, alpha))
+    img.paste(shadow_overlay, (left_w - 20, 0), mask=shadow_overlay)
+
+    # Nastro 3D "NUOVO PREZZO"
+    ribbon_w, ribbon_h = 240, 52
+    ribbon_poly_main = [(0, 30), (ribbon_w, 30), (ribbon_w - 20, 30 + ribbon_h), (0, 30 + ribbon_h)]
+    draw.polygon([(0, 30 + ribbon_h), (18, 30 + ribbon_h + 14), (0, 30 + ribbon_h + 14)], fill=(127, 29, 29, 255))
+    draw.polygon(ribbon_poly_main, fill=(225, 29, 72, 255))
+    draw.line([(0, 31), (ribbon_w, 31)], fill=(254, 205, 211, 220), width=2)
+    font_ribbon = get_font(24, bold=True, font_type="sans")
+    draw.text((32, 43), "NUOVO PREZZO", font=font_ribbon, fill=(255, 255, 255, 255))
+
+    # Watermark Logo
+    logo_img = get_local_or_remote_logo()
+    if logo_img:
+        try:
+            l_img = logo_img.resize((70, 70), Image.LANCZOS)
+            draw.rounded_rectangle([15, content_h - 90, 95, content_h - 10], radius=12, fill=(15, 23, 42, 210))
+            img.paste(l_img, (20, content_h - 85), mask=l_img.split()[3])
+        except Exception:
+            pass
+
+    # Colonna destra (60%)
+    rx = left_w + 30
+    rw_usable = right_w - 60
+    prezzo_reale = media_info.get('prezzo', '€ 79.000')
+    prezzo_barrato = media_info.get('prezzoOriginale') or calcola_prezzo_barrato(prezzo_reale)
+    
+    price_y = 35
+    font_old = get_font(22, bold=True, font_type="sans")
+    old_bbox = font_old.getbbox(prezzo_barrato)
+    old_w = old_bbox[2] - old_bbox[0] + 28
+    draw.rounded_rectangle([rx, price_y + 12, rx + old_w, price_y + 56], radius=10, fill=(241, 245, 249, 255), outline=(226, 232, 240, 255), width=2)
+    draw.text((rx + 14, price_y + 20), prezzo_barrato, font=font_old, fill=(148, 163, 184, 255))
+    draw.line([(rx + 10, price_y + 35), (rx + old_w - 10, price_y + 35)], fill=(225, 29, 72, 255), width=3)
+
+    arrow_x = rx + old_w + 12
+    draw.polygon([(arrow_x, price_y + 26), (arrow_x + 14, price_y + 34), (arrow_x, price_y + 42)], fill=(225, 29, 72, 255))
+
+    new_price_x = arrow_x + 24
+    new_price_w = right_w - (new_price_x - left_w) - 30
+    font_new = get_font(34, bold=True, font_type="sans")
+    new_bbox = font_new.getbbox(prezzo_reale)
+    
+    draw.rounded_rectangle([new_price_x + 3, price_y + 5, new_price_x + new_price_w + 3, price_y + 70], radius=14, fill=(15, 23, 42, 40))
+    draw.rounded_rectangle([new_price_x, price_y + 2, new_price_x + new_price_w, price_y + 67], radius=14, fill=(220, 38, 38, 255), outline=(254, 205, 211, 255), width=2)
+    draw.text((new_price_x + (new_price_w - (new_bbox[2] - new_bbox[0])) // 2, price_y + 14), prezzo_reale, font=font_new, fill=(255, 255, 255, 255))
+
+    titolo_raw = media_info.get('titolo', 'Casa Indipendente').upper()
+    tipologia = "CASA INDIPENDENTE"
+    citta = "FAVARA (AG)"
+    for t in ["VILLA INDIPENDENTE", "VILLA", "CASA INDIPENDENTE", "APPARTAMENTO", "ATTICO", "TERRENO"]:
+        if t in titolo_raw:
+            tipologia = t
+            break
+    for c in ["FAVARA", "AGRIGENTO", "MAZARA DEL VALLO", "PORTO EMPEDOCLE", "CANICATTI", "SCIACCA"]:
+        if c in titolo_raw:
+            citta = c
+            break
+
+    head_y = price_y + 88
+    font_head = get_font(34, bold=True, font_type="serif")
+    draw.text((rx, head_y), tipologia, font=font_head, fill=(15, 23, 42, 255))
+
+    font_subhead = get_font(20, bold=True, font_type="sans")
+    draw.text((rx + 2, head_y + 44), f"• {citta} • ESCLUSIVA GIANCANI", font=font_subhead, fill=(71, 85, 105, 255))
+
+    badge_y = head_y + 130
+    b_spacing = rw_usable // 3
+    mq_val = normalize_mq(media_info.get('mq', '140 metri quadri'))
+    
+    draw_circular_badge(draw, rx + b_spacing * 0 + 60, badge_y, 34, "house", mq_val.upper())
+    draw_circular_badge(draw, rx + b_spacing * 1 + 60, badge_y, 34, "car", "GARAGE AMPIO")
+    draw_circular_badge(draw, rx + b_spacing * 2 + 60, badge_y, 34, "sun", "TERRAZZA PRIVATA")
+
+    desc_y = badge_y + 85
+    testo_f = media_info.get('testoF', 'Splendida soluzione su più livelli, luminosa e versatile. Perfetta per famiglie o investimento.')
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f = f"{testo_f.rstrip('. ')} — Immobiliare Giancani"
+
+    font_desc = get_font(18, bold=False, font_type="sans")
+    words = testo_f.split()
+    lines = []
+    curr = []
+    max_line_w = rw_usable - 260
+    for w in words:
+        test_line = " ".join(curr + [w])
+        if font_desc.getbbox(test_line)[2] < max_line_w:
+            curr.append(w)
+        else:
+            if curr: lines.append(" ".join(curr))
+            curr = [w]
+    if curr: lines.append(" ".join(curr))
+
+    dy = desc_y
+    for l in lines[:6]:
+        draw.text((rx, dy), l, font=font_desc, fill=(51, 65, 85, 255))
+        dy += 28
+
+    inset_w, inset_h = 240, 160
+    inset_x = W - inset_w - 30
+    inset_y = content_h - inset_h - 25
+
+    cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
+    inset_im = None
+    if len(cache_files) > 1:
+        try: inset_im = Image.open(cache_files[1]).convert('RGB')
+        except Exception: pass
+    if not inset_im:
+        inset_im = foto_im.crop((0, 0, min(foto_im.width, 400), min(foto_im.height, 300)))
+    
+    in_scaled = inset_im.resize((inset_w, inset_h), Image.LANCZOS)
+    draw.rectangle([inset_x + 5, inset_y + 5, inset_x + inset_w + 5, inset_y + inset_h + 5], fill=(15, 23, 42, 60))
+    draw.rectangle([inset_x - 3, inset_y - 3, inset_x + inset_w + 3, inset_y + inset_h + 3], fill=(255, 255, 255, 255))
+    img.paste(in_scaled, (inset_x, inset_y))
+
+    tag_w, tag_h = 200, 32
+    draw.polygon([
+        (inset_x, inset_y + inset_h - tag_h),
+        (inset_x + tag_w, inset_y + inset_h - tag_h),
+        (inset_x + tag_w - 15, inset_y + inset_h),
+        (inset_x, inset_y + inset_h)
+    ], fill=(234, 88, 12, 255))
+    font_tag = get_font(14, bold=True, font_type="sans")
+    draw.text((inset_x + 15, inset_y + inset_h - tag_h + 8), "TERRAZZA PANORAMICA", font=font_tag, fill=(255, 255, 255, 255))
+
+    # Footer
+    fy = content_h
+    draw.rectangle([0, fy, W, H], fill=(241, 245, 249, 255))
+    draw.line([(0, fy), (W, fy)], fill=(203, 213, 225, 255), width=2)
+    draw_skyline(draw, H, W, color=(203, 213, 225, 140))
+
+    draw_circular_badge(draw, 60, fy + 65, 28, "music", "")
+
+    btn_w = 480
+    btn_h = 58
+    btn_x = 120
+    btn_y = fy + 38
+    is_live = media_info.get('isLive', False)
+    btn_txt = "ENTRA IN DIRETTA A VEDERLA >" if is_live else "SCRIVICI IN PRIVATO PER INFO O VISITA >"
+    
+    draw.rounded_rectangle([btn_x + 2, btn_y + 4, btn_x + btn_w + 2, btn_y + btn_h + 4], radius=29, fill=(15, 23, 42, 70))
+    btn_color = (220, 38, 38, 255) if is_live else (15, 23, 42, 255)
+    draw.rounded_rectangle([btn_x, btn_y, btn_x + btn_w, btn_y + btn_h], radius=29, fill=btn_color, outline=(212, 168, 83, 255), width=2)
+    
+    font_btn = get_font(17, bold=True, font_type="sans")
+    btn_bbox = font_btn.getbbox(btn_txt)
+    draw.text((btn_x + (btn_w - (btn_bbox[2] - btn_bbox[0])) // 2, btn_y + 19), btn_txt, font=font_btn, fill=(255, 255, 255, 255))
+
+    script_txt = "La tua prossima casa ti aspetta"
+    font_script = get_font(26, bold=False, font_type="script")
+    script_bbox = font_script.getbbox(script_txt)
+    draw.text((W - (script_bbox[2] - script_bbox[0]) - 40, fy + 22), script_txt, font=font_script, fill=(180, 130, 40, 255))
+
+    font_brand = get_font(22, bold=True, font_type="sans")
+    brand_txt = "IMMOBILIARE GIANCANI"
+    brand_bbox = font_brand.getbbox(brand_txt)
+    draw.text((W - (brand_bbox[2] - brand_bbox[0]) - 40, fy + 68), brand_txt, font=font_brand, fill=(15, 23, 42, 255))
+
+    img.save(output_path, "PNG")
+    return output_path
+
+def crea_story_splitscreen_9_16(media_info, output_path=None):
+    """
+    STILE 1 (STORIA 9:16): SPLIT-SCREEN PROMOTIONAL FLYER UNIFICATO PER VIDEO STORIE
+    """
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_splitscreen_{uuid.uuid4().hex[:6]}.png")
+
+    canvas = Image.new('RGBA', (W, H), (15, 23, 42, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    # 1. Header Superiore
+    logo_img = get_local_or_remote_logo()
+    if logo_img:
+        try:
+            l_img = logo_img.resize((100, 100), Image.LANCZOS)
+            canvas.paste(l_img, ((W - 100) // 2, 40), mask=l_img.split()[3])
+        except Exception:
+            pass
+
+    font_brand = get_font(28, bold=True, font_type="serif")
+    b_txt = "IMMOBILIARE GIANCANI"
+    bw = font_brand.getbbox(b_txt)[2] - font_brand.getbbox(b_txt)[0]
+    draw.text(((W - bw) // 2, 148), b_txt, font=font_brand, fill=(212, 168, 83, 255))
+
+    font_badge = get_font(20, bold=True, font_type="sans")
+    is_live = media_info.get('isLive', True)
+    badge_txt = "🔴 IN DIRETTA STREAMING ORA" if is_live else "★ OPPORTUNITÀ ESCLUSIVA ★"
+    badg_w = font_badge.getbbox(badge_txt)[2] - font_badge.getbbox(badge_txt)[0] + 44
+    draw.rounded_rectangle([(W - badg_w)//2, 190, (W + badg_w)//2, 235], radius=14, fill=(220, 38, 38, 240) if is_live else (30, 64, 175, 240))
+    draw.text(((W - font_badge.getbbox(badge_txt)[2]) // 2, 201), badge_txt, font=font_badge, fill=(255, 255, 255, 255))
+
+    # 2. Box Split-Screen Centrale
+    box_x = 35
+    box_y = 260
+    box_w = W - 70
+    box_h = 1270
+
+    draw.rounded_rectangle([box_x - 3, box_y - 3, box_x + box_w + 3, box_y + box_h + 3], radius=24, fill=(212, 168, 83, 180))
+    draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], radius=22, fill=(248, 249, 251, 255))
+
+    left_w = int(box_w * 0.40)
+    right_w = box_w - left_w
+
+    foto_url = media_info.get('fotoUrl')
+    foto_im = scarica_foto_url(foto_url) if foto_url else None
+    if not foto_im:
+        cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
+        if cache_files:
+            try: foto_im = Image.open(cache_files[0]).convert('RGB')
+            except Exception: pass
+    if not foto_im:
+        for fb_url in GUARANTEED_FALLBACK_IMAGES:
+            foto_im = scarica_foto_url(fb_url)
+            if foto_im: break
+    if not foto_im:
+        foto_im = Image.new('RGB', (left_w, box_h), (210, 180, 140))
+
+    iw, ih = foto_im.size
+    scale = max(left_w / iw, box_h / ih)
+    nw, nh = int(iw * scale), int(ih * scale)
+    foto_scaled = foto_im.resize((nw, nh), Image.LANCZOS)
+    crop_x = (nw - left_w) // 2
+    crop_y = (nh - box_h) // 2
+    foto_cropped = foto_scaled.crop((crop_x, crop_y, crop_x + left_w, crop_y + box_h))
+
+    mask_left = Image.new('L', (left_w, box_h), 0)
+    m_draw = ImageDraw.Draw(mask_left)
+    m_draw.rounded_rectangle([0, 0, left_w + 30, box_h], radius=22, fill=255)
+    canvas.paste(foto_cropped, (box_x, box_y), mask=mask_left)
+
+    shadow_overlay = Image.new('RGBA', (20, box_h), (0, 0, 0, 0))
+    s_draw = ImageDraw.Draw(shadow_overlay)
+    for sx in range(20):
+        alpha = int(70 * (sx / 20.0))
+        s_draw.line([(sx, 0), (sx, box_h)], fill=(0, 0, 0, alpha))
+    canvas.paste(shadow_overlay, (box_x + left_w - 20, box_y), mask=shadow_overlay)
+
+    ribbon_w, ribbon_h = 240, 52
+    ribbon_poly = [(box_x, box_y + 35), (box_x + ribbon_w, box_y + 35), (box_x + ribbon_w - 20, box_y + 35 + ribbon_h), (box_x, box_y + 35 + ribbon_h)]
+    draw.polygon([(box_x, box_y + 35 + ribbon_h), (box_x + 18, box_y + 35 + ribbon_h + 14), (box_x, box_y + 35 + ribbon_h + 14)], fill=(127, 29, 29, 255))
+    draw.polygon(ribbon_poly, fill=(225, 29, 72, 255))
+    draw.line([(box_x, box_y + 36), (box_x + ribbon_w, box_y + 36)], fill=(254, 205, 211, 220), width=2)
+    font_ribbon = get_font(24, bold=True, font_type="sans")
+    draw.text((box_x + 32, box_y + 48), "NUOVO PREZZO", font=font_ribbon, fill=(255, 255, 255, 255))
+
+    if logo_img:
+        try:
+            l_img = logo_img.resize((75, 75), Image.LANCZOS)
+            draw.rounded_rectangle([box_x + 18, box_y + box_h - 95, box_x + 102, box_y + box_h - 15], radius=12, fill=(15, 23, 42, 215))
+            canvas.paste(l_img, (box_x + 22, box_y + box_h - 90), mask=l_img.split()[3])
+        except Exception:
+            pass
+
+    rx = box_x + left_w + 30
+    rw_usable = right_w - 55
+
+    prezzo_reale = media_info.get('prezzo', '€ 79.000')
+    prezzo_barrato = media_info.get('prezzoOriginale') or calcola_prezzo_barrato(prezzo_reale)
+    
+    price_y = box_y + 40
+    font_old = get_font(24, bold=True, font_type="sans")
+    old_bbox = font_old.getbbox(prezzo_barrato)
+    old_w = old_bbox[2] - old_bbox[0] + 28
+    draw.rounded_rectangle([rx, price_y + 12, rx + old_w, price_y + 60], radius=10, fill=(241, 245, 249, 255), outline=(226, 232, 240, 255), width=2)
+    draw.text((rx + 14, price_y + 22), prezzo_barrato, font=font_old, fill=(148, 163, 184, 255))
+    draw.line([(rx + 10, price_y + 36), (rx + old_w - 10, price_y + 36)], fill=(225, 29, 72, 255), width=3)
+
+    arrow_x = rx + old_w + 14
+    draw.polygon([(arrow_x, price_y + 26), (arrow_x + 16, price_y + 36), (arrow_x, price_y + 46)], fill=(225, 29, 72, 255))
+
+    new_price_x = arrow_x + 26
+    new_price_w = right_w - (new_price_x - (box_x + left_w)) - 30
+    font_new = get_font(36, bold=True, font_type="sans")
+    new_bbox = font_new.getbbox(prezzo_reale)
+    
+    draw.rounded_rectangle([new_price_x + 3, price_y + 4, new_price_x + new_price_w + 3, price_y + 72], radius=14, fill=(15, 23, 42, 40))
+    draw.rounded_rectangle([new_price_x, price_y + 2, new_price_x + new_price_w, price_y + 70], radius=14, fill=(220, 38, 38, 255), outline=(254, 205, 211, 255), width=2)
+    draw.text((new_price_x + (new_price_w - (new_bbox[2] - new_bbox[0])) // 2, price_y + 16), prezzo_reale, font=font_new, fill=(255, 255, 255, 255))
+
+    titolo_raw = media_info.get('titolo', 'Casa Indipendente').upper()
+    tipologia = "CASA INDIPENDENTE"
+    citta = "FAVARA (AG)"
+    for t in ["VILLA INDIPENDENTE", "VILLA", "CASA INDIPENDENTE", "APPARTAMENTO", "ATTICO", "TERRENO"]:
+        if t in titolo_raw:
+            tipologia = t
+            break
+    for c in ["FAVARA", "AGRIGENTO", "MAZARA DEL VALLO", "PORTO EMPEDOCLE", "CANICATTI", "SCIACCA"]:
+        if c in titolo_raw:
+            citta = c
+            break
+
+    head_y = price_y + 105
+    font_head = get_font(38, bold=True, font_type="serif")
+    draw.text((rx, head_y), tipologia, font=font_head, fill=(15, 23, 42, 255))
+
+    font_subhead = get_font(22, bold=True, font_type="sans")
+    draw.text((rx + 2, head_y + 50), f"• {citta} • ESCLUSIVA GIANCANI", font=font_subhead, fill=(71, 85, 105, 255))
+
+    badge_y = head_y + 155
+    b_spacing = rw_usable // 3
+    mq_val = normalize_mq(media_info.get('mq', '140 metri quadri'))
+    
+    draw_circular_badge(draw, rx + b_spacing * 0 + 55, badge_y, 38, "house", mq_val.upper())
+    draw_circular_badge(draw, rx + b_spacing * 1 + 55, badge_y, 38, "car", "GARAGE AMPIO")
+    draw_circular_badge(draw, rx + b_spacing * 2 + 55, badge_y, 38, "sun", "TERRAZZA PRIVATA")
+
+    desc_y = badge_y + 105
+    testo_f = media_info.get('testoF', 'Splendida soluzione su più livelli, luminosa e versatile. Perfetta per famiglie o investimento.')
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f = f"{testo_f.rstrip('. ')} — Immobiliare Giancani"
+
+    font_desc = get_font(21, bold=False, font_type="sans")
+    words = testo_f.split()
+    lines = []
+    curr = []
+    max_line_w = rw_usable - 260
+    for w in words:
+        test_line = " ".join(curr + [w])
+        if font_desc.getbbox(test_line)[2] < max_line_w:
+            curr.append(w)
+        else:
+            if curr: lines.append(" ".join(curr))
+            curr = [w]
+    if curr: lines.append(" ".join(curr))
+
+    dy = desc_y
+    for l in lines[:10]:
+        draw.text((rx, dy), l, font=font_desc, fill=(51, 65, 85, 255))
+        dy += 34
+
+    inset_w, inset_h = 250, 180
+    inset_x = box_x + box_w - inset_w - 30
+    inset_y = box_y + box_h - inset_h - 35
+
+    cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
+    inset_im = None
+    if len(cache_files) > 1:
+        try: inset_im = Image.open(cache_files[1]).convert('RGB')
+        except Exception: pass
+    if not inset_im:
+        inset_im = foto_im.crop((0, 0, min(foto_im.width, 400), min(foto_im.height, 300)))
+    
+    in_scaled = inset_im.resize((inset_w, inset_h), Image.LANCZOS)
+    draw.rectangle([inset_x + 5, inset_y + 5, inset_x + inset_w + 5, inset_y + inset_h + 5], fill=(15, 23, 42, 60))
+    draw.rectangle([inset_x - 3, inset_y - 3, inset_x + inset_w + 3, inset_y + inset_h + 3], fill=(255, 255, 255, 255))
+    canvas.paste(in_scaled, (inset_x, inset_y))
+
+    tag_w, tag_h = 210, 36
+    draw.polygon([
+        (inset_x, inset_y + inset_h - tag_h),
+        (inset_x + tag_w, inset_y + inset_h - tag_h),
+        (inset_x + tag_w - 15, inset_y + inset_h),
+        (inset_x, inset_y + inset_h)
+    ], fill=(234, 88, 12, 255))
+    font_tag = get_font(15, bold=True, font_type="sans")
+    draw.text((inset_x + 15, inset_y + inset_h - tag_h + 9), "TERRAZZA PANORAMICA", font=font_tag, fill=(255, 255, 255, 255))
+
+    # 3. Footer Unificato
+    fy = 1550
+    draw.rounded_rectangle([35, fy, W - 35, H - 25], radius=24, fill=(248, 250, 252, 250), outline=(212, 168, 83, 200), width=2)
+    draw_skyline(draw, H - 27, W - 70, color=(203, 213, 225, 150))
+
+    draw_circular_badge(draw, 90, fy + 70, 34, "music", "")
+
+    btn_w = 780
+    btn_h = 72
+    btn_x = 150
+    btn_y = fy + 34
+    btn_txt = "🔴 ENTRA ORA IN DIRETTA A VEDERLA DAL VIVO >" if is_live else "SCRIVICI IN PRIVATO PER INFO O VISITA >"
+    draw.rounded_rectangle([btn_x + 3, btn_y + 5, btn_x + btn_w + 3, btn_y + btn_h + 5], radius=36, fill=(15, 23, 42, 60))
+    btn_color = (220, 38, 38, 255) if is_live else (15, 23, 42, 255)
+    draw.rounded_rectangle([btn_x, btn_y, btn_x + btn_w, btn_y + btn_h], radius=36, fill=btn_color, outline=(212, 168, 83, 255), width=2)
+    
+    font_btn = get_font(23, bold=True, font_type="sans")
+    bbw = font_btn.getbbox(btn_txt)[2] - font_btn.getbbox(btn_txt)[0]
+    draw.text((btn_x + (btn_w - bbw) // 2, btn_y + 22), btn_txt, font=font_btn, fill=(255, 255, 255, 255))
+
+    font_script = get_font(36, bold=False, font_type="script")
+    script_txt = "La tua prossima casa ti aspetta"
+    sw = font_script.getbbox(script_txt)[2] - font_script.getbbox(script_txt)[0]
+    draw.text(((W - sw) // 2, fy + 140), script_txt, font=font_script, fill=(180, 130, 40, 255))
+
+    font_fbrand = get_font(30, bold=True, font_type="serif")
+    fb_txt = "IMMOBILIARE GIANCANI"
+    fbw = font_fbrand.getbbox(fb_txt)[2] - font_fbrand.getbbox(fb_txt)[0]
+    draw.text(((W - fbw) // 2, fy + 210), fb_txt, font=font_fbrand, fill=(15, 23, 42, 255))
+
+    canvas.save(output_path, "PNG")
+    return output_path
+
+def crea_grafica_luxury_glass(media_info, output_path=None, size=(1080, 1080)):
+    """STILE 2 (FLYER 1:1): LUXURY GLASS MODERN"""
+    W, H = size
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"flyer_luxury_{uuid.uuid4().hex[:6]}.png")
+
+    foto_url = media_info.get('fotoUrl')
+    foto_im = scarica_foto_url(foto_url) if foto_url else None
+    if not foto_im:
+        cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
+        if cache_files:
+            try: foto_im = Image.open(cache_files[0]).convert('RGB')
+            except Exception: pass
+    if not foto_im:
+        foto_im = Image.new('RGB', (W, H), (15, 23, 42))
+
+    bg = foto_im.resize((W, H), Image.LANCZOS).filter(ImageFilter.GaussianBlur(15))
+    dark_ov = Image.new('RGBA', (W, H), (10, 15, 26, 210))
+    bg_rgba = bg.convert('RGBA')
+    bg_rgba.alpha_composite(dark_ov)
+    draw = ImageDraw.Draw(bg_rgba)
+
+    logo_img = get_local_or_remote_logo()
+    if logo_img:
+        try:
+            l_img = logo_img.resize((90, 90), Image.LANCZOS)
+            bg_rgba.paste(l_img, ((W - 90) // 2, 45), mask=l_img.split()[3])
+        except Exception:
+            pass
+
+    font_brand = get_font(28, bold=True, font_type="serif")
+    b_txt = "IMMOBILIARE GIANCANI"
+    b_w = font_brand.getbbox(b_txt)[2] - font_brand.getbbox(b_txt)[0]
+    draw.text(((W - b_w) // 2, 145), b_txt, font=font_brand, fill=(212, 168, 83, 255))
+
+    font_live = get_font(18, bold=True, font_type="sans")
+    is_live = media_info.get('isLive', False)
+    l_txt = "🔴 IN DIRETTA STREAMING ORA" if is_live else "★ PRESTIGE COLLECTION ★"
+    l_w = font_live.getbbox(l_txt)[2] - font_live.getbbox(l_txt)[0] + 40
+    badge_col = (220, 38, 38, 230) if is_live else (30, 64, 175, 230)
+    draw.rounded_rectangle([(W - l_w)//2, 185, (W + l_w)//2, 225], radius=12, fill=badge_col)
+    draw.text(((W - font_live.getbbox(l_txt)[2]) // 2, 195), l_txt, font=font_live, fill=(255, 255, 255, 255))
+
+    cw, ch = 880, 430
+    cx = (W - cw) // 2
+    cy = 245
+    c_photo = foto_im.resize((cw, ch), Image.LANCZOS)
+    draw.rounded_rectangle([cx - 4, cy - 4, cx + cw + 4, cy + ch + 4], radius=16, fill=(212, 168, 83, 200))
+    bg_rgba.paste(c_photo, (cx, cy))
+
+    prezzo_reale = media_info.get('prezzo', '€ 79.000')
+    mq_val = normalize_mq(media_info.get('mq', '140 metri quadri'))
+
+    tag_price = f"💰 {prezzo_reale}  |  📐 {mq_val}"
+    font_tag_p = get_font(24, bold=True, font_type="sans")
+    tp_w = font_tag_p.getbbox(tag_price)[2] - font_tag_p.getbbox(tag_price)[0] + 36
+    draw.rounded_rectangle([cx + 20, cy + ch - 65, cx + 20 + tp_w, cy + ch - 15], radius=10, fill=(15, 23, 42, 230), outline=(212, 168, 83, 255), width=2)
+    draw.text((cx + 38, cy + ch - 55), tag_price, font=font_tag_p, fill=(255, 255, 255, 255))
+
+    card_y = cy + ch + 20
+    card_h = H - card_y - 40
+    draw.rounded_rectangle([cx, card_y, cx + cw, card_y + card_h], radius=20, fill=(15, 23, 42, 220), outline=(212, 168, 83, 150), width=2)
+
+    titolo = media_info.get('titolo', 'Opportunità Immobiliare Esclusiva')
+    font_tit = get_font(26, bold=True, font_type="serif")
+    draw.text((cx + 30, card_y + 20), titolo[:45], font=font_tit, fill=(255, 255, 255, 255))
+
+    testo_f = media_info.get('testoF', 'Immobile selezionato per qualità, posizione e comodità ad Agrigento e Favara.')
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f = f"{testo_f.rstrip('. ')} — Immobiliare Giancani"
+
+    font_tf = get_font(18, bold=False, font_type="sans")
+    tf_words = testo_f.split()
+    tf_lines = []
+    c_line = []
+    for w in tf_words:
+        tl = " ".join(c_line + [w])
+        if font_tf.getbbox(tl)[2] < cw - 60:
+            c_line.append(w)
+        else:
+            if c_line: tf_lines.append(" ".join(c_line))
+            c_line = [w]
+    if c_line: tf_lines.append(" ".join(c_line))
+
+    tdy = card_y + 65
+    for l in tf_lines[:4]:
+        draw.text((cx + 30, tdy), l, font=font_tf, fill=(203, 213, 225, 255))
+        tdy += 26
+
+    cta_t = "👉 ENTRA ORA IN DIRETTA A VEDERLA DAL VIVO!" if is_live else "👉 Contattaci per prenotare la tua visita privata"
+    font_cta = get_font(18, bold=True, font_type="sans")
+    draw.text((cx + 30, card_y + card_h - 75), cta_t, font=font_cta, fill=(56, 189, 248, 255))
+
+    font_sign = get_font(22, bold=True, font_type="serif")
+    sign_t = "— IMMOBILIARE GIANCANI —"
+    sw = font_sign.getbbox(sign_t)[2] - font_sign.getbbox(sign_t)[0]
+    draw.text((cx + (cw - sw) // 2, card_y + card_h - 38), sign_t, font=font_sign, fill=(212, 168, 83, 255))
+
+    bg_rgba.save(output_path, "PNG")
+    return output_path
+
+def crea_story_luxury_glass_9_16(media_info, output_path=None):
+    """STILE 2 (STORIA 9:16): LUXURY GLASS MODERN"""
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_luxury_{uuid.uuid4().hex[:6]}.png")
+
+    foto_url = media_info.get('fotoUrl')
+    foto_im = scarica_foto_url(foto_url) if foto_url else None
+    if not foto_im:
+        cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
+        if cache_files:
+            try: foto_im = Image.open(cache_files[0]).convert('RGB')
+            except Exception: pass
+    if not foto_im:
+        foto_im = Image.new('RGB', (W, H), (15, 23, 42))
+
+    bg = foto_im.resize((W, H), Image.LANCZOS).filter(ImageFilter.GaussianBlur(25))
+    dark_ov = Image.new('RGBA', (W, H), (10, 15, 26, 215))
+    bg_rgba = bg.convert('RGBA')
+    bg_rgba.alpha_composite(dark_ov)
+    draw = ImageDraw.Draw(bg_rgba)
+
+    logo_img = get_local_or_remote_logo()
+    if logo_img:
+        try:
+            l_img = logo_img.resize((110, 110), Image.LANCZOS)
+            bg_rgba.paste(l_img, ((W - 110) // 2, 60), mask=l_img.split()[3])
+        except Exception:
+            pass
+
+    font_brand = get_font(30, bold=True, font_type="serif")
+    b_txt = "IMMOBILIARE GIANCANI"
+    bw = font_brand.getbbox(b_txt)[2] - font_brand.getbbox(b_txt)[0]
+    draw.text(((W - bw) // 2, 185), b_txt, font=font_brand, fill=(212, 168, 83, 255))
+
+    font_live = get_font(21, bold=True, font_type="sans")
+    is_live = media_info.get('isLive', True)
+    l_txt = "🔴 IN DIRETTA STREAMING ORA" if is_live else "★ PRESTIGE COLLECTION ★"
+    lw = font_live.getbbox(l_txt)[2] - font_live.getbbox(l_txt)[0] + 44
+    draw.rounded_rectangle([(W - lw)//2, 230, (W + lw)//2, 276], radius=14, fill=(220, 38, 38, 240) if is_live else (30, 64, 175, 240))
+    draw.text(((W - font_live.getbbox(l_txt)[2]) // 2, 242), l_txt, font=font_live, fill=(255, 255, 255, 255))
+
+    cw, ch = 960, 720
+    cx = (W - cw) // 2
+    cy = 310
+    c_photo = foto_im.resize((cw, ch), Image.LANCZOS)
+    draw.rounded_rectangle([cx - 4, cy - 4, cx + cw + 4, cy + ch + 4], radius=20, fill=(212, 168, 83, 220))
+    bg_rgba.paste(c_photo, (cx, cy))
+
+    prezzo_reale = media_info.get('prezzo', '€ 79.000')
+    mq_val = normalize_mq(media_info.get('mq', '140 metri quadri'))
+    tag_price = f"💰 {prezzo_reale}   |   📐 {mq_val.upper()}"
+    font_tag_p = get_font(28, bold=True, font_type="sans")
+    tp_w = font_tag_p.getbbox(tag_price)[2] - font_tag_p.getbbox(tag_price)[0] + 44
+    draw.rounded_rectangle([cx + 30, cy + ch - 80, cx + 30 + tp_w, cy + ch - 18], radius=14, fill=(15, 23, 42, 240), outline=(212, 168, 83, 255), width=2)
+    draw.text((cx + 52, cy + ch - 68), tag_price, font=font_tag_p, fill=(255, 255, 255, 255))
+
+    card_y = cy + ch + 35
+    card_h = H - card_y - 40
+    draw.rounded_rectangle([cx, card_y, cx + cw, card_y + card_h], radius=24, fill=(15, 23, 42, 230), outline=(212, 168, 83, 160), width=2)
+
+    titolo = media_info.get('titolo', 'Opportunità Immobiliare Esclusiva')
+    font_tit = get_font(32, bold=True, font_type="serif")
+    draw.text((cx + 40, card_y + 35), titolo[:42], font=font_tit, fill=(255, 255, 255, 255))
+
+    testo_f = media_info.get('testoF', 'Immobile selezionato per qualità, posizione e comodità ad Agrigento e Favara.')
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f = f"{testo_f.rstrip('. ')} — Immobiliare Giancani"
+
+    font_tf = get_font(22, bold=False, font_type="sans")
+    tf_words = testo_f.split()
+    tf_lines = []
+    c_line = []
+    for w in tf_words:
+        tl = " ".join(c_line + [w])
+        if font_tf.getbbox(tl)[2] < cw - 80:
+            c_line.append(w)
+        else:
+            if c_line: tf_lines.append(" ".join(c_line))
+            c_line = [w]
+    if c_line: tf_lines.append(" ".join(c_line))
+
+    tdy = card_y + 95
+    for l in tf_lines[:7]:
+        draw.text((cx + 40, tdy), l, font=font_tf, fill=(203, 213, 225, 255))
+        tdy += 34
+
+    btn_txt = "🔴 ENTRA ORA IN DIRETTA A VEDERLA DAL VIVO >" if is_live else "👉 CONTATTACI PER FISSARE UNA VISITA"
+    font_cta = get_font(23, bold=True, font_type="sans")
+    draw.text((cx + 40, card_y + card_h - 110), btn_txt, font=font_cta, fill=(56, 189, 248, 255))
+
+    font_sign = get_font(28, bold=True, font_type="serif")
+    sign_t = "— IMMOBILIARE GIANCANI —"
+    sw = font_sign.getbbox(sign_t)[2] - font_sign.getbbox(sign_t)[0]
+    draw.text((cx + (cw - sw) // 2, card_y + card_h - 55), sign_t, font=font_sign, fill=(212, 168, 83, 255))
+
+    bg_rgba.save(output_path, "PNG")
+    return output_path
+
+def crea_grafica_editorial(media_info, output_path=None, size=(1080, 1080)):
+    """STILE 3 (FLYER 1:1): EDITORIAL SHOWCASE MAGAZINE"""
+    W, H = size
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"flyer_editorial_{uuid.uuid4().hex[:6]}.png")
+
+    img = Image.new('RGBA', (W, H), (250, 250, 248, 255))
+    draw = ImageDraw.Draw(img)
+
+    draw.rectangle([25, 25, W - 25, H - 25], outline=(212, 168, 83, 220), width=2)
+    draw.rectangle([32, 32, W - 32, H - 32], outline=(15, 23, 42, 60), width=1)
+
+    font_mag = get_font(26, bold=True, font_type="serif")
+    mag_txt = "IMMOBILIARE GIANCANI"
+    mw = font_mag.getbbox(mag_txt)[2] - font_mag.getbbox(mag_txt)[0]
+    draw.text(((W - mw) // 2, 48), mag_txt, font=font_mag, fill=(15, 23, 42, 255))
+
+    font_sub_mag = get_font(15, bold=True, font_type="sans")
+    sub_mag = "EXCLUSIVE PROPERTY DOSSIER • ARCHITETTURA & VITA"
+    sm_w = font_sub_mag.getbbox(sub_mag)[2] - font_sub_mag.getbbox(sub_mag)[0]
+    draw.text(((W - sm_w) // 2, 85), sub_mag, font=font_sub_mag, fill=(148, 163, 184, 255))
+    draw.line([(50, 115), (W - 50, 115)], fill=(212, 168, 83, 180), width=1)
+
+    foto_url = media_info.get('fotoUrl')
+    foto_1 = scarica_foto_url(foto_url) if foto_url else None
+    cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
+    if not foto_1 and cache_files:
+        try: foto_1 = Image.open(cache_files[0]).convert('RGB')
+        except Exception: pass
+    if not foto_1:
+        foto_1 = Image.new('RGB', (580, 420), (200, 180, 150))
+
+    foto_2 = Image.open(cache_files[1]).convert('RGB') if len(cache_files) > 1 else foto_1
+
+    f1_w, f1_h = 580, 420
+    f2_w, f2_h = 360, 420
+    sc1 = foto_1.resize((f1_w, f1_h), Image.LANCZOS)
+    sc2 = foto_2.resize((f2_w, f2_h), Image.LANCZOS)
+
+    draw.rectangle([50, 135, 50 + f1_w, 135 + f1_h], fill=(226, 232, 240, 255))
+    img.paste(sc1, (50, 135))
+    
+    draw.rectangle([70 + f1_w, 135, W - 50, 135 + f2_h], fill=(226, 232, 240, 255))
+    img.paste(sc2, (70 + f1_w, 135))
+
+    prezzo_reale = media_info.get('prezzo', '€ 79.000')
+    draw.rectangle([50, 135 + f1_h - 55, 50 + 260, 135 + f1_h], fill=(220, 38, 38, 240))
+    font_bp = get_font(26, bold=True, font_type="sans")
+    draw.text((70, 135 + f1_h - 45), f"PREZZO: {prezzo_reale}", font=font_bp, fill=(255, 255, 255, 255))
+
+    ty = 135 + f1_h + 30
+    titolo = media_info.get('titolo', 'Residenza di Prestigio').upper()
+    font_tit = get_font(30, bold=True, font_type="serif")
+    draw.text((50, ty), titolo[:40], font=font_tit, fill=(15, 23, 42, 255))
+
+    mq_val = normalize_mq(media_info.get('mq', '140 metri quadri'))
+    font_spec = get_font(18, bold=True, font_type="sans")
+    spec_txt = f"• SUPERFICIE: {mq_val.upper()}   |   • CLASSE & COMFORT ELEVATO"
+    draw.text((50, ty + 42), spec_txt, font=font_spec, fill=(180, 130, 40, 255))
+
+    testo_f = media_info.get('testoF', 'Splendida soluzione su più livelli, luminosa e versatile. Perfetta per famiglie o investimento.')
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f = f"{testo_f.rstrip('. ')} — Immobiliare Giancani"
+
+    font_desc = get_font(18, bold=False, font_type="sans")
+    words = testo_f.split()
+    lines = []
+    curr = []
+    for w in words:
+        tl = " ".join(curr + [w])
+        if font_desc.getbbox(tl)[2] < W - 120:
+            curr.append(w)
+        else:
+            if curr: lines.append(" ".join(curr))
+            curr = [w]
+    if curr: lines.append(" ".join(curr))
+
+    my = ty + 85
+    for l in lines[:5]:
+        draw.text((50, my), l, font=font_desc, fill=(51, 65, 85, 255))
+        my += 28
+
+    bbar_y = H - 95
+    draw.line([(50, bbar_y), (W - 50, bbar_y)], fill=(212, 168, 83, 180), width=2)
+
+    font_cta_m = get_font(17, bold=True, font_type="sans")
+    cta_m = "CONTATTI & APPUNTAMENTI: IMMOBILIARE GIANCANI"
+    draw.text((50, bbar_y + 20), cta_m, font=font_cta_m, fill=(15, 23, 42, 255))
+
+    font_scr = get_font(22, bold=False, font_type="script")
+    draw.text((W - 350, bbar_y + 15), "La tua prossima casa ti aspetta", font=font_scr, fill=(180, 130, 40, 255))
+
+    img.save(output_path, "PNG")
+    return output_path
+
+def crea_story_editorial_9_16(media_info, output_path=None):
+    """STILE 3 (STORIA 9:16): EDITORIAL SHOWCASE MAGAZINE"""
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_editorial_{uuid.uuid4().hex[:6]}.png")
+
+    img = Image.new('RGBA', (W, H), (250, 250, 248, 255))
+    draw = ImageDraw.Draw(img)
+
+    draw.rectangle([30, 30, W - 30, H - 30], outline=(212, 168, 83, 220), width=3)
+    draw.rectangle([40, 40, W - 40, H - 40], outline=(15, 23, 42, 70), width=1)
+
+    logo_img = get_local_or_remote_logo()
+    if logo_img:
+        try:
+            l_img = logo_img.resize((90, 90), Image.LANCZOS)
+            img.paste(l_img, ((W - 90) // 2, 55), mask=l_img.split()[3])
+        except Exception:
+            pass
+
+    font_mag = get_font(32, bold=True, font_type="serif")
+    mag_txt = "IMMOBILIARE GIANCANI"
+    mw = font_mag.getbbox(mag_txt)[2] - font_mag.getbbox(mag_txt)[0]
+    draw.text(((W - mw) // 2, 160), mag_txt, font=font_mag, fill=(15, 23, 42, 255))
+
+    font_sub_mag = get_font(18, bold=True, font_type="sans")
+    sub_mag = "PRESTIGE PROPERTY DOSSIER • ARCHITETTURA & DESIGN"
+    sm_w = font_sub_mag.getbbox(sub_mag)[2] - font_sub_mag.getbbox(sub_mag)[0]
+    draw.text(((W - sm_w) // 2, 205), sub_mag, font=font_sub_mag, fill=(148, 163, 184, 255))
+    draw.line([(60, 240), (W - 60, 240)], fill=(212, 168, 83, 180), width=2)
+
+    foto_url = media_info.get('fotoUrl')
+    foto_1 = scarica_foto_url(foto_url) if foto_url else None
+    cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
+    if not foto_1 and cache_files:
+        try: foto_1 = Image.open(cache_files[0]).convert('RGB')
+        except Exception: pass
+    if not foto_1:
+        foto_1 = Image.new('RGB', (960, 680), (200, 180, 150))
+
+    fw, fh = 960, 750
+    fx = (W - fw) // 2
+    fy = 265
+    sc1 = foto_1.resize((fw, fh), Image.LANCZOS)
+    draw.rounded_rectangle([fx - 3, fy - 3, fx + fw + 3, fy + fh + 3], radius=16, fill=(212, 168, 83, 200))
+    img.paste(sc1, (fx, fy))
+
+    prezzo_reale = media_info.get('prezzo', '€ 79.000')
+    draw.rectangle([fx, fy + fh - 75, fx + 340, fy + fh], fill=(220, 38, 38, 240))
+    font_bp = get_font(30, bold=True, font_type="sans")
+    draw.text((fx + 25, fy + fh - 62), f"PREZZO: {prezzo_reale}", font=font_bp, fill=(255, 255, 255, 255))
+
+    ty = fy + fh + 40
+    titolo = media_info.get('titolo', 'Residenza di Prestigio').upper()
+    font_tit = get_font(36, bold=True, font_type="serif")
+    draw.text((fx, ty), titolo[:42], font=font_tit, fill=(15, 23, 42, 255))
+
+    mq_val = normalize_mq(media_info.get('mq', '140 metri quadri'))
+    font_spec = get_font(22, bold=True, font_type="sans")
+    spec_txt = f"• SUPERFICIE: {mq_val.upper()}   |   • ESCLUSIVA GIANCANI"
+    draw.text((fx, ty + 50), spec_txt, font=font_spec, fill=(180, 130, 40, 255))
+
+    testo_f = media_info.get('testoF', 'Splendida soluzione su più livelli, luminosa e versatile. Perfetta per famiglie o investimento.')
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f = f"{testo_f.rstrip('. ')} — Immobiliare Giancani"
+
+    font_desc = get_font(22, bold=False, font_type="sans")
+    words = testo_f.split()
+    lines = []
+    curr = []
+    for w in words:
+        tl = " ".join(curr + [w])
+        if font_desc.getbbox(tl)[2] < fw:
+            curr.append(w)
+        else:
+            if curr: lines.append(" ".join(curr))
+            curr = [w]
+    if curr: lines.append(" ".join(curr))
+
+    my = ty + 105
+    for l in lines[:8]:
+        draw.text((fx, my), l, font=font_desc, fill=(51, 65, 85, 255))
+        my += 34
+
+    bbar_y = H - 180
+    draw.line([(60, bbar_y), (W - 60, bbar_y)], fill=(212, 168, 83, 180), width=2)
+
+    is_live = media_info.get('isLive', True)
+    btn_w = 820
+    btn_h = 70
+    btn_x = (W - btn_w) // 2
+    btn_y = bbar_y + 20
+    btn_txt = "🔴 ENTRA ORA IN DIRETTA A VEDERLA DAL VIVO >" if is_live else "CONTATTACI PER MAGGIORI INFORMAZIONI >"
+    draw.rounded_rectangle([btn_x, btn_y, btn_x + btn_w, btn_y + btn_h], radius=35, fill=(220, 38, 38, 255) if is_live else (15, 23, 42, 255))
+    font_b = get_font(23, bold=True, font_type="sans")
+    bbw = font_b.getbbox(btn_txt)[2] - font_b.getbbox(btn_txt)[0]
+    draw.text(((W - bbw) // 2, btn_y + 20), btn_txt, font=font_b, fill=(255, 255, 255, 255))
+
+    font_scr = get_font(26, bold=False, font_type="script")
+    draw.text(((W - 420) // 2, btn_y + 82), "La tua prossima casa ti aspetta — Immobiliare Giancani", font=font_scr, fill=(180, 130, 40, 255))
+
+    img.save(output_path, "PNG")
+    return output_path
+
 def scarica_foto_url(url):
     """Scarica un'immagine assicurandosi che non sia corrotta o nera"""
     if not url or not str(url).startswith("http"):
@@ -529,10 +1481,11 @@ def scarica_foto_url(url):
         print(f"Avviso scaricamento foto ({url[:60]}...): {e}")
     return None
 
-def genera_video_da_clip_o_foto(media_info, output_video_path=None):
+def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"):
     """
-    Costruisce il video di 15 secondi (1080x1920) facendo girare la clip video o l'animazione Ken Burns
-    per tutto il tempo della storia, garantendo fluidità, sfondo sfumato e logo impresso.
+    Costruisce il video di 15 secondi (1080x1920) e il volantino promozionale 1:1,
+    facendo ruotare ad ogni ciclo da 30 minuti diverse grafiche (Split-Screen Flyer, Luxury Glass, Editorial Showcase).
+    Garantisce narrazione vocale espressiva (DarIA/DarIO) e musica allegra (124 BPM) royalty-free.
     """
     if not output_video_path:
         output_video_path = os.path.join(SCRATCH_DIR, f"story_video_{uuid.uuid4().hex[:8]}.mp4")
@@ -548,175 +1501,50 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None):
     testo_f = media_info.get('testoF', 'Immobile esclusivo selezionato ad Agrigento e Favara.')
     is_live = media_info.get('isLive', False)
 
-    temp_video_clip = None
+    # Selezione Stile Grafico (diverse grafiche alternate ogni 30 minuti)
+    styles = ["split_screen", "luxury_glass", "editorial"]
+    if not style or style == "auto":
+        chosen_style = styles[(int(time.time() / 1800)) % len(styles)]
+    else:
+        chosen_style = style if style in styles else "split_screen"
+    print(f"🎨 Stile grafico selezionato: {chosen_style.upper()} (rotazione ogni 30 min)")
 
-    # Se c'è un video (ad es. da YouTube o file diretto)
-    if video_url:
-        print(f"🎥 Tentativo estrazione clip video da: {video_url}")
-        target_yt = None
-        if "youtube.com" in video_url or "youtu.be" in video_url:
-            target_yt = video_url
-        elif "embed/" in video_url:
-            v_match = video_url.split("embed/")[1].split("?")[0]
-            target_yt = f"https://www.youtube.com/watch?v={v_match}"
+    # 1. Genera e salva sempre il volantino promozionale 1:1 per feed e archivio
+    flyer_1x1_path = os.path.join(SCRATCH_DIR, f"flyer_giancani_1x1_{uuid.uuid4().hex[:6]}.png")
+    if chosen_style == "split_screen":
+        crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
+        overlay_png_path = crea_story_splitscreen_9_16(media_info)
+    elif chosen_style == "luxury_glass":
+        crea_grafica_luxury_glass(media_info, flyer_1x1_path, size=(1080, 1080))
+        overlay_png_path = crea_story_luxury_glass_9_16(media_info)
+    else:
+        crea_grafica_editorial(media_info, flyer_1x1_path, size=(1080, 1080))
+        overlay_png_path = crea_story_editorial_9_16(media_info)
 
-        if target_yt:
-            try:
-                dest_clip = os.path.join(SCRATCH_DIR, f"yt_clip_{uuid.uuid4().hex[:8]}.mp4")
-                cmd_yt = [
-                    ytdlp_bin, "--no-check-certificates", "--no-warnings",
-                    "-f", "best[height<=1080][ext=mp4]/best[ext=mp4]/best",
-                    "--download-sections", "*00:00-00:15",
-                    "--force-keyframes-at-cuts",
-                    target_yt, "-o", dest_clip
-                ]
-                proc_yt = subprocess.run(cmd_yt, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=45)
-                if proc_yt.returncode == 0 and os.path.exists(dest_clip) and os.path.getsize(dest_clip) > 100000:
-                    temp_video_clip = dest_clip
-                    print(f"[OK] Clip video YouTube di 15s estratta con successo: {temp_video_clip}")
-            except Exception as eYt:
-                print(f"Avviso download YouTube: {eYt}")
-
-    # Determina fascia oraria se offline
+    # 2. Determina fascia oraria se offline
     fascia_info = determina_fascia_oraria() if not is_live else None
 
-    # Genera traccia audio completa con frase positiva flash iniziale (voce DarIA/DarIO + musica royalty-free Facebook)
-    if not is_live and fascia_info:
-        frase_positiva_flash = fascia_info["frase_flash"]
-    else:
-        frase_positiva_flash = random.choice(FRASI_POSITIVE_FLASH)
+    # 3. Traccia audio con DarIA/DarIO + musica allegra (124 BPM)
+    frase_positiva_flash = fascia_info["frase_flash"] if (not is_live and fascia_info) else random.choice(FRASI_POSITIVE_FLASH)
     audio_path = crea_audio_mix_completo(testo_f, is_live=is_live, frase_positiva=frase_positiva_flash, fascia_info=fascia_info)
 
-    # Prepara overlay logo
-    logo_img = get_local_or_remote_logo()
-    overlay_png_path = os.path.join(SCRATCH_DIR, f"overlay_badge_{uuid.uuid4().hex[:8]}.png")
-    
-    # Crea un'immagine PNG trasparente 1080x1920 con badge, logo, info immobile e personal branding
-    over_im = Image.new('RGBA', (1080, 1920), (0, 0, 0, 0))
-    over_draw = ImageDraw.Draw(over_im)
-
-    # Header Logo e Brand in alto
-    if logo_img:
-        logo_top = logo_img.resize((120, 120), Image.LANCZOS)
-        over_im.paste(logo_top, ((1080 - 120) // 2, 80), mask=logo_top.split()[3])
-
-    font_brand = get_font(28, bold=True)
-    b_txt = "IMMOBILIARE GIANCANI"
-    over_draw.text(((1080 - font_brand.getbbox(b_txt)[2]) // 2, 215), b_txt, font=font_brand, fill=(212, 168, 83, 255))
-
-    # Badge modalità con saluto fascia oraria ed emoticon
-    if is_live:
-        badge_txt = "🔴 IN DIRETTA STREAMING ORA"
-    elif fascia_info:
-        badge_txt = fascia_info["badge"]
-    else:
-        badge_txt = "🏠 OPPORTUNITÀ IMMOBILIARE"
-    font_badge = get_font(20, bold=True)
-    badge_w = font_badge.getbbox(badge_txt)[2] + 40
-    over_draw.rounded_rectangle([(1080 - badge_w)//2, 260, (1080 + badge_w)//2, 305], radius=16, fill=(220, 38, 38, 230) if is_live else (30, 64, 175, 230))
-    over_draw.text(((1080 - font_badge.getbbox(badge_txt)[2]) // 2, 272), badge_txt, font=font_badge, fill=(255, 255, 255, 255))
-
-    # Badge Messaggio Positivo Flash per chi scorre rapidamente le storie
-    font_pos = get_font(21, bold=True)
-    pos_txt = f"✨ {frase_positiva_flash}"
-    pos_bbox = font_pos.getbbox(pos_txt)
-    pos_w = pos_bbox[2] - pos_bbox[0] + 48
-    pos_x1 = max(40, (1080 - pos_w) // 2)
-    pos_x2 = min(1040, (1080 + pos_w) // 2)
-    over_draw.rounded_rectangle([pos_x1, 325, pos_x2, 380], radius=18, fill=(212, 168, 83, 240), outline=(255, 255, 255, 220), width=2)
-    over_draw.text(((1080 - (pos_bbox[2] - pos_bbox[0])) // 2, 338), pos_txt, font=font_pos, fill=(15, 23, 42, 255))
-
-    # Scheda testo e dettagli in basso
-    card_y = 1380
-    over_draw.rounded_rectangle([50, card_y, 1030, card_y + 360], radius=24, fill=(15, 23, 42, 235), outline=(212, 168, 83, 180), width=2)
-    
-    font_tit = get_font(32, bold=True)
-    over_draw.text((80, card_y + 30), titolo[:40], font=font_tit, fill=(255, 255, 255, 255))
-
-    font_dett = get_font(24, bold=False)
-    over_draw.text((80, card_y + 85), f"💰 {prezzo}  |  📐 {mq}", font=font_dett, fill=(212, 168, 83, 255))
-
-    # Testo Colonna F (prime 2 righe visive)
-    font_sub = get_font(20, bold=False)
-    righe_f = [testo_f[:65], testo_f[65:130]]
-    over_draw.text((80, card_y + 135), righe_f[0], font=font_sub, fill=(226, 232, 240, 255))
-    if len(righe_f) > 1 and righe_f[1]:
-        over_draw.text((80, card_y + 165), righe_f[1], font=font_sub, fill=(226, 232, 240, 255))
-
-    # Call to action
-    cta_txt = "👉 ENTRA ORA IN DIRETTA A VEDERLA DAL VIVO!" if is_live else "👉 Scrivici o chiama per fissare una visita!"
-    font_cta = get_font(21, bold=True)
-    over_draw.text((80, card_y + 225), cta_txt, font=font_cta, fill=(56, 189, 248, 255))
-
-    # Chiusura con Personal Branding
-    font_close = get_font(26, bold=True)
-    close_txt = "— Immobiliare Giancani"
-    over_draw.text(((1080 - font_close.getbbox(close_txt)[2]) // 2, card_y + 295), close_txt, font=font_close, fill=(212, 168, 83, 255))
-
-    over_im.save(overlay_png_path, "PNG")
-
-    # Costruzione Video con FFmpeg
-    if temp_video_clip and os.path.exists(temp_video_clip):
-        # Far girare il video per tutto il tempo della storia con sfondo sfumato
-        vf_pipeline = (
-            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5[bg];"
-            "[0:v]scale=1000:750:force_original_aspect_ratio=decrease[fg];"
-            "[bg][fg]overlay=(W-w)/2:520[vwithfg];"
-            "[vwithfg][2:v]overlay=0:0[vout]"
-        )
-        cmd_render = [
-            ffmpeg_bin, "-y",
-            "-stream_loop", "-1", "-i", temp_video_clip,
-            "-i", audio_path,
-            "-i", overlay_png_path,
-            "-filter_complex", vf_pipeline,
-            "-map", "[vout]",
-            "-map", "1:a",
-            "-c:v", "libx264",
-            "-preset", "veryfast",
-            "-pix_fmt", "yuv420p",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-t", "15",
-            output_video_path
-        ]
-    else:
-        # Animazione continua Ken Burns con la foto dell'immobile
-        foto_im = scarica_foto_url(foto_url)
-        if not foto_im:
-            for fb_url in GUARANTEED_FALLBACK_IMAGES:
-                foto_im = scarica_foto_url(fb_url)
-                if foto_im: break
-
-        temp_photo_path = os.path.join(SCRATCH_DIR, f"temp_photo_{uuid.uuid4().hex[:8]}.jpg")
-        foto_im.convert('RGB').save(temp_photo_path, "JPEG", quality=95)
-
-        vf_pipeline = (
-            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5[bg];"
-            "[0:v]scale=1000:750:force_original_aspect_ratio=decrease[fg];"
-            "[bg][fg]overlay=(W-w)/2:520[vwithfg];"
-            "[vwithfg][2:v]overlay=0:0[vout]"
-        )
-        cmd_render = [
-            ffmpeg_bin, "-y",
-            "-loop", "1", "-i", temp_photo_path,
-            "-i", audio_path,
-            "-i", overlay_png_path,
-            "-filter_complex", vf_pipeline,
-            "-map", "[vout]",
-            "-map", "1:a",
-            "-c:v", "libx264",
-            "-preset", "veryfast",
-            "-pix_fmt", "yuv420p",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-t", "15",
-            output_video_path
-        ]
+    # 4. Rendering Video 1080x1920 con FFmpeg (15 secondi continui)
+    cmd_render = [
+        ffmpeg_bin, "-y",
+        "-loop", "1", "-i", overlay_png_path,
+        "-i", audio_path,
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-t", "15",
+        output_video_path
+    ]
 
     proc_render = subprocess.run(cmd_render, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=90)
     if proc_render.returncode == 0 and os.path.exists(output_video_path) and os.path.getsize(output_video_path) > 100000:
-        print(f"[OK] Video Storia di 15 secondi generato con successo: {output_video_path}")
+        print(f"[OK] Video Storia 15s ({chosen_style}) generato: {output_video_path}")
         return output_video_path
     return None
 
@@ -993,11 +1821,24 @@ def invia_notifica_telegram(titolo, mq, prezzo, risultati, is_live=True):
 # ═════════════════════════════════════════════════════════════════════════════
 # GESTIONE MODALITÀ LIVE
 # ═════════════════════════════════════════════════════════════════════════════
-def esegui_ciclo_live():
-    """Esegue un ciclo di pubblicazione storia durante la diretta streaming"""
+def esegui_ciclo_live(style="auto"):
+    """
+    Esegue un ciclo di pubblicazione storia durante la diretta streaming (ogni 30 minuti).
+    GUARDIA RIGOROSA: se non è in diretta live streaming, NON esegue alcuna pubblicazione.
+    """
     print("\n" + "═" * 70)
     print("🚀 CICLO STORIA LIVE FACEBOOK (OGNI 30 MINUTI)")
     print("═" * 70)
+
+    # 1. CONTROLLO DIRETTA LIVE ATTIVA ("se non è in diretta nulla")
+    is_live, run_id = check_is_live_active()
+    if not is_live:
+        print("🔴 Nessuna diretta live streaming in corso su YouTube / Facebook / GitHub Actions.")
+        print("ℹ️ Direttiva attiva: quando non si è in diretta, il bot NON pubblica alcuna storia e rimane a riposo.")
+        print("— Immobiliare Giancani\n")
+        return []
+
+    print(f"🔴 DIRETTA STREAMING ATTIVA (Run ID: {run_id}). Avvio generazione storia live con rotazione grafica...")
 
     # Recupera immobile attivo dal backend
     url_imm = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=current"
@@ -1024,7 +1865,7 @@ def esegui_ciclo_live():
         "isLive": True
     }
 
-    video_path = genera_video_da_clip_o_foto(media_info)
+    video_path = genera_video_da_clip_o_foto(media_info, style=style)
     if not video_path:
         print("❌ Errore generazione video storia live.")
         return []
@@ -1166,7 +2007,7 @@ def esegui_ciclo_offline():
         "isLive": False
     }
 
-    video_path = genera_video_da_clip_o_foto(media_info)
+    video_path = genera_video_da_clip_o_foto(media_info, style=style)
     if not video_path:
         print("❌ Errore generazione video storia offline.")
         return []
@@ -1229,22 +2070,26 @@ def main():
     parser.add_argument("--mode", choices=["live", "offline", "nota"], default="live", help="Modalità operativa: live (durante la diretta), offline (ogni ora), o nota (pubblica nota facebook del giorno)")
     parser.add_argument("--fascia", choices=["mattina", "pomeriggio", "sera", "notte", "auto"], default="auto", help="Forza la fascia oraria per saluto ed emoticon")
     parser.add_argument("--loop", action="store_true", help="Esegue in ciclo continuo (per la diretta live ogni 30 minuti (1800s))")
+    parser.add_argument("--style", choices=["auto", "split_screen", "luxury_glass", "editorial"], default="auto", help="Stile grafico per la storia (default: auto con rotazione ogni 30 min)")
     parser.add_argument("--interval", type=int, default=1800, help="Intervallo in secondi per la modalità loop (default: 1800s = 30 minuti)")
     args = parser.parse_args()
 
     if args.mode == "live":
         if args.loop:
             print(f"Avvio demone storie Facebook in diretta ogni {args.interval} secondi ({args.interval // 60} minuti)...")
-            time.sleep(30) # Breve attesa iniziale per stabilizzazione live
+            time.sleep(15)
             while True:
                 try:
-                    esegui_ciclo_live()
+                    is_live, run_id = check_is_live_active()
+                    if is_live:
+                        esegui_ciclo_live(style=getattr(args, 'style', 'auto'))
+                    else:
+                        print(f"🔴 Diretta live non attiva. Controllo programmato tra {args.interval // 60} minuti... — Immobiliare Giancani")
                 except Exception as eL:
                     print(f"Errore ciclo live: {eL}")
-                print(f"Prossima storia tra {args.interval} secondi ({args.interval // 60} minuti)...")
                 time.sleep(args.interval)
         else:
-            esegui_ciclo_live()
+            esegui_ciclo_live(style=getattr(args, 'style', 'auto'))
     elif args.mode == "offline":
         esegui_ciclo_offline()
     elif args.mode == "nota":

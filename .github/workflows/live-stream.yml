@@ -278,7 +278,7 @@ jobs:
           # --- 2. YOUTUBE LIVE ---
           YT_KEY="${{ github.event.inputs.yt_key }}"
           if [ -z "$YT_KEY" ]; then
-            YT_KEY="umqe-k4ke-qba4-39db-abrp"
+            YT_KEY="byga-0tdf-uu9w-zetp-392s"
           fi
           YT_URL=""
           if [[ "$YT_KEY" == rtmp* ]]; then

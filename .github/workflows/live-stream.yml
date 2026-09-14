@@ -232,10 +232,21 @@ jobs:
             if [ -f scripts/estrai_chiavi_live_social.py ]; then
               echo "🤖 Avvio Bot Estrazione Chiavi Social in background sul runner..."
               python3 scripts/estrai_chiavi_live_social.py --headless &
-              echo "⏳ In attesa delle coordinate RTMP dinamiche..."
-              for i in $(seq 1 45); do
-                if [ -f /tmp/facebook_rtmp.txt ] || [ -f /tmp/instagram_rtmp.txt ] || [ -f /tmp/tiktok_rtmp.txt ]; then
-                  echo "✅ Coordinate RTMP generate e pronte per lo streaming!"
+              echo "⏳ In attesa che le coordinate RTMP di tutti i canali (FB, IG, TK) siano pronte..."
+              for i in $(seq 1 35); do
+                ALL_READY=1
+                if [ -z "${{ github.event.inputs.fb_key }}" ] || [ "${{ github.event.inputs.fb_key }}" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
+                  [ ! -f /tmp/facebook_rtmp.txt ] && ALL_READY=0
+                fi
+                if [ -z "${{ github.event.inputs.ig_key }}" ]; then
+                  [ ! -f /tmp/instagram_rtmp.txt ] && ALL_READY=0
+                fi
+                if [ -z "${{ github.event.inputs.tk_key }}" ]; then
+                  [ ! -f /tmp/tiktok_rtmp.txt ] && ALL_READY=0
+                fi
+
+                if [ $ALL_READY -eq 1 ]; then
+                  echo "✅ Coordinate RTMP di tutti i canali (FB, IG, TK) estratte con successo e pronte per lo streaming!"
                   break
                 fi
                 sleep 2

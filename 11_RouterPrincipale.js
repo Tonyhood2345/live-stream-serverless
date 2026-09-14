@@ -199,6 +199,41 @@ function doGet(e) {
       return ContentService.createTextOutput(JSON.stringify(resGuida, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 
+    
+    // --- 📢 AZIONI GESTIONE INVITO & PULIZIA FACEBOOK ---
+    if (action === 'pubblica_invito_fb') {
+      var resInv = (typeof pubblicaPostInvitoFacebookMattutino === 'function') ? pubblicaPostInvitoFacebookMattutino() : { success: false, error: 'Funzione non trovata' };
+      return ContentService.createTextOutput(JSON.stringify(resInv, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'elimina_invito_fb') {
+      var resDelInv = (typeof eliminaPostInvitoFacebook === 'function') ? eliminaPostInvitoFacebook() : { success: false, error: 'Funzione non trovata' };
+      return ContentService.createTextOutput(JSON.stringify(resDelInv, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'elimina_live_fb') {
+      var resDelLive = (typeof eliminaVideoDirettaFacebookConclusa === 'function') ? eliminaVideoDirettaFacebookConclusa() : { success: false, error: 'Funzione non trovata' };
+      return ContentService.createTextOutput(JSON.stringify(resDelLive, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // --- 📺 AZIONI SCHERMO CENTRALE SPOT & POSIZIONE AVATAR ---
+    if (action === 'get_spot_schermo_centrale') {
+      var resSpotSc = (typeof getSpotSchermoCentrale === 'function') ? getSpotSchermoCentrale() : { success: true, spot: [] };
+      return ContentService.createTextOutput(JSON.stringify(resSpotSc, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'salva_posizione_avatar') {
+      var posP = (e && e.parameter && e.parameter.posizione) ? e.parameter.posizione : 'centro';
+      var resPosS = (typeof salvaPosizioneSetAvatar === 'function') ? salvaPosizioneSetAvatar(posP) : { success: true, posizione: posP };
+      return ContentService.createTextOutput(JSON.stringify(resPosS, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'get_posizione_avatar') {
+      var resPosG = (typeof getPosizioneSetAvatar === 'function') ? getPosizioneSetAvatar() : { success: true, posizione: 'centro' };
+      return ContentService.createTextOutput(JSON.stringify(resPosG, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+
     if (action === 'invia_notifica_bagno') {
       var resBagnoN = inviaNotificaBagnoAstrattoTelegram();
       return ContentService.createTextOutput(JSON.stringify(resBagnoN, null, 2)).setMimeType(ContentService.MimeType.JSON);
@@ -293,6 +328,16 @@ function doGet(e) {
     if (action === 'get_storie_citta') {
       var stCitta = getStorieCittaList();
       return ContentService.createTextOutput(JSON.stringify({ success: true, storie: stCitta }, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'popola_musica' || action === 'aggiorna_musica') {
+      var resM = popolaMusicaSottofondoRoyaltyFree();
+      return ContentService.createTextOutput(JSON.stringify(resM, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'get_musica') {
+      var resM2 = getMusicaSottofondo();
+      return ContentService.createTextOutput(JSON.stringify(resM2, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === 'crea_foglio_battute_dario' || action === 'forza_creazione_fogli') {
@@ -486,6 +531,17 @@ function doGet(e) {
       var autReq = (e && e.parameter && e.parameter.autore) ? e.parameter.autore : 'Immobiliare Giancani';
       var resStReq = registraRichiestaStanzaChat(stReq, autReq, Date.now());
       return ContentService.createTextOutput(JSON.stringify(resStReq, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+        if (action === 'pubblica_nota_facebook') {
+      var fasciaParam = (e && e.parameter && e.parameter.fascia) ? e.parameter.fascia : null;
+      var resNota = pubblicaNotaFacebookFasciaOraria(fasciaParam);
+      return ContentService.createTextOutput(JSON.stringify(resNota, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'attiva_triggers_note_facebook') {
+      var resTrigNota = attivaTriggerNoteOrarieFacebook();
+      return ContentService.createTextOutput(JSON.stringify(resTrigNota, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === 'invia_commento_chat') {

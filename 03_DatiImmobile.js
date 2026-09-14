@@ -347,7 +347,8 @@ function getCaroselloPostYouTube(direction) {
       linkAnnuncio: currentVideo.watchUrl,
       ticker: currentVideo.ticker,
       configVoci: getConfigurazioneVoci(),
-      coppiaAvatar: getCoppiaAvatarAttiva()
+      coppiaAvatar: getCoppiaAvatarAttiva(),
+      musicaPlaylist: (typeof getMusicaSottofondo === 'function') ? getMusicaSottofondo().playlist : []
     };
   } catch(e) {
     inviaAllertaErroreTelegram("03_DatiImmobile.js", "getCaroselloPostYouTube", e.toString());
@@ -632,7 +633,8 @@ function getImmobileData(direction) {
       coppiaAvatar: getCoppiaAvatarAttiva(),
       dialoghiAvatTutti: getDialoghiAvatTuttiList(),
       posizioneSetAvatar: (typeof getPosizioneSetAvatar === 'function') ? getPosizioneSetAvatar().posizione : (props.getProperty('POSIZIONE_SET_AVATAR') || 'centro'),
-      spotSchermoCentrale: (typeof getSpotSchermoCentrale === 'function') ? getSpotSchermoCentrale().spot : []
+      spotSchermoCentrale: (typeof getSpotSchermoCentrale === 'function') ? getSpotSchermoCentrale().spot : [],
+      musicaPlaylist: (typeof getMusicaSottofondo === 'function') ? getMusicaSottofondo().playlist : []
     };
 
   } catch(e) {
@@ -801,10 +803,26 @@ function getMusicaSottofondo() {
       }
     }
 
-    if (!musicaUrl) musicaUrl = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-    return { success: true, url: convertiUrlDriveDirect(musicaUrl), playlist: [{ titolo: 'Lounge Sottofondo', url: convertiUrlDriveDirect(musicaUrl), stile: 'Lounge' }] };
+    if (!musicaUrl) musicaUrl = 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Sicilian_Sunset.mp3';
+    return {
+      success: true,
+      url: musicaUrl,
+      playlist: [
+        { titolo: 'Sicilian Sunset', url: 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Sicilian_Sunset.mp3', stile: 'Acoustic Lounge / Emozione' },
+        { titolo: 'Calma del Mediodía', url: 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Calma_del_Mediodia.mp3', stile: 'Chillout Ambient / Eleganza' },
+        { titolo: 'Back Road Out of Town', url: 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Back_Road_Out_of_Town.mp3', stile: 'Soft Acoustic Groove / Modern House' }
+      ]
+    };
   } catch(e) {
-    return { success: false, url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', playlist: [] };
+    return {
+      success: false,
+      url: 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Sicilian_Sunset.mp3',
+      playlist: [
+        { titolo: 'Sicilian Sunset', url: 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Sicilian_Sunset.mp3', stile: 'Acoustic Lounge / Emozione' },
+        { titolo: 'Calma del Mediodía', url: 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Calma_del_Mediodia.mp3', stile: 'Chillout Ambient / Eleganza' },
+        { titolo: 'Back Road Out of Town', url: 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Back_Road_Out_of_Town.mp3', stile: 'Soft Acoustic Groove / Modern House' }
+      ]
+    };
   }
 }
 
@@ -816,16 +834,16 @@ function popolaMusicaSottofondoRoyaltyFree() {
     var sheet = ss.getSheetByName('Musica_Sottofondo');
     if (!sheet) {
       sheet = ss.insertSheet('Musica_Sottofondo');
-      sheet.appendRow(['Titolo_Brano_A', 'URL_Audio_MP3_B', 'Genere_Stile_C', 'Attiva_D']);
-      sheet.getRange('A1:D1').setFontWeight('bold').setBackground('#27ae60').setFontColor('#ffffff');
+    } else {
+      sheet.clearContents();
     }
+    sheet.getRange(1, 1, 1, 4).setValues([['Titolo_Brano_A', 'URL_Audio_MP3_B', 'Genere_Stile_C', 'Attiva_D']]);
+    sheet.getRange('A1:D1').setFontWeight('bold').setBackground('#27ae60').setFontColor('#ffffff');
 
     var playlistSafe = [
-      ['Lounge Chill Relax Sunset', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 'Lounge / Ambient', 'SI'],
-      ['Smooth Luxury Real Estate', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', 'Acoustic / Elegant', 'SI'],
-      ['Modern House Tour Groove', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', 'Deep House Soft', 'SI'],
-      ['Italian Sunset Vibes', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', 'Chillout Ambient', 'SI'],
-      ['Sicily Summer Elegance', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', 'Lounge Guitar', 'SI']
+      ['Sicilian Sunset', 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Sicilian_Sunset.mp3', 'Acoustic Lounge / Emozione', 'SI'],
+      ['Calma del Mediodía', 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Calma_del_Mediodia.mp3', 'Chillout Ambient / Eleganza', 'SI'],
+      ['Back Road Out of Town', 'https://raw.githubusercontent.com/Tonyhood2345/live-stream-serverless/main/assets/musica/Back_Road_Out_of_Town.mp3', 'Soft Acoustic Groove / Modern House', 'SI']
     ];
 
     playlistSafe.forEach(function(row) {
@@ -834,8 +852,9 @@ function popolaMusicaSottofondoRoyaltyFree() {
 
     return {
       success: true,
-      messaggio: "Foglio 'Musica_Sottofondo' popolato con successo con 5 basi musicali royalty-free!",
-      count: playlistSafe.length
+      messaggio: "Foglio 'Musica_Sottofondo' aggiornato con le musiche ufficiali di Immobiliare Giancani!",
+      count: playlistSafe.length,
+      playlist: playlistSafe
     };
   } catch(e) {
     inviaAllertaErroreTelegram("03_DatiImmobile.js", "popolaMusicaSottofondoRoyaltyFree", e.toString());

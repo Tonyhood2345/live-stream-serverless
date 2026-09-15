@@ -1,1 +1,18 @@
-﻿{"note_ids":[],"indici_usati":{"mattina":[],"pomeriggio":[],"sera":[]}}
+{
+  "note_ids": [
+    {
+      "timestamp": "2026-09-15T18:10:44.374754+02:00",
+      "slot": "sera",
+      "post_id": "234931856561526_1779014070454078",
+      "variante": 1,
+      "titolo": "🌙 Buona Sera da Immobiliare Giancani!"
+    }
+  ],
+  "indici_usati": {
+    "mattina": [],
+    "pomeriggio": [],
+    "sera": [
+      0
+    ]
+  }
+}

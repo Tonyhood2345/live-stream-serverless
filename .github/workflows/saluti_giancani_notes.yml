@@ -1,4 +1,4 @@
-﻿name: "📓 Saluti Facebook Notes — Immobiliare Giancani"
+name: "📓 Saluti Facebook Notes — Immobiliare Giancani"
 
 on:
   # ── SCHEDULAZIONE AUTOMATICA (orari UTC → ora italiana CEST = UTC+2) ──
@@ -19,6 +19,12 @@ on:
         default: "auto"
         type: choice
         options: [auto, mattina, pomeriggio, sera]
+      page:
+        description: "Pagine su cui pubblicare"
+        required: true
+        default: "all"
+        type: choice
+        options: [all, giancani, antonio, favara]
       publish:
         description: "Pubblica su Facebook (false = solo simulazione)"
         required: true
@@ -31,7 +37,7 @@ on:
 
 jobs:
   pubblica_nota:
-    name: "📓 Pubblica Nota Facebook Notes"
+    name: "📓 Saluti Quotidiani Multi-Pagina (3x giorno + auto-delete)"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -50,19 +56,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: "📓 Esegui Bot — Pubblica Nota Facebook Notes"
+      - name: "📓 Esegui Bot — Saluti Multi-Pagina Facebook"
         env:
-          FB_PAGE_ID:           ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_ACCESS_TOKEN_GIANCANI: ${{ secrets.FB_PAGE_ACCESS_TOKEN_GIANCANI }}
+          FB_PAGE_ACCESS_TOKEN_ANTONIO: ${{ secrets.FB_PAGE_ACCESS_TOKEN_ANTONIO }}
+          FB_PAGE_ACCESS_TOKEN_FAVARA: ${{ secrets.FB_PAGE_ACCESS_TOKEN_FAVARA }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
         run: |
           SLOT="${{ github.event.inputs.slot || github.event.client_payload.slot || 'auto' }}"
+          PAGE="${{ github.event.inputs.page || 'all' }}"
           if [ "${{ github.event.inputs.publish }}" = "false" ]; then
             FLAG="--dry-run"
           else
             FLAG="--publish"
           fi
-          echo "🚀 Avvio pubblicazione Nota — Slot: $SLOT | Flag: $FLAG"
-          python bot_saluti_giancani_note.py --slot "$SLOT" $FLAG
+          echo "🚀 Avvio pubblicazione — Slot: $SLOT | Pagina: $PAGE | Flag: $FLAG"
+          python bot_saluti_giancani_note.py --slot "$SLOT" --page "$PAGE" $FLAG
 
       - name: "💾 Salva Storico Note (anti-doppioni)"
         if: always()

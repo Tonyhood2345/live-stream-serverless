@@ -1,0 +1,73 @@
+﻿name: "📓 Saluti Facebook Notes — Immobiliare Giancani"
+
+on:
+  # ── SCHEDULAZIONE AUTOMATICA (orari UTC → ora italiana CEST = UTC+2) ──
+  # 04:30 UTC = 06:30 IT  → ☀️  BUONGIORNO
+  # 11:00 UTC = 13:00 IT  → 🌤️  BUON POMERIGGIO
+  # 18:00 UTC = 20:00 IT  → 🌙  BUONA SERA
+  schedule:
+    - cron: "30 4 * * *"    # ☀️  Buongiorno     — 06:30 IT
+    - cron: "0 11 * * *"    # 🌤️  Buon Pomeriggio — 13:00 IT
+    - cron: "0 18 * * *"    # 🌙  Buona Sera      — 20:00 IT
+
+  # ── AVVIO MANUALE DA GITHUB ACTIONS ────────────────────────────────
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: "Fascia oraria"
+        required: true
+        default: "auto"
+        type: choice
+        options: [auto, mattina, pomeriggio, sera]
+      publish:
+        description: "Pubblica su Facebook (false = solo simulazione)"
+        required: true
+        default: true
+        type: boolean
+
+  # ── TRIGGER WEBHOOK REMOTO ───────────────────────────────────────────
+  repository_dispatch:
+    types: [pubblica_nota_giancani]
+
+jobs:
+  pubblica_nota:
+    name: "📓 Pubblica Nota Facebook Notes"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Configura Python 3.12"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "📦 Installa Dipendenze"
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: "📓 Esegui Bot — Pubblica Nota Facebook Notes"
+        env:
+          FB_PAGE_ID:           ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+        run: |
+          SLOT="${{ github.event.inputs.slot || github.event.client_payload.slot || 'auto' }}"
+          if [ "${{ github.event.inputs.publish }}" = "false" ]; then
+            FLAG="--dry-run"
+          else
+            FLAG="--publish"
+          fi
+          echo "🚀 Avvio pubblicazione Nota — Slot: $SLOT | Flag: $FLAG"
+          python bot_saluti_giancani_note.py --slot "$SLOT" $FLAG
+
+      - name: "💾 Salva Storico Note (anti-doppioni)"
+        if: always()
+        run: |
+          git config --global user.name  "Giancani Notes Bot"
+          git config --global user.email "bot@immobiliaregiancani.it"
+          git add storico_note_giancani.json 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "📓 Aggiornato storico note [skip ci]" && git push)

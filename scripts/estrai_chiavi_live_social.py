@@ -567,7 +567,8 @@ def main():
                         "--disable-setuid-sandbox",
                         "--no-first-run",
                         "--no-default-browser-check",
-                        "--disable-blink-features=AutomationControlled"
+                        "--disable-blink-features=AutomationControlled",
+                        "--mute-audio"
                     ]
                 }
                 if ch:
@@ -582,7 +583,7 @@ def main():
         if not browser:
             browser = p.chromium.launch(
                 headless=is_headless,
-                args=["--no-sandbox", "--disable-setuid-sandbox"]
+                args=["--no-sandbox", "--disable-setuid-sandbox", "--mute-audio"]
             )
 
         context_kwargs = {

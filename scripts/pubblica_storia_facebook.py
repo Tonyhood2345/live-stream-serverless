@@ -219,6 +219,53 @@ def get_local_or_remote_logo():
         print(f"Avviso: recupero logo remoto fallito ({e})")
     return None
 
+
+def get_clean_logo(max_w=380, max_h=110, transparent=True):
+    """
+    Restituisce il logo ufficiale Immobiliare Giancani proporzionato,
+    senza schiacciamenti ('non pressato') e con sfondo bianco rimosso (trasparente).
+    """
+    raw = get_local_or_remote_logo()
+    if not raw:
+        return None
+    try:
+        im = raw.convert('RGBA')
+        if transparent:
+            import numpy as np
+            arr = np.array(im)
+            r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+            white_mask = (r > 230) & (g > 230) & (b > 230)
+            arr[white_mask, 3] = 0
+            im = Image.fromarray(arr)
+
+        orig_w, orig_h = im.size
+        scale = min(max_w / orig_w, max_h / orig_h)
+        new_w = max(1, int(orig_w * scale))
+        new_h = max(1, int(orig_h * scale))
+        return im.resize((new_w, new_h), Image.LANCZOS)
+    except Exception as e:
+        print(f"Avviso elaborazione logo pulito: {e}")
+        return raw
+
+CRONOLOGIA_STORIE_PATH = os.path.join(ASSETS_DIR, "cronologia_storie_offline.json")
+
+def carica_cronologia_storie():
+    if os.path.exists(CRONOLOGIA_STORIE_PATH):
+        try:
+            with open(CRONOLOGIA_STORIE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def salva_cronologia_storie(cronologia):
+    try:
+        os.makedirs(os.path.dirname(CRONOLOGIA_STORIE_PATH), exist_ok=True)
+        with open(CRONOLOGIA_STORIE_PATH, "w", encoding="utf-8") as f:
+            json.dump(cronologia, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Avviso salvataggio cronologia storie: {e}")
+
 def normalize_mq(val):
     """Garantisce la dicitura 'metri quadri' per le superfici come da regola globale"""
     if not val:
@@ -685,13 +732,13 @@ def crea_grafica_flyer_split_screen(media_info, output_path=None, size=(1080, 10
     font_ribbon = get_font(24, bold=True, font_type="sans")
     draw.text((32, 43), "NUOVO PREZZO", font=font_ribbon, fill=(255, 255, 255, 255))
 
-    # Watermark Logo
-    logo_img = get_local_or_remote_logo()
-    if logo_img:
+    # Watermark Logo (Proporzionato, Trasparente, Non Pressato)
+    l_img = get_clean_logo(max_w=220, max_h=60, transparent=True)
+    if l_img:
         try:
-            l_img = logo_img.resize((70, 70), Image.LANCZOS)
-            draw.rounded_rectangle([15, content_h - 90, 95, content_h - 10], radius=12, fill=(15, 23, 42, 210))
-            img.paste(l_img, (20, content_h - 85), mask=l_img.split()[3])
+            lw, lh = l_img.size
+            draw.rounded_rectangle([15, content_h - lh - 25, 25 + lw, content_h - 15], radius=10, fill=(15, 23, 42, 215))
+            img.paste(l_img, (20, content_h - lh - 20), mask=l_img.split()[3])
         except Exception:
             pass
 
@@ -846,19 +893,19 @@ def crea_story_splitscreen_9_16(media_info, output_path=None):
     canvas = Image.new('RGBA', (W, H), (15, 23, 42, 255))
     draw = ImageDraw.Draw(canvas)
 
-    # 1. Header Superiore
-    logo_img = get_local_or_remote_logo()
-    if logo_img:
+    # 1. Header Superiore con Logo Proporzionato Trasparente (Non Pressato)
+    l_hdr_logo = get_clean_logo(max_w=400, max_h=110, transparent=True)
+    if l_hdr_logo:
         try:
-            l_img = logo_img.resize((100, 100), Image.LANCZOS)
-            canvas.paste(l_img, ((W - 100) // 2, 40), mask=l_img.split()[3])
+            lw, lh = l_hdr_logo.size
+            canvas.paste(l_hdr_logo, ((W - lw) // 2, 45), mask=l_hdr_logo.split()[3])
         except Exception:
             pass
-
-    font_brand = get_font(28, bold=True, font_type="serif")
-    b_txt = "IMMOBILIARE GIANCANI"
-    bw = font_brand.getbbox(b_txt)[2] - font_brand.getbbox(b_txt)[0]
-    draw.text(((W - bw) // 2, 148), b_txt, font=font_brand, fill=(212, 168, 83, 255))
+    else:
+        font_brand = get_font(32, bold=True, font_type="serif")
+        b_txt = "IMMOBILIARE GIANCANI"
+        bw = font_brand.getbbox(b_txt)[2] - font_brand.getbbox(b_txt)[0]
+        draw.text(((W - bw) // 2, 60), b_txt, font=font_brand, fill=(212, 168, 83, 255))
 
     font_badge = get_font(20, bold=True, font_type="sans")
     is_live = media_info.get('isLive', True)
@@ -921,11 +968,12 @@ def crea_story_splitscreen_9_16(media_info, output_path=None):
     font_ribbon = get_font(24, bold=True, font_type="sans")
     draw.text((box_x + 32, box_y + 48), "NUOVO PREZZO", font=font_ribbon, fill=(255, 255, 255, 255))
 
-    if logo_img:
+    l_wtm = get_clean_logo(max_w=180, max_h=50, transparent=True)
+    if l_wtm:
         try:
-            l_img = logo_img.resize((75, 75), Image.LANCZOS)
-            draw.rounded_rectangle([box_x + 18, box_y + box_h - 95, box_x + 102, box_y + box_h - 15], radius=12, fill=(15, 23, 42, 215))
-            canvas.paste(l_img, (box_x + 22, box_y + box_h - 90), mask=l_img.split()[3])
+            lw, lh = l_wtm.size
+            draw.rounded_rectangle([box_x + 15, box_y + box_h - lh - 25, box_x + 25 + lw, box_y + box_h - 15], radius=10, fill=(15, 23, 42, 215))
+            canvas.paste(l_wtm, (box_x + 20, box_y + box_h - lh - 20), mask=l_wtm.split()[3])
         except Exception:
             pass
 
@@ -1088,11 +1136,11 @@ def crea_grafica_luxury_glass(media_info, output_path=None, size=(1080, 1080)):
     bg_rgba.alpha_composite(dark_ov)
     draw = ImageDraw.Draw(bg_rgba)
 
-    logo_img = get_local_or_remote_logo()
+    logo_img = get_clean_logo(max_w=320, max_h=80, transparent=True)
     if logo_img:
         try:
-            l_img = logo_img.resize((90, 90), Image.LANCZOS)
-            bg_rgba.paste(l_img, ((W - 90) // 2, 45), mask=l_img.split()[3])
+            lw, lh = logo_img.size
+            bg_rgba.paste(logo_img, ((W - lw) // 2, 45), mask=logo_img.split()[3])
         except Exception:
             pass
 
@@ -1189,11 +1237,11 @@ def crea_story_luxury_glass_9_16(media_info, output_path=None):
     bg_rgba.alpha_composite(dark_ov)
     draw = ImageDraw.Draw(bg_rgba)
 
-    logo_img = get_local_or_remote_logo()
+    logo_img = get_clean_logo(max_w=380, max_h=95, transparent=True)
     if logo_img:
         try:
-            l_img = logo_img.resize((110, 110), Image.LANCZOS)
-            bg_rgba.paste(l_img, ((W - 110) // 2, 60), mask=l_img.split()[3])
+            lw, lh = logo_img.size
+            bg_rgba.paste(logo_img, ((W - lw) // 2, 60), mask=logo_img.split()[3])
         except Exception:
             pass
 
@@ -1373,11 +1421,11 @@ def crea_story_editorial_9_16(media_info, output_path=None):
     draw.rectangle([30, 30, W - 30, H - 30], outline=(212, 168, 83, 220), width=3)
     draw.rectangle([40, 40, W - 40, H - 40], outline=(15, 23, 42, 70), width=1)
 
-    logo_img = get_local_or_remote_logo()
+    logo_img = get_clean_logo(max_w=340, max_h=85, transparent=True)
     if logo_img:
         try:
-            l_img = logo_img.resize((90, 90), Image.LANCZOS)
-            img.paste(l_img, ((W - 90) // 2, 55), mask=l_img.split()[3])
+            lw, lh = logo_img.size
+            img.paste(logo_img, ((W - lw) // 2, 55), mask=logo_img.split()[3])
         except Exception:
             pass
 
@@ -1850,7 +1898,13 @@ def esegui_ciclo_live(style="auto"):
     except Exception as e:
         print(f"Avviso recupero dati immobile in diretta: {e}")
 
-    titolo = prop_data.get('stanza') or prop_data.get('titolo') or "Immobile in Diretta"
+    titolo_base = prop_data.get('titolo') or "Immobile in Diretta"
+    stanza = prop_data.get('stanza')
+    if stanza and stanza.lower() not in ['ambiente', ''] and stanza.lower() != titolo_base.lower():
+        titolo = f"{titolo_base} — {stanza}"
+    else:
+        titolo = titolo_base
+
     prezzo = prop_data.get('prezzo', 'Trattativa Riservata')
     mq = normalize_mq(prop_data.get('mq', '120'))
     foto_url = prop_data.get('mediaUrl') or prop_data.get('fotoUrl')
@@ -1935,7 +1989,7 @@ def esegui_ciclo_offline():
 
     print("✅ Nessuna diretta live in corso: procedo con la pubblicazione della storia oraria da catalogo immobili & YouTube...")
 
-    # 2. Recupera i fogli disponibili via debug_all_sheets
+    # 2. Recupera i fogli disponibili e le righe ATOMICHE (Colonna A, B, C, D, F della STESSA riga)
     url_sheets = f"{APPS_SCRIPT_URL}?action=debug_all_sheets"
     req_sheets = urllib.request.Request(url_sheets, headers={'User-Agent': 'Mozilla/5.0'})
     candidates = []
@@ -1945,57 +1999,116 @@ def esegui_ciclo_offline():
             data = json.loads(resp.read().decode('utf-8'))
             all_sheets = data.get('sheets', [])
             
-            # Cerca prima in Post_YouTube
-            for s in all_sheets:
-                if s.get('name') == 'Post_YouTube':
-                    sample = s.get('sample', [])
-                    for r in sample[1:]:
-                        if len(r) > 5 and r[0] and r[5]:
-                            candidates.append({
-                                "fonte": "YouTube",
-                                "videoUrl": str(r[0]),
-                                "prezzo": str(r[1] or 'Trattativa Riservata'),
-                                "mq": normalize_mq(r[2]),
-                                "titolo": str(r[3] or 'Opportunità Immobiliare'),
-                                "testoF": str(r[5]),
-                                "fotoUrl": str(r[6] if len(r) > 6 and r[6] else '')
-                            })
-
-            # Cerca nei fogli degli immobili
+            # Scansione di TUTTI i fogli immobili (escludendo solo quelli tecnici/social)
+            ignora_fogli = ['IMPOSTAZIONI_SOCIAL', 'CONFIGURAZIONE_TEMPI', 'RISULTATI_GIORNATA', 'FRASI_CALCIO', 'ANALYTICS_SOCIAL', 'MUSICA_SOTTOFONDO', 'ARCHIVIO_CLIENTI', 'PALINSESTO_ORARIO', 'PUBBLICITA_SPOT']
+            
             for s in all_sheets:
                 s_name = s.get('name', '')
-                if s_name.startswith(('Villa_', 'Appartamento_', 'Terreno_', 'VILLA_')):
-                    sample = s.get('sample', [])
-                    for r in sample[1:]:
-                        if len(r) > 5 and r[5]:
-                            candidates.append({
-                                "fonte": s_name.replace('_', ' '),
-                                "videoUrl": str(r[0]) if str(r[0]).endswith('.mp4') else None,
-                                "fotoUrl": str(r[0]) if not str(r[0]).endswith('.mp4') else '',
-                                "prezzo": str(r[1] or 'Trattativa Riservata'),
-                                "mq": normalize_mq(r[2]),
-                                "titolo": f"{s_name.replace('_', ' ')} — {r[3] if len(r) > 3 else ''}".strip(),
-                                "testoF": str(r[5])
-                            })
+                if s_name.upper() in ignora_fogli:
+                    continue
+                
+                # Se è un foglio immobile o Post_YouTube, estraiamo le righe
+                sample = s.get('sample', [])
+                for row_idx, r in enumerate(sample[1:], start=2):
+                    if len(r) > 5 and r[5] and str(r[5]).strip():
+                        # Verifica se c'è un'immagine o video nella stessa riga (Colonna A)
+                        raw_media = str(r[0] or '').strip()
+                        foto_url = ""
+                        video_url = None
+                        
+                        if 'youtube.com' in raw_media or 'youtu.be' in raw_media:
+                            video_url = raw_media
+                            # Se c'è una miniatura in colonna 6/7
+                            if len(r) > 6 and str(r[6]).startswith('http'):
+                                foto_url = str(r[6]).strip()
+                        elif raw_media.endswith(('.mp4', '.mov', '.avi')):
+                            video_url = raw_media
+                        elif raw_media.startswith('http') or 'lh3.googleusercontent.com' in raw_media:
+                            foto_url = raw_media
+
+                        # Titolo immobile pulito: se stanza è vuota o generica 'Ambiente', usa il nome del foglio
+                        stanza_riga = str(r[3] or '').strip() if len(r) > 3 else ''
+                        s_clean = s_name.replace('_', ' ').strip()
+                        if stanza_riga and stanza_riga.lower() not in ['ambiente', ''] and stanza_riga.lower() != s_clean.lower():
+                            titolo_atomico = f"{s_clean} — {stanza_riga}"
+                        else:
+                            titolo_atomico = s_clean
+
+                        # Genera ID univoco atomico basato su foglio, indice riga e hash contenuto
+                        cand_id = f"{s_name}_riga{row_idx}_{abs(hash(raw_media or titolo_atomico)) % 100000}"
+
+                        # CRITERIO RIGOROSO: La foto, il prezzo, la superficie e il testo F provengono ESCLUSIVAMENTE da questa STESSA RIGA!
+                        candidates.append({
+                            "id": cand_id,
+                            "fonte": s_clean,
+                            "sheet": s_name,
+                            "rowIndex": row_idx,
+                            "videoUrl": video_url,
+                            "fotoUrl": foto_url,
+                            "prezzo": str(r[1] or 'Trattativa Riservata').strip(),
+                            "mq": normalize_mq(r[2]),
+                            "titolo": titolo_atomico,
+                            "testoF": str(r[5]).strip()
+                        })
     except Exception as eSheets:
         print(f"Avviso lettura fogli: {eSheets}")
+
+    # Se la lettura via sample ha restituito pochi elementi, prova recupero diretto da fogli principali
+    if not candidates:
+        print("⚠️ Nessun immobile atomico estratto da sample, interrogo foglio corrente...")
+        try:
+            url_curr = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=current"
+            req_curr = urllib.request.Request(url_curr, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req_curr, timeout=20, context=ctx) as r_c:
+                data_c = json.loads(r_c.read().decode('utf-8'))
+                if data_c.get('fotoUrl') and data_c.get('testoDaLeggere'):
+                    candidates.append({
+                        "id": f"current_live_{int(time.time())}",
+                        "fonte": data_c.get('titolo', 'Immobile Attivo'),
+                        "videoUrl": None,
+                        "fotoUrl": data_c.get('fotoUrl'),
+                        "prezzo": data_c.get('prezzo', 'Trattativa Riservata'),
+                        "mq": normalize_mq(data_c.get('mq', '120')),
+                        "titolo": data_c.get('titolo', 'Immobile in Vendita'),
+                        "testoF": data_c.get('testoDaLeggere') or data_c.get('testo')
+                    })
+        except Exception as eCurr:
+            print(f"Avviso fallback immobile corrente: {eCurr}")
 
     if not candidates:
         print("⚠️ Nessun immobile o video estratto dai fogli. Utilizzo immobile di default...")
         candidates.append({
+            "id": "default_favara_1",
             "fonte": "Default",
             "videoUrl": "https://www.youtube.com/watch?v=f5pirIIs8FQ",
             "titolo": "Casa in Vendita a Favara",
             "prezzo": "Trattativa Riservata",
             "mq": "110 metri quadri",
-            "testoF": "Splendida soluzione abitativa con ampi spazi esterni e comfort moderno a Favara. — Antonio Giancani",
+            "testoF": "Splendida soluzione abitativa con ampi spazi esterni e comfort moderno a Favara. — Immobiliare Giancani",
             "fotoUrl": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop"
         })
 
-    # Rotazione basata sull'ora corrente per garantire varietà ogni ora
-    idx = int(time.time() / 3600) % len(candidates)
-    selected = candidates[idx]
-    print(f"🎯 Immobile selezionato per la storia di quest'ora ({idx + 1}/{len(candidates)}): {selected['titolo']} ({selected['fonte']})")
+    # ROTAZIONE PERSISTENTE ANTI-RIPETIZIONE (Garantisce che non ripubblichi mai lo stesso immobile!)
+    cronologia = carica_cronologia_storie()
+    # Filtra solo i candidati che NON sono ancora stati pubblicati
+    candidati_mai_visti = [c for c in candidates if c["id"] not in cronologia]
+    
+    if not candidati_mai_visti:
+        print("🔄 Tutti gli immobili del catalogo sono stati pubblicati! Reset ciclo cronologia per iniziare nuova rotazione...")
+        cronologia = {}
+        candidati_mai_visti = candidates
+
+    # Seleziona il prossimo immobile univoco
+    selected = candidati_mai_visti[0]
+    # Salva nella cronologia persistente con timestamp
+    cronologia[selected["id"]] = {
+        "timestamp": time.time(),
+        "titolo": selected["titolo"],
+        "fonte": selected["fonte"]
+    }
+    salva_cronologia_storie(cronologia)
+    print(f"🎯 Immobile selezionato per la storia di quest'ora ({len(cronologia)}/{len(candidates)} nel ciclo): {selected['titolo']} ({selected['fonte']})")
+    print(f"   Dati sincronizzati atomici: Foto={bool(selected.get('fotoUrl'))}, Prezzo={selected.get('prezzo')}, MQ={selected.get('mq')}, Colonna F='{selected.get('testoF')[:60]}...'")
 
     media_info = {
         "titolo": selected.get('titolo', 'Immobile in Vendita'),

@@ -870,20 +870,29 @@ if (window.location.protocol === 'file:') {
               </div>
             </div>
 
-            <!-- 6-TER. 🎨 STILE GRAFICO DIRETTA STREAMING (4 STILI PROFESSIONALI) -->
+            <!-- 6-TER. 🎨 STILE GRAFICO DIRETTA STREAMING (4 STILI PROFESSIONALI & ROTAZIONE ORARIA) -->
             <div style="background: rgba(15,23,42,0.65); border: 1.5px solid var(--gold); border-radius: 8px; padding: 10px; margin-top: 4px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <label style="font-size: 11.5px; font-weight: 800; color: var(--gold-bright); display: flex; align-items: center; gap: 6px;">
-                  <span>🎨</span> Stile Grafico Diretta Streaming:
+                  <span>🎨</span> Stile Grafico Diretta:
                 </label>
                 <span id="badge-stile-grafica-attivo" style="font-size: 10.5px; font-weight: 800; color: #38bdf8; background: rgba(56,189,248,0.15); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(56,189,248,0.3);">
-                  Modern Broadcast
+                  🔄 Rotazione Oraria
                 </span>
               </div>
+
+              <!-- Master Pulsante: Rotazione Automatica Ogni Ora -->
+              <button type="button" class="btn-stile-regia active" id="btn-stile-auto" onclick="selezionaStileGraficaDiretta('auto')" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, rgba(30,58,138,0.9), rgba(15,23,42,0.95)); border: 1.5px solid #38bdf8; border-radius: 6px; padding: 8px 10px; cursor: pointer; text-align: left; margin-bottom: 6px; transition: all 0.2s;">
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <span style="font-size: 11.5px; font-weight: 800; color: #ffffff;">🔄 ROTAZIONE AUTOMATICA OGNI ORA (ATTIVA)</span>
+                  <span id="label-rotazione-oraria-dettaglio" style="font-size: 9.5px; color: #93c5fd;">Stile in onda ora: calcolo in corso...</span>
+                </div>
+                <span id="dot-stile-auto" style="width: 10px; height: 10px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 10px #4ade80; display: inline-block;"></span>
+              </button>
               
               <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;" id="grid-selettore-stili-grafica">
                 <!-- 1. Modern Broadcast -->
-                <button type="button" class="btn-stile-regia active" id="btn-stile-modern_broadcast" onclick="selezionaStileGraficaDiretta('modern_broadcast')" style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px; background: rgba(15,23,42,0.95); border: 1.5px solid #38bdf8; border-radius: 6px; padding: 7px; cursor: pointer; text-align: left; transition: all 0.2s;">
+                <button type="button" class="btn-stile-regia" id="btn-stile-modern_broadcast" onclick="selezionaStileGraficaDiretta('modern_broadcast')" style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px; background: rgba(15,23,42,0.95); border: 1.5px solid #444; border-radius: 6px; padding: 7px; cursor: pointer; text-align: left; transition: all 0.2s;">
                   <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                     <span style="font-size: 11px; font-weight: 800; color: #fff;">📡 Modern Broadcast</span>
                     <span class="stile-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; display: inline-block;"></span>
@@ -7190,14 +7199,13 @@ function toggleMiniTutorial(btn, tutId) {
       }
 
       // 🎨 GESTIONE SELEZIONE STILE GRAFICO DIRETTA IN REGIA
-      var _stileGraficaSelezionato = 'modern_broadcast';
+      var _stileGraficaSelezionato = 'auto';
 
-      function aggiornaUISelettoreStile(stile) {
-        var s = String(stile || 'modern_broadcast').toLowerCase().trim();
+      function aggiornaUISelettoreStile(stile, infoBackend) {
+        var raw = String(stile || 'auto').toLowerCase().trim();
+        var isAuto = (!raw || raw === 'auto' || raw === 'rotazione_oraria');
         var validi = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'];
-        if (validi.indexOf(s) === -1) s = 'modern_broadcast';
-        _stileGraficaSelezionato = s;
-
+        
         var labels = {
           'modern_broadcast': '📡 Modern Broadcast',
           'editorial_minimal': '🏛️ Editorial Minimal',
@@ -7205,19 +7213,61 @@ function toggleMiniTutorial(btn, tutId) {
           'comic_pop': '💥 Fumetto Pop'
         };
 
+        var curHour = new Date().getHours();
+        var curMin = new Date().getMinutes();
+        var minAlCambio = 60 - curMin;
+        var stiliOrari = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'];
+        var stileOrarioCalcolato = stiliOrari[curHour % stiliOrari.length];
+        var stileEffettivo = isAuto ? stileOrarioCalcolato : raw;
+        _stileGraficaSelezionato = isAuto ? 'auto' : raw;
+
         var b = document.getElementById('badge-stile-grafica-attivo');
-        if (b) b.innerText = labels[s] || s;
+        if (b) {
+          b.innerText = isAuto ? ('🔄 ' + (labels[stileEffettivo] || stileEffettivo) + ' (Auto)') : (labels[stileEffettivo] || stileEffettivo);
+          b.style.color = isAuto ? '#4ade80' : '#38bdf8';
+          b.style.borderColor = isAuto ? 'rgba(74,222,128,0.4)' : 'rgba(56,189,248,0.3)';
+          b.style.background = isAuto ? 'rgba(74,222,128,0.15)' : 'rgba(56,189,248,0.15)';
+        }
+
+        var btnAuto = document.getElementById('btn-stile-auto');
+        var dotAuto = document.getElementById('dot-stile-auto');
+        var lblAuto = document.getElementById('label-rotazione-oraria-dettaglio');
+        if (btnAuto) {
+          if (isAuto) {
+            btnAuto.style.border = '2px solid #4ade80';
+            btnAuto.style.boxShadow = '0 0 16px rgba(74,222,128,0.35)';
+            btnAuto.style.opacity = '1';
+            if (dotAuto) { dotAuto.style.background = '#4ade80'; dotAuto.style.boxShadow = '0 0 10px #4ade80'; }
+            if (lblAuto) {
+              var prox = stiliOrari[(curHour + 1) % stiliOrari.length];
+              lblAuto.innerText = 'Ora ' + curHour + ':00 in onda: ' + labels[stileEffettivo] + ' • Prossimo cambio tra ' + minAlCambio + ' min (' + labels[prox] + ')';
+            }
+          } else {
+            btnAuto.style.border = '1.5px solid #444';
+            btnAuto.style.boxShadow = 'none';
+            btnAuto.style.opacity = '0.7';
+            if (dotAuto) { dotAuto.style.background = '#64748b'; dotAuto.style.boxShadow = 'none'; }
+            if (lblAuto) { lblAuto.innerText = 'Rotazione disattivata: stile bloccato manualmente su ' + labels[stileEffettivo] + ' (clicca qui per riattivare rotazione oraria)'; }
+          }
+        }
 
         validi.forEach(function(item) {
           var btn = document.getElementById('btn-stile-' + item);
           if (btn) {
-            if (item === s) {
+            if (!isAuto && item === raw) {
               btn.style.borderColor = (item === 'comic_pop' ? '#facc15' : (item === 'editorial_minimal' ? '#c26d53' : (item === 'tech_dark' ? '#7c3aed' : '#38bdf8')));
-              btn.style.boxShadow = '0 0 12px rgba(56,189,248,0.5)';
+              btn.style.boxShadow = '0 0 14px rgba(56,189,248,0.6)';
+              btn.style.opacity = '1';
               btn.classList.add('active');
+            } else if (isAuto && item === stileEffettivo) {
+              btn.style.borderColor = 'rgba(74,222,128,0.6)';
+              btn.style.boxShadow = '0 0 8px rgba(74,222,128,0.25)';
+              btn.style.opacity = '0.95';
+              btn.classList.remove('active');
             } else {
               btn.style.borderColor = '#444';
               btn.style.boxShadow = 'none';
+              btn.style.opacity = '0.65';
               btn.classList.remove('active');
             }
           }
@@ -7231,19 +7281,35 @@ function toggleMiniTutorial(btn, tutId) {
         if (msgEl) {
           msgEl.style.display = 'block';
           msgEl.style.color = '#38bdf8';
-          msgEl.innerText = '⏳ Sincronizzazione stile ' + stile + ' in corso...';
+          msgEl.innerText = (stile === 'auto')
+            ? '⏳ Attivazione rotazione oraria automatica in corso...'
+            : ('⏳ Blocco manuale su stile ' + stile + ' in corso...');
         }
+
+        // Broadcast immediato per la schermata aperta in diretta live
+        try {
+          if (window.BroadcastChannel) {
+            var bc = new BroadcastChannel('giancani_live_channel');
+            bc.postMessage({ type: 'CAMBIO_STILE_GRAFICA', stile: stile });
+          }
+        } catch(eBc){}
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
           google.script.run
             .withSuccessHandler(function(res) {
               if (msgEl) {
                 msgEl.style.color = '#4ade80';
-                msgEl.innerText = '✅ Stile grafica applicato in diretta! — Immobiliare Giancani';
-                setTimeout(function() { msgEl.style.display = 'none'; }, 3000);
+                msgEl.innerText = (res && res.message) ? res.message : '✅ Stile grafica applicato in diretta! — Immobiliare Giancani';
+                setTimeout(function() { msgEl.style.display = 'none'; }, 4000);
+              }
+              if (res && res.info) {
+                aggiornaUISelettoreStile(res.stile, res.info);
               }
               if (typeof mostraNotificaGen === 'function') {
-                mostraNotificaGen('🎨 Stile grafica impostato: ' + (stile || 'Modern Broadcast') + ' — Immobiliare Giancani', 'success');
+                var txtNotif = (stile === 'auto')
+                  ? '🔄 Rotazione oraria automatica attiva! Lo stile cambia ad ogni ora — Immobiliare Giancani'
+                  : ('🎨 Stile grafica impostato: ' + (stile || 'Modern Broadcast') + ' — Immobiliare Giancani');
+                mostraNotificaGen(txtNotif, 'success');
               }
             })
             .withFailureHandler(function(err) {
@@ -7259,8 +7325,11 @@ function toggleMiniTutorial(btn, tutId) {
             .then(function(res){
               if (msgEl) {
                 msgEl.style.color = '#4ade80';
-                msgEl.innerText = '✅ Stile grafica applicato in diretta! — Immobiliare Giancani';
-                setTimeout(function() { msgEl.style.display = 'none'; }, 3000);
+                msgEl.innerText = (res && res.message) ? res.message : '✅ Stile grafica applicato in diretta! — Immobiliare Giancani';
+                setTimeout(function() { msgEl.style.display = 'none'; }, 4000);
+              }
+              if (res && res.info) {
+                aggiornaUISelettoreStile(res.stile, res.info);
               }
             })
             .catch(function(e){
@@ -7283,7 +7352,7 @@ function toggleMiniTutorial(btn, tutId) {
           fetch(SCRIPT_URL + '?action=get_stile_grafica')
             .then(function(r){ return r.json(); })
             .then(function(res){
-              if (res && res.stile) aggiornaUISelettoreStile(res.stile);
+              if (res && res.stile) aggiornaUISelettoreStile(res.stile, res.info);
             })
             .catch(function(e){});
         }

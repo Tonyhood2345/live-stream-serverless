@@ -96,10 +96,102 @@ function getElencoImmobiliDisponibili() {
       for (var i = 0; i < sheets.length; i++) {
         var sName = sheets[i].getName();
         if (ignorati.indexOf(sName.toUpperCase()) === -1) {
+          var cleanName = sName.replace(/_/g, ' ');
+          var lastRow = sheets[i].getLastRow();
+          var prezzo = '';
+          var mq = '';
+          var primaStanza = '';
+          var fotoUrl = '';
+          var testoF = '';
+          var zona = '';
+          var totFoto = Math.max(0, lastRow - 1);
+
+          if (lastRow >= 2) {
+            try {
+              var r2 = sheets[i].getRange(2, 1, 1, 9).getValues()[0];
+              // Colonna A (Indice 0): Media URL / Copertina
+              if (r2[0]) fotoUrl = convertiUrlDriveDirect(String(r2[0]).trim());
+              // Colonna B (Indice 1): Prezzo
+              if (r2[1]) {
+                var pStr = String(r2[1]).trim();
+                if (pStr) {
+                  if (pStr.toLowerCase().indexOf('trattativa') !== -1 || pStr.toLowerCase() === 'riservata') {
+                    prezzo = 'Trattativa Riservata';
+                  } else if (pStr.indexOf('€') === -1 && pStr.match(/\d/)) {
+                    prezzo = '€ ' + pStr;
+                  } else {
+                    prezzo = pStr;
+                  }
+                }
+              }
+              // Colonna C (Indice 2): Metri Quadri
+              if (r2[2]) {
+                var mqStr = String(r2[2]).trim();
+                if (mqStr) {
+                  mq = mqStr.replace(/\s*m[q²]\b/gi, ' mq');
+                  if (mq.toLowerCase().indexOf('mq') === -1 && mq.toLowerCase().indexOf('metri') === -1) {
+                    mq += ' mq';
+                  }
+                }
+              }
+              // Colonna D (Indice 3): Prima Stanza / Titolo
+              if (r2[3]) primaStanza = String(r2[3]).trim();
+              // Colonna F (Indice 5): Rigorosamente Colonna F per il testo parlato!
+              if (r2[5]) testoF = String(r2[5]).trim();
+              // Colonna H (Indice 7): Ticker / Zona / Riferimento
+              if (r2[7]) {
+                var tStr = String(r2[7]).trim();
+                if (tStr && tStr.length <= 40 && tStr.toLowerCase().indexOf('giancani') === -1) {
+                  zona = tStr;
+                }
+              }
+            } catch(eRow) {
+              console.warn("Errore lettura riga 2 per " + sName + ":", eRow);
+            }
+          }
+
+          // Integrazione dati da SCHEDA_IMMOBILE se salvati in precedenza
+          try {
+            var rawProp = props.getProperty("SCHEDA_IMMOBILE_" + sName);
+            if (rawProp) {
+              var objProp = JSON.parse(rawProp);
+              if (!prezzo && objProp.prezzo) prezzo = objProp.prezzo;
+              if (!mq && objProp.metriQuadri) mq = objProp.metriQuadri;
+              if (!zona && objProp.zona) zona = objProp.zona;
+            }
+          } catch(eProp) {}
+
+          // Normalizzazione testo Colonna F con chiusura obbligatoria Immobiliare Giancani
+          if (testoF) {
+            testoF = pulisciTestoPerTTSBackend(testoF);
+          } else {
+            testoF = "Splendida opportunità immobiliare curata nei minimi dettagli. — Immobiliare Giancani";
+          }
+
+          // Costruzione etichetta descrittiva e inconfondibile per le tendine
+          var labelDettagli = [];
+          if (prezzo) labelDettagli.push(prezzo);
+          if (mq) labelDettagli.push(mq);
+          if (zona) labelDettagli.push('[' + zona + ']');
+          if (totFoto > 0) labelDettagli.push('(' + totFoto + ' foto)');
+
+          var labelCompleta = cleanName;
+          if (labelDettagli.length > 0) {
+            labelCompleta += ' — ' + labelDettagli.join(' | ');
+          }
+
           immobili.push({
             name: sName,
             tabName: sName,
-            nome: sName.replace(/_/g, ' '),
+            nome: cleanName,
+            label: labelCompleta,
+            prezzo: prezzo || 'Trattativa Riservata',
+            mq: mq || '120 mq',
+            zona: zona || '',
+            primaStanza: primaStanza || 'Panoramica Immobile',
+            fotoUrl: fotoUrl || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=600&auto=format&fit=crop',
+            totFoto: totFoto,
+            testoColonnaF: testoF,
             isCurrent: false,
             isAttivo: false
           });
@@ -346,6 +438,8 @@ function getCaroselloPostYouTube(direction) {
       lingua: props.getProperty('LINGUA_DARIA') || "it-IT",
       linkAnnuncio: currentVideo.watchUrl,
       ticker: currentVideo.ticker,
+      stileGrafica: (typeof getStileGraficaDiretta === 'function') ? getStileGraficaDiretta() : 'modern_broadcast',
+      scalaLogoAgenzia: (typeof getScalaLogoAgenzia === 'function') ? getScalaLogoAgenzia() : 1.0,
       configVoci: getConfigurazioneVoci(),
       coppiaAvatar: getCoppiaAvatarAttiva(),
       musicaPlaylist: (typeof getMusicaSottofondo === 'function') ? getMusicaSottofondo().playlist : []
@@ -601,6 +695,27 @@ function getImmobileData(direction) {
     var selected = mediaRows[currentIndex] || mediaRows[0];
     var modalitaAv = props.getProperty('MODALITA_AVATAR') || 'CON_AVATAR';
     var cleanTitle = (activeTab || 'Dimora Esclusiva').replace(/_/g, ' ');
+    var rawPrezzo = (data[selected.idx] && data[selected.idx][1]) ? String(data[selected.idx][1]).trim() : '';
+    var prezzoFinale = rawPrezzo;
+    if (prezzoFinale) {
+      var soloNum = prezzoFinale.replace(/[^\d]/g, '');
+      if (soloNum) {
+        prezzoFinale = parseInt(soloNum, 10).toLocaleString('it-IT') + ' €';
+      }
+    } else {
+      prezzoFinale = "Trattativa Riservata";
+    }
+
+    var rawZona = (cleanTitle.indexOf('Favara') !== -1) ? "Favara (AG)" :
+                  (cleanTitle.indexOf('Aragona') !== -1) ? "Aragona (AG)" :
+                  (cleanTitle.indexOf('Agrigento') !== -1 || cleanTitle.indexOf('Mosè') !== -1) ? "Agrigento" : "Favara ed Agrigento";
+
+    var stanzeUniche = [];
+    mediaRows.forEach(function(mr) {
+      if (mr.stanza && stanzeUniche.indexOf(mr.stanza) === -1) {
+        stanzeUniche.push(mr.stanza);
+      }
+    });
 
     return {
       success: true,
@@ -617,9 +732,13 @@ function getImmobileData(direction) {
       richiestaDaChat: chatRequester,
       commentoLiveInOnda: commentoLiveInOnda,
       titolo: cleanTitle,
-      prezzo: "Trattativa Riservata",
+      prezzo: prezzoFinale,
+      zona: rawZona,
+      elencoStanze: stanzeUniche,
+      scalaLogoAgenzia: (typeof getScalaLogoAgenzia === 'function') ? getScalaLogoAgenzia() : 1.0,
+      stileGrafica: (typeof getStileGraficaDiretta === 'function') ? getStileGraficaDiretta() : 'modern_broadcast',
       mq: String(data[selected.idx] && data[selected.idx][2] ? data[selected.idx][2] : "120 metri quadri").replace(/(\d+)\s*(?:mq|m²|m2)\b/gi, "$1 metri quadri").replace(/\b(?:mq|m²)\b/gi, "metri quadri").replace(/\bMQ\b/g, "metri quadri"),
-      citta: "Favara ed Agrigento",
+      citta: rawZona,
       lingua: props.getProperty('LINGUA_DARIA') || "it-IT",
       linkAnnuncio: "https://www.immobiliaregiancani.it",
       battutaDario: getBattutaDarioCasuale(),

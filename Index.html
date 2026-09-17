@@ -315,18 +315,44 @@
     .sub-speaker-badge,
     .sub-text-stream{display:none !important}
 
-    /* Studio Presenters Frame: STRETTO TRA DI LORO E TRASPARENTE */
+    /* Studio Presenters Frame: 100% TRASPARENTE ALL'OCCHIO UMANO */
     .studio-anchors-pod{
       display:flex;
       align-items:flex-end;
       gap:2px;
-      background:rgba(6,9,16,.32);
-      border:1px solid rgba(255,255,255,.09);
-      border-radius:20px;
-      padding:2px 6px 0px;
-      box-shadow:0 10px 30px rgba(0,0,0,.5);
-      backdrop-filter:blur(10px);
-      -webkit-backdrop-filter:blur(10px);
+      background:transparent !important;
+      border:none !important;
+      border-radius:0 !important;
+      padding:0 !important;
+      box-shadow:none !important;
+      backdrop-filter:none !important;
+      -webkit-backdrop-filter:none !important;
+    }
+
+    /* === 🎬 SET AVATAR 100% TRASPARENTE: NESSUNO SFONDO VISIBILE ALL'OCCHIO UMANO === */
+    .bottom-right-studio,
+    #bottom-right-studio,
+    .studio-anchors-pod,
+    .studio-broadcast-stage,
+    .studio-triptych-row,
+    .anchor-slot-box,
+    .anchor-unit,
+    .studio-center-screen,
+    #schermo-centrale-studio,
+    .screen-state-idle {
+      background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    .agency-screen-title {
+      text-shadow: 0 2px 10px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.8) !important;
+    }
+    .agency-screen-tag {
+      text-shadow: 0 2px 8px rgba(0,0,0,0.9) !important;
     }
     
     .anchor-unit{position:relative;width:145px;height:205px;display:flex;flex-direction:column;align-items:center;perspective:1000px}
@@ -677,8 +703,11 @@
       border-radius: 6px !important;
     }
     body.style-modern-broadcast .bottom-right-studio {
-      border: 1.5px solid rgba(51,65,85,0.7) !important;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.85) !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
 
     /* ───────── 2. EDITORIAL MINIMAL (SOFISTICATO / LUXURY) ───────── */
@@ -894,8 +923,11 @@
       box-shadow: 0 0 12px rgba(56,189,248,0.5) !important;
     }
     body.style-tech-dark .bottom-right-studio {
-      border: 1.5px solid rgba(56,189,248,0.4) !important;
-      box-shadow: 0 0 20px rgba(79,70,229,0.3) !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
 
     /* ───────── 4. FUMETTO / WEBCOMIC POP (INFORMALE / POP) ───────── */
@@ -1052,10 +1084,11 @@
       transform: translate(-1px, -1px) scale(1.03) !important;
     }
     body.style-comic-pop .bottom-right-studio {
-      background: rgba(255,255,255,0.92) !important;
-      border: 3.5px solid #000000 !important;
-      box-shadow: 6px 6px 0px #000000 !important;
-      border-radius: 16px !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
     body.style-comic-pop .studio-subtitles-top-bar {
       background: #000000 !important;

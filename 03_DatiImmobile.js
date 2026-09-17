@@ -751,7 +751,7 @@ function getImmobileData(direction) {
       configVoci: getConfigurazioneVoci(),
       coppiaAvatar: getCoppiaAvatarAttiva(),
       dialoghiAvatTutti: getDialoghiAvatTuttiList(),
-      posizioneSetAvatar: (typeof getPosizioneSetAvatar === 'function') ? getPosizioneSetAvatar().posizione : (props.getProperty('POSIZIONE_SET_AVATAR') || 'centro'),
+      posizioneSetAvatar: (typeof getPosizioneSetAvatar === 'function') ? getPosizioneSetAvatar().posizione : (props.getProperty('POSIZIONE_SET_AVATAR') || 'destra'),
       spotSchermoCentrale: (typeof getSpotSchermoCentrale === 'function') ? getSpotSchermoCentrale().spot : [],
       musicaPlaylist: (typeof getMusicaSottofondo === 'function') ? getMusicaSottofondo().playlist : []
     };
@@ -775,6 +775,7 @@ function getImmobileData(direction) {
       streamZoom: getZoomDiretta(),
       configVoci: getConfigurazioneVoci(),
       coppiaAvatar: getCoppiaAvatarAttiva(),
+      posizioneSetAvatar: 'destra',
       dialoghiAvatTutti: getDialoghiAvatTuttiFallback(),
       commentoLiveInOnda: null
     };

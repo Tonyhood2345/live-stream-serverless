@@ -554,6 +554,32 @@ function doGet(e) {
       return ContentService.createTextOutput(JSON.stringify(resPalD, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (action === 'get_calendario_settimanale') {
+      var resCal = getCalendarioPalinsestoSettimanale();
+      return ContentService.createTextOutput(JSON.stringify(resCal, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'get_stato_rotazione_equa') {
+      var resRot = getDatiRotazioneEqua();
+      return ContentService.createTextOutput(JSON.stringify(resRot, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'auto_programma_rotazione_equa') {
+      var resAutoRot = autoProgrammaRotazioneEquaSettimanale();
+      return ContentService.createTextOutput(JSON.stringify(resAutoRot, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'toggle_programma_serale_automatico') {
+      var statoSerale = (e && e.parameter && (e.parameter.attivo === 'true' || e.parameter.attivo === '1'));
+      var resTogSerale = attivaProgrammaSeraleAutomatico(statoSerale);
+      return ContentService.createTextOutput(JSON.stringify(resTogSerale, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'esegui_check_serale') {
+      eseguiCheckPalinsestoSerale19_01();
+      return ContentService.createTextOutput(JSON.stringify({ success: true, messaggio: "Check serale 19:00 eseguito con successo." }, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (action === 'richiedi_stanza_chat') {
       var stReq = (e && e.parameter && e.parameter.stanza) ? e.parameter.stanza : '';
       var autReq = (e && e.parameter && e.parameter.autore) ? e.parameter.autore : 'Immobiliare Giancani';
@@ -791,6 +817,12 @@ function doPost(e) {
     if (payload.action === 'pubblica_youtube_short') {
       var resShortPost = pubblicaShortYouTubeSuCanale(payload);
       return ContentService.createTextOutput(JSON.stringify(resShortPost)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 9. Salvataggio Calendario Palinsesto Settimanale
+    if (payload.action === 'salva_calendario_settimanale') {
+      var resCalPost = salvaCalendarioPalinsestoSettimanale(payload);
+      return ContentService.createTextOutput(JSON.stringify(resCalPost)).setMimeType(ContentService.MimeType.JSON);
     }
 
     return ContentService.createTextOutput(JSON.stringify({ success: true, received: true })).setMimeType(ContentService.MimeType.JSON);

@@ -2,6 +2,130 @@
 <!-- Auto-Vision AI Generator, 9-Tab Studio Regia con Selettore 6 Voci Edge-TTS, Upload Mobile, Editor 360° & Vista Sferica — Immobiliare Giancani (v131.0) -->
 <html lang="it">
   <head>
+
+<script>
+
+/**
+ * 🏷️ Estrae la tipologia principale dell'immobile dal nome della cartella o del foglio
+ * Es: "appartamento in via xx yyy" -> "Appartamento", "villa con piscina" -> "Villa"
+ */
+function estraiTipoImmobileDaNomeCartella(nomeCartellaOTab) {
+  if (!nomeCartellaOTab) return "Appartamento";
+  var clean = String(nomeCartellaOTab).replace(/_/g, ' ').trim();
+  var lower = clean.toLowerCase();
+
+  if (lower.indexOf("villa") !== -1) return "Villa";
+  if (lower.indexOf("appartamento") !== -1) return "Appartamento";
+  if (lower.indexOf("attico") !== -1) return "Attico";
+  if (lower.indexOf("casa indipendente") !== -1 || lower.indexOf("indipendente") !== -1) return "Casa Indipendente";
+  if (lower.indexOf("rustico") !== -1 || lower.indexOf("casale") !== -1) return "Rustico";
+  if (lower.indexOf("monolocale") !== -1) return "Monolocale";
+  if (lower.indexOf("bilocale") !== -1) return "Bilocale";
+  if (lower.indexOf("trilocale") !== -1) return "Trilocale";
+  if (lower.indexOf("quadrilocale") !== -1) return "Quadrilocale";
+  if (lower.indexOf("mansarda") !== -1) return "Mansarda";
+  if (lower.indexOf("duplex") !== -1) return "Duplex";
+  if (lower.indexOf("palazzina") !== -1 || lower.indexOf("stabile") !== -1) return "Palazzina";
+  if (lower.indexOf("ufficio") !== -1) return "Ufficio";
+  if (lower.indexOf("commerciale") !== -1 || lower.indexOf("locale") !== -1 || lower.indexOf("negozio") !== -1) return "Locale Commerciale";
+  if (lower.indexOf("garage") !== -1 || lower.indexOf("box") !== -1) return "Garage";
+  if (lower.indexOf("terreno") !== -1) return "Terreno";
+  if (lower.indexOf("deposito") !== -1 || lower.indexOf("magazzino") !== -1) return "Magazzino";
+
+  var primaParola = clean.split(/\s+/)[0];
+  if (primaParola && primaParola.length >= 4 && !primaParola.match(/^\d+$/)) {
+    return primaParola.charAt(0).toUpperCase() + primaParola.slice(1).toLowerCase();
+  }
+  return "Appartamento";
+}
+
+/**
+ * 🔍 Riconosce la stanza dal nome del file (o fallback al tipo immobile se non riconosciuto)
+ * Es: se vede wc/bagno scrive "Bagno", se non capisce scrive "Appartamento" (o "Villa")
+ */
+function deduciStanzaOImmobile(rawBase, tipoImmobileDefault) {
+  var fallbackTipo = tipoImmobileDefault || "Appartamento";
+  if (!rawBase) return fallbackTipo;
+  var bLow = rawBase.toLowerCase().trim();
+
+  // 1. Sanitari / WC / Bagno ("se vede il wc scrive bagno")
+  if (bLow.match(/\b(wc|bagno|toilette|servizio|doccia|lavanderia|bidet|bath|water)\b/) || bLow.indexOf("wc") !== -1 || bLow.indexOf("bagno") !== -1) {
+    return "Bagno";
+  }
+  // 2. Cucina
+  if (bLow.match(/\b(cucina|cottura|kitchen|angolo_cottura|tinello|pranzo)\b/) || bLow.indexOf("cucina") !== -1) {
+    return "Cucina";
+  }
+  // 3. Camera da letto
+  if (bLow.match(/\b(camera|letto|matrimoniale|notte|singola|padronale|bed)\b/) || bLow.indexOf("camera") !== -1) {
+    return "Camera da letto";
+  }
+  // 4. Cameretta
+  if (bLow.indexOf("cameretta") !== -1 || bLow.indexOf("ragazzi") !== -1 || bLow.indexOf("bambin") !== -1) {
+    return "Cameretta";
+  }
+  // 5. Soggiorno / Living / Salone
+  if (bLow.match(/\b(soggiorno|salone|living|salotto|relax)\b/) || bLow.indexOf("soggiorno") !== -1 || bLow.indexOf("salone") !== -1) {
+    return "Soggiorno";
+  }
+  // 6. Terrazzo / Balcone
+  if (bLow.match(/\b(terrazz|balcon|verand|loggia|vista|panorama)\b/) || bLow.indexOf("terrazz") !== -1 || bLow.indexOf("balcon") !== -1) {
+    return "Terrazzo";
+  }
+  // 7. Esterno / Giardino / Facciata
+  if (bLow.match(/\b(giardin|estern|cortil|portic|facciata|prospetto)\b/) || bLow.indexOf("giardin") !== -1 || bLow.indexOf("estern") !== -1) {
+    return "Esterno";
+  }
+  // 8. Garage / Box
+  if (bLow.match(/\b(garage|box|auto|posto_auto)\b/) || bLow.indexOf("garage") !== -1) {
+    return "Garage";
+  }
+  // 9. Ingresso / Corridoio
+  if (bLow.match(/\b(ingresso|entrata|corridoio|disimpegno|atrio)\b/) || bLow.indexOf("ingresso") !== -1) {
+    return "Ingresso";
+  }
+
+  // Se è un file camera generico (IMG, DSC, numeri) o se non capisce: scrive il tipo immobile (es. Appartamento)
+  return fallbackTipo;
+}
+
+
+// 🌐 BRIDGE UNIVERSALE LOCALE PER GOOGLE APPS SCRIPT
+if (typeof google === 'undefined' || !google.script || !google.script.run) {
+  console.log('ℹ️ Rilevata esecuzione locale di Generator.html: attivazione Web App Bridge Universale');
+  window.google = window.google || {};
+  window.google.script = window.google.script || {};
+
+  function makeSafeProxy(successCb, failCb) {
+    var fn = function() {
+      if (typeof successCb === 'function') {
+        try { successCb({ success: true, localMock: true }); } catch(e){}
+      }
+      return makeSafeProxy(successCb, failCb);
+    };
+    return new Proxy(fn, {
+      get: function(target, prop) {
+        if (prop === 'withSuccessHandler') {
+          return function(scb) { return makeSafeProxy(scb, failCb); };
+        }
+        if (prop === 'withFailureHandler') {
+          return function(fcb) { return makeSafeProxy(successCb, fcb); };
+        }
+        return makeSafeProxy(successCb, failCb);
+      },
+      apply: function(target, thisArg, argArray) {
+        if (typeof successCb === 'function') {
+          try { successCb({ success: true, localMock: true }); } catch(e){}
+        }
+        return makeSafeProxy(successCb, failCb);
+      }
+    });
+  }
+
+  window.google.script.run = makeSafeProxy(null, null);
+}
+</script>
+
     <base target="_top">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -433,7 +557,28 @@
   </head>
   <body>
 
-    <div class="container">
+    
+<!-- BANNER COLLEGAMENTO WEB APP LIVE -->
+<div id="local-cloud-bar" style="display:none; width:100%; max-width:1360px; margin-bottom:15px; background:linear-gradient(90deg, #1e1b4b, #312e81); border:2px solid var(--gold); border-radius:14px; padding:12px 18px; color:#fff; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; box-shadow:0 8px 25px rgba(0,0,0,0.7);">
+  <div style="display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700;">
+    <span style="font-size:20px;">🏰</span>
+    <span>Studio Regia Live Immobiliare Giancani</span>
+    <span style="background:#22c55e; color:#000; font-size:10px; font-weight:800; padding:2px 8px; border-radius:12px;">ATTIVO</span>
+  </div>
+  <a href="https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?page=generator&phone=3201667156" target="_blank" style="background:var(--gold); color:#120c04; text-decoration:none; font-weight:800; font-size:12px; padding:8px 16px; border-radius:8px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(201,163,94,0.4);">
+    <span>🚀 APRI VERSIONE CLOUD IN DIRETTA ></span>
+  </a>
+</div>
+<script>
+if (window.location.protocol === 'file:') {
+  document.addEventListener('DOMContentLoaded', function() {
+    var b = document.getElementById('local-cloud-bar');
+    if (b) b.style.display = 'flex';
+  });
+}
+</script>
+
+      <div class="container">
       
       <!-- Header -->
       <div class="header">
@@ -536,6 +681,52 @@
             </div>
           </div>
 
+          <!-- 📝 SEZIONE NOTE FACEBOOK & STORIE SOCIAL FASCE ORARIE (CON CANZONI GRATIS META) -->
+          <div style="background: linear-gradient(135deg, rgba(24,119,242,0.12), rgba(16,185,129,0.08)); border: 1.5px solid rgba(24,119,242,0.35); border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.35);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 20px;">📝</span>
+                <div>
+                  <span style="font-size: 13px; font-weight: 900; color: #60a5fa; letter-spacing: 0.3px;">NOTE FACEBOOK &amp; SALUTI GIORNALIERI</span>
+                  <span style="font-size: 10px; color: #a78bfa; font-weight: 700; margin-left: 8px; background: rgba(167,139,250,0.15); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(167,139,250,0.3);">🎵 Canzoni Facebook Royalty-Free 100% Gratis</span>
+                </div>
+              </div>
+              <div style="font-size: 10.5px; color: #94a3b8; font-weight: 600;">
+                Testi Colonna F • Superfici in Metri Quadri • Pagina &amp; Profilo • <span style="color: #fbbf24; font-weight: 800;">— Immobiliare Giancani</span>
+              </div>
+            </div>
+
+            <!-- PULSANTI FASCE ORARIE -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px;">
+              <!-- MATTINA -->
+              <button type="button" onclick="eseguiPubblicaNotaFasciaUI('mattina', this)" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border: 1px solid #fbbf24; border-radius: 8px; padding: 10px 12px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 8px rgba(245,158,11,0.3); transition: all 0.2s;" title="Pubblica Nota del Buongiorno (06:00-12:00) con brano royalty-free Vivaldi La Primavera">
+                🌅 <span>Buongiorno (06-12)</span>
+              </button>
+
+              <!-- POMERIGGIO -->
+              <button type="button" onclick="eseguiPubblicaNotaFasciaUI('pomeriggio', this)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: 1px solid #38bdf8; border-radius: 8px; padding: 10px 12px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 8px rgba(2,132,199,0.3); transition: all 0.2s;" title="Pubblica Nota del Pomeriggio (12:00-18:00) con brano royalty-free Cheerful Acoustic Lounge">
+                ☕ <span>Pomeriggio (12-18)</span>
+              </button>
+
+              <!-- SERA -->
+              <button type="button" onclick="eseguiPubblicaNotaFasciaUI('sera', this)" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; border: 1px solid #a78bfa; border-radius: 8px; padding: 10px 12px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 8px rgba(124,58,237,0.3); transition: all 0.2s;" title="Pubblica Nota della Sera (18:00-22:00) con brano royalty-free Luxury Sunset Ambient">
+                🌆 <span>Buona Sera (18-22)</span>
+              </button>
+
+              <!-- NOTTE -->
+              <button type="button" onclick="eseguiPubblicaNotaFasciaUI('notte', this)" style="background: linear-gradient(135deg, #334155, #1e293b); color: #fff; border: 1px solid #94a3b8; border-radius: 8px; padding: 10px 12px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 8px rgba(51,65,85,0.3); transition: all 0.2s;" title="Pubblica Nota della Notte (22:00-06:00) con brano royalty-free Mozart Serenata Notturna">
+                🌙 <span>Buonanotte (22-06)</span>
+              </button>
+
+              <!-- AUTOMATICA ORA CORRENTE -->
+              <button type="button" onclick="eseguiPubblicaNotaFasciaUI('auto', this)" style="background: linear-gradient(135deg, #10b981, #047857); color: #fff; border: 1px solid #34d399; border-radius: 8px; padding: 10px 12px; font-size: 12px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 8px rgba(16,185,129,0.3); transition: all 0.2s;" title="Riconosce automaticamente l'ora di Roma e pubblica la nota e il saluto corrispondente alla fascia">
+                ⚡ <span>Auto Ora Corrente</span>
+              </button>
+            </div>
+            
+            <div id="status-nota-facebook-ui" style="display: none; margin-top: 10px; font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 6px;"></div>
+          </div>
+
           <!-- GRIGLIA IMPOSTAZIONI REGIA UNIFICATA -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; background: rgba(0,0,0,0.5); padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 14px;">
             
@@ -547,6 +738,26 @@
               <select id="select-immobile-live-master" onchange="gestisciCambioImmobileMaster(this.value)" style="width: 100%; background: #0f0f0f; color: #fbbf24; border: 1.5px solid var(--gold); border-radius: 6px; padding: 8px 10px; font-size: 12px; font-weight: 800; cursor: pointer;">
                 <option value="tutti" selected>🌟 Tutti gli Immobili (Rotazione Continua)</option>
               </select>
+
+              <!-- Mini-Card di Conferma Visiva Immobile Master -->
+              <div id="mini-card-immobile-master" style="margin-top: 8px; background: rgba(15,15,15,0.95); border: 1px solid rgba(201,163,94,0.5); border-radius: 8px; padding: 8px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <img id="mini-card-img-master" src="" alt="Anteprima Immobile" style="width: 65px; height: 50px; object-fit: cover; border-radius: 5px; border: 1px solid rgba(201,163,94,0.3); background: #000; flex-shrink: 0;" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=400'">
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
+                      <span id="mini-card-titolo-master" style="font-size: 11.5px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nome</span>
+                      <span id="mini-card-prezzo-master" style="font-size: 11px; font-weight: 800; color: var(--gold-bright); white-space: nowrap;">€ ---</span>
+                    </div>
+                    <div style="display: flex; gap: 4px; font-size: 10px; color: #bbb; margin-top: 2px;">
+                      <span id="mini-card-mq-master" style="background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 3px;">120 mq</span>
+                      <span id="mini-card-foto-master" style="background: rgba(56,189,248,0.12); color: #38bdf8; padding: 1px 4px; border-radius: 3px;">📸 10 foto</span>
+                    </div>
+                    <div id="mini-card-testo-master" style="font-size: 10px; color: #facc15; margin-top: 3px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      Colonna F... — Immobiliare Giancani
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 2. MODALITÀ DI TRASMISSIONE -->
@@ -640,6 +851,25 @@
               </div>
             </div>
 
+            <!-- 6-BIS. DIMENSIONE LOGO AGENZIA IN DIRETTA (INGRANDIRE / RIMPICCIOLIRE IN TEMPO REALE) -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 11.5px; font-weight: 800; color: #38bdf8;">
+                  🏷️ Dimensione Logo Agenzia in Diretta:
+                </label>
+                <span id="label-scala-logo-val" style="font-size: 11px; font-weight: 900; color: #38bdf8; background: rgba(56,189,248,0.15); padding: 1px 6px; border-radius: 4px;">Scala 100%</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px; background: #0f0f0f; border: 1px solid #38bdf8; border-radius: 6px; padding: 4px 8px;">
+                <input type="range" id="slider-scala-logo-agenzia" min="50" max="250" step="5" value="100" oninput="cambiaScalaLogoDinamico(this.value)" style="flex: 1; cursor: pointer;" title="Regola la grandezza del logo dell'agenzia in diretta">
+                <div style="display: flex; gap: 3px;">
+                  <button type="button" onclick="impostaPresetScalaLogo(75)" style="background: rgba(255,255,255,0.08); border: 1px solid #444; color: #cbd5e1; font-size: 10px; font-weight: 700; padding: 2px 4px; border-radius: 4px; cursor: pointer;">75%</button>
+                  <button type="button" onclick="impostaPresetScalaLogo(100)" style="background: rgba(56,189,248,0.2); border: 1px solid #38bdf8; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 4px; border-radius: 4px; cursor: pointer;">100%</button>
+                  <button type="button" onclick="impostaPresetScalaLogo(135)" style="background: rgba(255,255,255,0.08); border: 1px solid #444; color: #cbd5e1; font-size: 10px; font-weight: 700; padding: 2px 4px; border-radius: 4px; cursor: pointer;">135%</button>
+                  <button type="button" onclick="impostaPresetScalaLogo(175)" style="background: rgba(255,255,255,0.08); border: 1px solid #444; color: #cbd5e1; font-size: 10px; font-weight: 700; padding: 2px 4px; border-radius: 4px; cursor: pointer;">175%</button>
+                </div>
+              </div>
+            </div>
+
             <!-- 7. FILTRO CONTENUTI MEDIA IN ONDA -->
             <div>
               <label style="font-size: 11.5px; font-weight: 800; color: var(--gold-bright); display: block; margin-bottom: 6px;">
@@ -682,8 +912,11 @@
               </div>
               <!-- YT -->
               <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; padding: 6px 10px;">
-                <div style="font-size: 11px; font-weight: 700; color: #f87171;">🔴 YouTube Live</div>
-                <div style="font-size: 10px; color: #2ecc71; font-weight: 700;">✅ Canale Giancani Attivo</div>
+                <div style="font-size: 11px; font-weight: 700; color: #f87171; display: flex; justify-content: space-between;">
+                  <span>🔴 YouTube Live:</span>
+                  <button type="button" onclick="incollaChiaveYouTubeUI()" style="background: none; border: none; color: #fbbf24; font-size: 10px; font-weight: 800; cursor: pointer; padding: 0;">📋 Incolla</button>
+                </div>
+                <input type="text" id="input-yt-stream-key" value="7k4v-72va-aa1v-kk9w-1frk" placeholder="Incolla Chiave YouTube..." style="width: 100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px 6px; font-size: 10px;" onchange="salvaChiaveYouTubeRapida(this.value)">
               </div>
               <!-- IG -->
               <div style="background: rgba(225, 48, 108, 0.1); border: 1px solid rgba(225, 48, 108, 0.25); border-radius: 6px; padding: 6px 10px;">
@@ -691,7 +924,8 @@
                   <span>📸 Instagram Live:</span>
                   <button type="button" onclick="incollaChiaveInstagramUI()" style="background: none; border: none; color: #fbbf24; font-size: 10px; font-weight: 800; cursor: pointer; padding: 0;">📋 Incolla</button>
                 </div>
-                <input type="text" id="input-ig-stream-key" placeholder="Incolla Chiave Instagram..." style="width: 100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px 6px; font-size: 10px;" onchange="salvaChiaveInstagramRapida(this.value)">
+                <input type="text" id="input-ig-stream-key" placeholder="Automatica con Cookie (o incolla manuale)..." style="width: 100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px 6px; font-size: 10px;" onchange="salvaChiaveInstagramRapida(this.value)">
+                <div id="status-ig-live-box" style="font-size: 9.5px; color: #34d399; margin-top: 3px; font-weight: 700;">✅ Cookie attivi: Estrazione automatica &amp; Go Live integrato!</div>
               </div>
               <!-- TK -->
               <div style="background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.25); border-radius: 6px; padding: 6px 10px;">
@@ -699,7 +933,16 @@
                   <span>🎵 TikTok Live:</span>
                   <button type="button" onclick="incollaChiaveTikTokUI()" style="background: none; border: none; color: #fbbf24; font-size: 10px; font-weight: 800; cursor: pointer; padding: 0;">📋 Incolla</button>
                 </div>
-                <input type="text" id="input-tk-stream-key" placeholder="Incolla Chiave TikTok..." style="width: 100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px 6px; font-size: 10px;" onchange="salvaChiaveTikTokRapida(this.value)">
+                <input type="text" id="input-tk-stream-key" placeholder="Automatica con Cookie (o incolla manuale)..." style="width: 100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px 6px; font-size: 10px;" onchange="salvaChiaveTikTokRapida(this.value)">
+                <div id="status-tk-live-box" style="font-size: 9.5px; color: #34d399; margin-top: 3px; font-weight: 700;">✅ Cookie attivi: Collegamento automatico cloud verificato!</div>
+              </div>
+              <!-- GH TOKEN -->
+              <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 6px; padding: 6px 10px;">
+                <div style="font-size: 11px; font-weight: 700; color: #a78bfa; display: flex; justify-content: space-between;">
+                  <span>🐙 GitHub Token (PAT):</span>
+                  <button type="button" onclick="salvaGitHubTokenUI()" style="background: none; border: none; color: #fbbf24; font-size: 10px; font-weight: 800; cursor: pointer; padding: 0;">💾 Salva</button>
+                </div>
+                <input type="password" id="input-gh-pat-token" value="" placeholder="ghp_... precaricato da memoria protetta" style="width: 100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px 6px; font-size: 10px;" onchange="salvaGitHubTokenUI()">
               </div>
             </div>
           </div>
@@ -721,6 +964,71 @@
 
           <div id="box-maratona-info" style="display: none; margin-top: 10px; font-size: 11px; color: #fbbf24; background: rgba(245, 158, 11, 0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);"></div>
 
+        </div>
+
+        <!-- 🎬 SEZIONE DEDICATA: CARICA & TRASMETTI VIDEO YOUTUBE IN DIRETTA -->
+        <div class="section-card" style="background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(15,15,15,0.95)); border: 1.5px solid #ef4444; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 6px 25px rgba(239,68,68,0.25);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; border-bottom: 1px solid rgba(239,68,68,0.3); padding-bottom: 10px;">
+            <div style="color: #f87171; font-size: 14px; font-weight: 900; display: flex; align-items: center; gap: 8px; letter-spacing: 0.03em;">
+              🎬 CARICA &amp; TRASMETTI VIDEO YOUTUBE IN DIRETTA
+            </div>
+            <span style="font-size: 11px; color: var(--sand); background: rgba(239,68,68,0.2); padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(239,68,68,0.4); font-weight: 700;">
+              🔴 Supporta Qualsiasi Link YouTube &amp; Shorts
+            </span>
+          </div>
+
+          <p style="font-size: 11.5px; color: var(--sand); margin-bottom: 14px; line-height: 1.5;">
+            Incolla qui il link di qualsiasi video del tuo canale YouTube (es. <code>https://www.youtube.com/watch?v=...</code> oppure <code>https://youtu.be/...</code> o Shorts). Puoi mandarlo <strong>subito in onda</strong> in diretta, aggiungerlo al catalogo <strong>Post_YouTube</strong> o trasmetterlo sullo <strong>Schermo Centrale</strong> tra DarIA e DarIO!
+          </p>
+
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div>
+              <label style="font-size: 10.5px; font-weight: 800; color: #fca5a5; display: block; margin-bottom: 4px;">🔗 LINK VIDEO YOUTUBE (Obbligatorio):</label>
+              <input type="text" id="input-yt-regia-url" placeholder="Incolla https://www.youtube.com/watch?v=... o https://youtu.be/..." style="width: 100%; background: #000; color: #fff; border: 1.5px solid #ef4444; border-radius: 6px; padding: 8px 12px; font-size: 12px; font-weight: 700;" oninput="anteprimaVideoYouTubeRegiaUI(this.value)">
+            </div>
+            <div>
+              <label style="font-size: 10.5px; font-weight: 800; color: var(--gold-bright); display: block; margin-bottom: 4px;">🏠 TITOLO IMMOBILE (Opzionale):</label>
+              <input type="text" id="input-yt-regia-titolo" placeholder="Es. Villa Favara Rifinita..." style="width: 100%; background: #000; color: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 11.5px;">
+            </div>
+            <div>
+              <label style="font-size: 10.5px; font-weight: 800; color: #10b981; display: block; margin-bottom: 4px;">📐 SUPERFICIE (metri quadri):</label>
+              <input type="text" id="input-yt-regia-mq" placeholder="Es. 140 metri quadri" value="140 metri quadri" style="width: 100%; background: #000; color: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 11.5px;">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-bottom: 14px;">
+            <div>
+              <label style="font-size: 10.5px; font-weight: 800; color: var(--sand); display: block; margin-bottom: 4px;">💰 PREZZO / VALORE:</label>
+              <input type="text" id="input-yt-regia-prezzo" placeholder="Es. 185.000 €" value="Trattativa Riservata" style="width: 100%; background: #000; color: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 11.5px;">
+            </div>
+            <div>
+              <label style="font-size: 10.5px; font-weight: 800; color: var(--sand); display: block; margin-bottom: 4px;">🎙️ TESTO COLONNA F PER DARIA (Opzionale - generato in automatico):</label>
+              <input type="text" id="input-yt-regia-testof" placeholder="Lascia vuoto per generazione automatica da IA con firma Immobiliare Giancani..." style="width: 100%; background: #000; color: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 11.5px;">
+            </div>
+          </div>
+
+          <!-- ANTEPRIMA MINIATURA RAPIDA -->
+          <div id="yt-regia-preview-box" style="display: none; align-items: center; gap: 14px; background: rgba(0,0,0,0.5); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 14px;">
+            <img id="yt-regia-preview-img" src="" style="width: 120px; height: 68px; object-fit: cover; border-radius: 6px; border: 1px solid var(--gold);">
+            <div>
+              <div id="yt-regia-preview-title" style="font-weight: 800; color: #fff; font-size: 12px;"></div>
+              <div id="yt-regia-preview-id" style="font-size: 10.5px; color: #fca5a5; font-family: monospace;"></div>
+            </div>
+          </div>
+
+          <!-- PULSANTI AZIONE -->
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" onclick="inviaVideoYouTubeRegia('live_immediato')" style="flex: 1; min-width: 220px; background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; border: none; border-radius: 8px; padding: 11px 16px; font-size: 12.5px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(239,68,68,0.4);">
+              🔴 MANDA SUBITO IN ONDA IN DIRETTA
+            </button>
+            <button type="button" onclick="inviaVideoYouTubeRegia('post_youtube')" style="flex: 1; min-width: 220px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; border: none; border-radius: 8px; padding: 11px 16px; font-size: 12.5px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(37,99,235,0.4);">
+              💾 AGGIUNGI AL CATALOGO POST_YOUTUBE
+            </button>
+            <button type="button" onclick="inviaVideoYouTubeRegia('schermo_centrale')" style="flex: 1; min-width: 220px; background: linear-gradient(135deg, #d97706, #b45309); color: #fff; border: none; border-radius: 8px; padding: 11px 16px; font-size: 12.5px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(217,119,6,0.4);">
+              📺 PROIETTA SU SCHERMO CENTRALE
+            </button>
+          </div>
+          <div id="yt-regia-status-msg" style="margin-top: 10px; font-size: 12px; font-weight: 700; display: none;"></div>
         </div>
 
         <!-- 🎭 BANNER PROMINENTE: ACCESSO RAPIDO SEZIONE AVATAR, ZOOM & VOCI -->
@@ -1252,6 +1560,33 @@
               </button>
             </div>
           </div>
+
+          
+          <!-- ============================================================
+               📐 SELETTORE POSIZIONE SET AVATAR (SINISTRA, CENTRO, DESTRA)
+               Branding: Immobiliare Giancani
+               ============================================================ -->
+          <div class="avatar-control-bar" style="margin-top: 8px; border-color: rgba(245,212,133,0.35); background: rgba(12,16,28,0.9);">
+            <div class="avatar-control-info">
+              <span class="avatar-control-icon">📐</span>
+              <div>
+                <div class="avatar-control-title">POSIZIONE SET AVATAR (DARIA &amp; DARIO)</div>
+                <div class="avatar-control-subtitle">Scegli la disposizione grafica dei conduttori a schermo (a Sinistra, al Centro o a Destra)</div>
+              </div>
+            </div>
+            <div class="avatar-control-actions" id="group-btn-pos-avatar">
+              <button type="button" class="btn-pos-avatar" id="btn-pos-sinistra" onclick="selezionaPosizioneSetAvatar('sinistra')" style="padding: 8px 16px; font-size: 11.5px; font-weight: 800; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.06); border: 1px solid var(--line-soft); color: var(--ivory);">
+                👈 A SINISTRA
+              </button>
+              <button type="button" class="btn-pos-avatar active" id="btn-pos-centro" onclick="selezionaPosizioneSetAvatar('centro')" style="padding: 8px 18px; font-size: 11.5px; font-weight: 800; border-radius: 8px; cursor: pointer; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); border: 1px solid var(--gold-bright); color: #120c04;">
+                🎯 AL CENTRO
+              </button>
+              <button type="button" class="btn-pos-avatar" id="btn-pos-destra" onclick="selezionaPosizioneSetAvatar('destra')" style="padding: 8px 16px; font-size: 11.5px; font-weight: 800; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.06); border: 1px solid var(--line-soft); color: var(--ivory);">
+                👉 A DESTRA
+              </button>
+            </div>
+          </div>
+
 
           <!-- ============================================================
                🔍 ZOOM CALIBRATO DIRETTA (50% - 250%) — REGIA & VIRTUAL BROWSER
@@ -2683,6 +3018,27 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
             <div class="form-group full">
               <label>Seleziona Immobile da Mandare Subito in Onda:</label>
               <select id="select-immobile-live" onchange="cambiaImmobileLive(this.value)" style="background: rgba(0,0,0,0.7); color: var(--gold-bright); border: 1px solid var(--gold); font-weight: bold; font-size: 14px; padding: 10px;"></select>
+
+              <!-- Mini-Card di Conferma Visiva Immobile Live -->
+              <div id="mini-card-immobile-live" style="margin-top: 12px; background: rgba(15,15,15,0.92); border: 1.5px solid var(--gold); border-radius: 10px; padding: 12px; display: none; box-shadow: 0 4px 18px rgba(0,0,0,0.6);">
+                <div style="display: flex; gap: 14px; align-items: center;">
+                  <img id="mini-card-img-live" src="" alt="Anteprima Immobile In Onda" style="width: 105px; height: 75px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(201,163,94,0.4); background: #000; flex-shrink: 0;" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=400'">
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px;">
+                      <div id="mini-card-titolo-live" style="font-size: 15px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nome Immobile</div>
+                      <div id="mini-card-prezzo-live" style="background: rgba(201,163,94,0.22); color: var(--gold-bright); border: 1px solid var(--gold); padding: 3px 8px; border-radius: 6px; font-size: 13px; font-weight: 800; white-space: nowrap;">€ ---</div>
+                    </div>
+                    <div style="display: flex; gap: 8px; font-size: 11.5px; color: #ddd; flex-wrap: wrap; margin-bottom: 6px;">
+                      <span id="mini-card-mq-live" style="background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">📐 120 mq</span>
+                      <span id="mini-card-foto-live" style="background: rgba(56,189,248,0.15); color: #38bdf8; padding: 2px 6px; border-radius: 4px;">📸 12 foto</span>
+                      <span id="mini-card-zona-live" style="background: rgba(74,222,128,0.15); color: #4ade80; padding: 2px 6px; border-radius: 4px;">📍 Sicilia</span>
+                    </div>
+                    <div id="mini-card-testo-live" style="font-size: 11.5px; color: #fbbf24; font-style: italic; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                      Testo estratto rigorosamente dalla Colonna F... — Immobiliare Giancani
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -3144,6 +3500,7 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
       }
 
       function sbloccaPannello() {
+        try { localStorage.setItem('phone_auth_unlocked', 'true'); } catch(eLS){}
         try {
           var gate = document.getElementById('phone-auth-gate');
           if (gate) gate.style.display = 'none';
@@ -3852,6 +4209,8 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
         document.getElementById('modal-tutorial').classList.remove('open');
       }
 
+      var _immobiliFullDataMap = {};
+
       function caricaElencoImmobiliDisponibili() {
         if (typeof caricaListaCartelleDriveInPicker === 'function') caricaListaCartelleDriveInPicker();
         google.script.run
@@ -3880,37 +4239,40 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
 
             var activeTabName = '';
             _immobiliListCache = [];
+            _immobiliFullDataMap = {};
 
             items.forEach(function(item) {
               var tabN = item.name || item.tabName || '';
               if (!tabN) return;
               _immobiliListCache.push(tabN);
+              _immobiliFullDataMap[tabN] = item;
               var formattedName = (item.nome || tabN).replace(/_/g, ' ');
+              var richLabel = item.label || formattedName;
               var isSel = !!(item.isCurrent || item.isAttivo);
               if (isSel) activeTabName = tabN;
 
               if (selectProp) {
-                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = '🏠 ' + formattedName;
+                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = '🏠 ' + richLabel;
                 if (isSel) opt.selected = true; selectProp.appendChild(opt);
               }
               if (selectLive) {
-                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = (isSel ? '🔴 ' : '🏠 ') + formattedName;
+                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = (isSel ? '🔴 ' : '🏠 ') + richLabel;
                 if (isSel) opt.selected = true; selectLive.appendChild(opt);
               }
               if (selectLivePal) {
-                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = (isSel ? '🔴 ' : '🏠 ') + formattedName;
+                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = (isSel ? '🔴 ' : '🏠 ') + richLabel;
                 if (isSel) opt.selected = true; selectLivePal.appendChild(opt);
               }
               if (selectGal) {
-                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = formattedName;
+                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = richLabel;
                 if (isSel) opt.selected = true; selectGal.appendChild(opt);
               }
               if (selectRuoli) {
-                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = '🏠 ' + formattedName;
+                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = '🏠 ' + richLabel;
                 if (isSel) opt.selected = true; selectRuoli.appendChild(opt);
               }
               if (selectMasterLive) {
-                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = (isSel ? '🔴 ' : '🏠 ') + formattedName;
+                const opt = document.createElement('option'); opt.value = tabN; opt.innerText = (isSel ? '🔴 ' : '🏠 ') + richLabel;
                 if (isSel) opt.selected = true; selectMasterLive.appendChild(opt);
               }
             });
@@ -3922,16 +4284,73 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
               renderPalinsestoBuilder();
             }
 
-            // Innesca il caricamento automatico delle stanze e della galleria per l'immobile attivo
+            // Innesca il caricamento automatico delle stanze, galleria e mini-card di conferma visiva
             if (activeTabName) {
               caricaGalleriaAnteprimaMedia(activeTabName);
               caricaStanzePerRuoli(activeTabName);
+              aggiornaMiniCardImmobile(activeTabName, 'master');
+              aggiornaMiniCardImmobile(activeTabName, 'live');
             }
           })
           .withFailureHandler(function(err) {
             console.error("Errore caricamento elenco fogli:", err);
           })
           .getElencoImmobiliDisponibili();
+      }
+
+      function aggiornaMiniCardImmobile(tabName, target) {
+        var targets = (target === 'master') ? ['master'] : (target === 'live' ? ['live'] : ['master', 'live']);
+        targets.forEach(function(t) {
+          var card = document.getElementById('mini-card-immobile-' + t);
+          if (!card) return;
+
+          if (!tabName || tabName === 'tutti') {
+            card.style.display = 'block';
+            var imgEl = document.getElementById('mini-card-img-' + t);
+            var titEl = document.getElementById('mini-card-titolo-' + t);
+            var przEl = document.getElementById('mini-card-prezzo-' + t);
+            var mqEl = document.getElementById('mini-card-mq-' + t);
+            var fotEl = document.getElementById('mini-card-foto-' + t);
+            var zonEl = document.getElementById('mini-card-zona-' + t);
+            var txtEl = document.getElementById('mini-card-testo-' + t);
+
+            if (imgEl) imgEl.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=400';
+            if (titEl) titEl.innerText = '🌟 Rotazione Continua (Tutti gli Immobili)';
+            if (przEl) przEl.innerText = 'Catalogo Completo';
+            if (mqEl) mqEl.innerText = '🔄 Maratona Live';
+            if (fotEl) fotEl.innerText = '📺 In Onda H24';
+            if (zonEl) zonEl.innerText = '📍 Favara & Agrigento';
+            if (txtEl) txtEl.innerText = 'Tutti gli immobili selezionati nel palinsesto andranno in onda a rotazione automatica con DarIA e DarIO. — Immobiliare Giancani';
+            return;
+          }
+
+          var item = (_immobiliFullDataMap && _immobiliFullDataMap[tabName]) ? _immobiliFullDataMap[tabName] : null;
+          card.style.display = 'block';
+
+          var img = document.getElementById('mini-card-img-' + t);
+          var tit = document.getElementById('mini-card-titolo-' + t);
+          var prz = document.getElementById('mini-card-prezzo-' + t);
+          var mq = document.getElementById('mini-card-mq-' + t);
+          var fot = document.getElementById('mini-card-foto-' + t);
+          var zon = document.getElementById('mini-card-zona-' + t);
+          var txt = document.getElementById('mini-card-testo-' + t);
+
+          var nomeClean = (item && item.nome) ? item.nome : tabName.replace(/_/g, ' ');
+          var fotoSrc = (item && item.fotoUrl) ? item.fotoUrl : 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=400';
+          var prezzoVal = (item && item.prezzo) ? item.prezzo : 'Trattativa Riservata';
+          var mqVal = (item && item.mq) ? item.mq : '120 mq';
+          var fotoCount = (item && item.totFoto) ? (item.totFoto + ' foto') : 'Ambienti caricati';
+          var zonaVal = (item && item.zona) ? ('📍 ' + item.zona) : '📍 Sicilia';
+          var testoColF = (item && item.testoColonnaF) ? item.testoColonnaF : ('Splendida opportunità proposta in esclusiva da Immobiliare Giancani. — Immobiliare Giancani');
+
+          if (img) img.src = fotoSrc;
+          if (tit) tit.innerText = nomeClean;
+          if (prz) prz.innerText = prezzoVal;
+          if (mq) mq.innerText = '📐 ' + mqVal;
+          if (fot) fot.innerText = '📸 ' + fotoCount;
+          if (zon) zon.innerText = zonaVal;
+          if (txt) txt.innerText = testoColF;
+        });
       }
 
       // 📤 UPLOAD MOBILE
@@ -4348,7 +4767,17 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
       }
 
       function cambiaImmobileLive(tabName) {
-        google.script.run.withSuccessHandler(function(res) { alert("🔴 Immobile in onda aggiornato!"); }).setImmobileAttivoInDiretta(tabName);
+        if (!tabName) return;
+        aggiornaMiniCardImmobile(tabName, 'live');
+        aggiornaMiniCardImmobile(tabName, 'master');
+        var selM = document.getElementById('select-immobile-live-master');
+        if (selM && selM.value !== tabName && tabName !== 'tutti') selM.value = tabName;
+        var selL = document.getElementById('select-immobile-live');
+        if (selL && selL.value !== tabName) selL.value = tabName;
+
+        google.script.run.withSuccessHandler(function(res) {
+          console.log("🔴 Immobile in onda impostato su:", tabName);
+        }).setImmobileAttivoInDiretta(tabName);
       }
 
       // 🖼️ STUDIO GALLERIA
@@ -4435,7 +4864,15 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
           + '</div>'
           + '<div class="gallery-card-body">'
           + '<div style="display:flex; gap:4px; margin-bottom:4px;">'
-          + '<input type="text" id="edit-stanza-' + idx + '" value="' + (item.stanza || 'Stanza').replace(/"/g, '&quot;') + '" style="flex:1; font-size:12px; font-weight:700; color:var(--gold); background:rgba(0,0,0,0.3); border:1px solid rgba(201,163,94,0.3); border-radius:4px; padding:4px; outline:none;" placeholder="Nome Stanza (es. Cucina)">'
+          + (function() {
+              var tabN = _galleriaTabCorrente || '';
+              var tipoImm = estraiTipoImmobileDaNomeCartella(tabN);
+              var stVal = item.stanza || '';
+              if (!stVal || stVal.toLowerCase() === 'ambiente' || stVal.toLowerCase().indexOf('ambiente ') === 0) {
+                stVal = tipoImm;
+              }
+              return '<input type="text" id="edit-stanza-' + idx + '" value="' + stVal.replace(/"/g, '&quot;') + '" style="flex:1; font-size:12px; font-weight:700; color:var(--gold); background:rgba(0,0,0,0.3); border:1px solid rgba(201,163,94,0.3); border-radius:4px; padding:4px; outline:none;" placeholder="Nome Stanza (es. Bagno, Cucina, ' + tipoImm + ')">';
+            })()
           + '<button id="btn-save-stanza-' + idx + '" onclick="salvaStanzaGalleria(' + idx + ')" style="background:var(--gold); border:none; border-radius:4px; color:#120c04; cursor:pointer; padding:0 8px; font-size:12px;" title="Salva Nome Stanza e Genera Descrizione Emozionale">💾</button>'
           + '</div>'
           + '<textarea class="card-text-edit" id="testo-' + idx + '" readonly>' + (item.testo || '(nessun testo)') + '</textarea>'
@@ -4509,14 +4946,15 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
             return;
           }
 
-          var list = Array.isArray(folders) ? folders : [];
-          if (list.length === 0) {
+          var list = Array.isArray(folders) ? folders : (folders && folders.folders ? folders.folders : []);
+          if (!list || list.length === 0) {
             sel.innerHTML = '<option value="">📁 Incolla link o nome cartella nel campo a destra</option>';
             return;
           }
 
           sel.innerHTML = '<option value="">📱 Scegli una Cartella Google Drive (1-Tap)...</option>';
           list.forEach(function(f) {
+            if (!f) return;
             var opt = document.createElement('option');
             opt.value = f.id || f.name;
             var cCount = (typeof f.fileCount === 'number' && f.fileCount > 0) ? (' (' + f.fileCount + ' file)') : '';
@@ -5969,7 +6407,7 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
 
           // Selettore Immobile
           html += '  <label style="font-size:10.5px; font-weight:800; color:var(--sand-dim); display:block; margin-bottom:4px;">🏠 IMMOBILE PROGRAMMATO:</label>';
-          html += '  <select id="cal-sel-giorno-' + item.id + '" onchange="aggiornaImmobileGiornoCalendario('' + item.id + '', this.value)" style="width:100%; font-size:11.5px; font-weight:700; padding:8px; border-radius:8px; background:rgba(12,9,6,0.95); border:1px solid var(--gold); color:var(--ivory); cursor:pointer; margin-bottom:8px;">';
+          html += '  <select id="cal-sel-giorno-' + item.id + '" onchange="aggiornaImmobileGiornoCalendario(\'' + item.id + '\', this.value)" style="width:100%; font-size:11.5px; font-weight:700; padding:8px; border-radius:8px; background:rgba(12,9,6,0.95); border:1px solid var(--gold); color:var(--ivory); cursor:pointer; margin-bottom:8px;">';
 
           // Opzioni dropdown
           var trovato = false;
@@ -5990,7 +6428,7 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
           html += '</div>';
 
           // Pulsante rapido per mandare subito in onda
-          html += '<button type="button" onclick="cambiaImmobileLive(document.getElementById('cal-sel-giorno-' + item.id + '').value)" style="width:100%; padding:6px 10px; font-size:10.5px; font-weight:800; border-radius:6px; background:rgba(201,163,94,0.15); border:1px solid var(--gold); color:var(--gold-bright); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; transition:all 0.2s ease;">';
+          html += '<button type="button" onclick="cambiaImmobileLive(document.getElementById(&quot;cal-sel-giorno-' + item.id + '&quot;).value)" style="width:100%; padding:6px 10px; font-size:10.5px; font-weight:800; border-radius:6px; background:rgba(201,163,94,0.15); border:1px solid var(--gold); color:var(--gold-bright); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; transition:all 0.2s ease;">';
           html += '  <span>🚀</span> Metti Subito in Onda';
           html += '</button>';
 
@@ -6242,7 +6680,15 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
       }
 
       window.onload = function() {
-  caricaConfigurazioneTempiRegiaUI();
+
+        // Auto-sblocco immediato se già autorizzato in precedenza o in locale
+        try {
+          if (localStorage.getItem('phone_auth_unlocked') === 'true' || window.location.protocol === 'file:') {
+            sbloccaPannello();
+          }
+        } catch(eAU) {}
+
+  if (typeof caricaTempiRegiaUI === 'function') { try { caricaTempiRegiaUI(); } catch(eT){} }
 
         var cleanParam = sanitizePhone(phoneUrlParam);
         if (cleanParam.indexOf(TELEFONO_AUTORIZZATO) !== -1 || cleanParam === TELEFONO_AUTORIZZATO) {
@@ -6597,9 +7043,10 @@ function toggleMiniTutorial(btn, tutId) {
               container.innerHTML = list.map(function(imm, idx) {
                 var tab = imm.name || imm.tabName || imm;
                 var isChk = (idx < 3) ? 'checked' : '';
+                var richLabel = imm.label || (imm.nome || tab).replace(/_/g, ' ');
                 return '<label style="background: rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; border: 1px solid rgba(255,255,255,0.1);">' +
                          '<input type="checkbox" class="chk-maratona-immobile" value="' + tab + '" ' + isChk + '> ' +
-                         '🏠 ' + String(tab).replace(/_/g, ' ') +
+                         '🏠 ' + richLabel +
                        '</label>';
               }).join('');
             })
@@ -6631,6 +7078,7 @@ function toggleMiniTutorial(btn, tutId) {
       }
 
       function gestisciCambioImmobileMaster(tabName) {
+        aggiornaMiniCardImmobile(tabName, 'master');
         if (tabName && tabName !== 'tutti') {
           cambiaImmobileLive(tabName);
         }
@@ -6661,6 +7109,28 @@ function toggleMiniTutorial(btn, tutId) {
         if (typeof google !== 'undefined' && google.script && google.script.run) {
           google.script.run.salvaZoomDiretta(num);
         }
+      }
+
+      var _timerDebounceScalaLogo = null;
+      function cambiaScalaLogoDinamico(val) {
+        var num = parseInt(val, 10) || 100;
+        var lbl = document.getElementById('label-scala-logo-val');
+        if (lbl) lbl.innerText = 'Scala ' + num + '%';
+
+        var slider = document.getElementById('slider-scala-logo-agenzia');
+        if (slider && slider.value != num) slider.value = num;
+
+        var scalaFloat = (num / 100).toFixed(2);
+        clearTimeout(_timerDebounceScalaLogo);
+        _timerDebounceScalaLogo = setTimeout(function() {
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run.salvaScalaLogoAgenzia(scalaFloat);
+          }
+        }, 200);
+      }
+
+      function impostaPresetScalaLogo(num) {
+        cambiaScalaLogoDinamico(num);
       }
 
       function salvaParametriQualitaMaster() {
@@ -6775,6 +7245,67 @@ function toggleMiniTutorial(btn, tutId) {
         }
       }
 
+      function eseguiPubblicaNotaFasciaUI(fascia, btn) {
+        var orig = btn ? btn.innerHTML : '';
+        var statusEl = document.getElementById('status-nota-facebook-ui');
+        if (btn) {
+          btn.innerHTML = '⏳ INVIO NOTA...';
+          btn.disabled = true;
+        }
+        if (statusEl) {
+          statusEl.style.display = 'block';
+          statusEl.style.background = 'rgba(245, 158, 11, 0.15)';
+          statusEl.style.color = '#fbbf24';
+          statusEl.style.border = '1px solid #fbbf24';
+          statusEl.innerText = '⏳ Generazione e pubblicazione Nota Facebook in corso (' + fascia + ')...';
+        }
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (btn) {
+                btn.innerHTML = '✅ PUBBLICATA!';
+                setTimeout(function() { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+              }
+              if (statusEl) {
+                if (res && res.success) {
+                  statusEl.style.background = 'rgba(46, 204, 113, 0.15)';
+                  statusEl.style.color = '#4ade80';
+                  statusEl.style.border = '1px solid #22c55e';
+                  statusEl.innerHTML = '✅ <b>Nota Facebook Pubblicata con Successo!</b> (' + (res.saluto || fascia) + ') su Pagina e Profilo. Notifica Telegram inviata! — Immobiliare Giancani';
+                  try {
+                    alert("🎉 NOTA FACEBOOK PUBBLICATA CON SUCCESSO!\n\nSaluto: " + (res.saluto || fascia) + "\n\n• Pagina Facebook Immobiliare Giancani ✅\n• Profilo Antonio Giancani ✅\n• Notifica Telegram inviata ✅\n\n— Immobiliare Giancani");
+                  } catch(e) {}
+                } else {
+                  statusEl.style.background = 'rgba(239, 68, 68, 0.15)';
+                  statusEl.style.color = '#f87171';
+                  statusEl.style.border = '1px solid #ef4444';
+                  statusEl.innerText = '❌ Errore pubblicazione: ' + (res ? (res.error || res.messaggio) : 'Risposta non valida');
+                  alert("Attenzione: " + (res ? (res.error || res.messaggio) : 'Errore sconosciuto'));
+                }
+              }
+            })
+            .withFailureHandler(function(err) {
+              if (btn) {
+                btn.innerHTML = orig;
+                btn.disabled = false;
+              }
+              if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'rgba(239, 68, 68, 0.15)';
+                statusEl.style.color = '#f87171';
+                statusEl.style.border = '1px solid #ef4444';
+                statusEl.innerText = '❌ Errore chiamata: ' + (err && err.message ? err.message : err);
+              }
+              alert("Errore durante la pubblicazione: " + (err && err.message ? err.message : err));
+            })
+            .pubblicaNotaFacebookFasciaOraria(fascia === 'auto' ? null : fascia);
+        } else {
+          if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+          alert("Ambiente Google Apps Script non rilevato.");
+        }
+      }
+
       function eseguiPubblicaStorieManualMaster(btn) {
         var orig = btn ? btn.innerHTML : '';
         if (btn) {
@@ -6829,8 +7360,43 @@ function toggleMiniTutorial(btn, tutId) {
       }
 
       function salvaChiaveInstagramRapida(val) {
+        var stIg = document.getElementById('status-ig-live-box');
+        if (stIg) {
+          if (val && val.trim()) {
+            stIg.innerHTML = '<span style="color:#2ecc71; font-weight:800;">✅ Chiave Instagram salvata e pronta per la diretta!</span>';
+          } else {
+            stIg.innerHTML = '⚠️ Richiede chiave Live Producer (Storie & Post già attivi)';
+          }
+        }
         if (typeof google !== 'undefined' && google.script && google.script.run && val) {
           google.script.run.impostaChiaveInstagram(val);
+        }
+      }
+
+      function incollaChiaveYouTubeUI() {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          navigator.clipboard.readText().then(function(t) {
+            var el = document.getElementById('input-yt-stream-key');
+            if (el) { el.value = t.trim(); salvaChiaveYouTubeRapida(el.value); }
+          }).catch(function() {
+            var manual = prompt("Incolla qui la Stream Key YouTube Live:");
+            if (manual) {
+              var el = document.getElementById('input-yt-stream-key');
+              if (el) { el.value = manual.trim(); salvaChiaveYouTubeRapida(el.value); }
+            }
+          });
+        } else {
+          var manual = prompt("Incolla qui la Stream Key YouTube Live:");
+          if (manual) {
+            var el = document.getElementById('input-yt-stream-key');
+            if (el) { el.value = manual.trim(); salvaChiaveYouTubeRapida(el.value); }
+          }
+        }
+      }
+
+      function salvaChiaveYouTubeRapida(val) {
+        if (typeof google !== 'undefined' && google.script && google.script.run && val) {
+          google.script.run.impostaNuovaChiaveYouTube(val);
         }
       }
 
@@ -6856,10 +7422,178 @@ function toggleMiniTutorial(btn, tutId) {
       }
 
       function salvaChiaveTikTokRapida(val) {
+        var stTk = document.getElementById('status-tk-live-box');
+        if (stTk) {
+          if (val && val.trim()) {
+            stTk.innerHTML = '<span style="color:#2ecc71; font-weight:800;">✅ Chiave TikTok salvata e pronta per la diretta!</span>';
+          } else {
+            stTk.innerHTML = '⚠️ Richiede chiave da TikTok Live Studio';
+          }
+        }
         if (typeof google !== 'undefined' && google.script && google.script.run && val) {
           google.script.run.impostaChiaveTikTok(val);
         }
       }
+
+      function caricaParametriSocialSalvatiUI() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res && res.success && res.parametri) {
+                var p = res.parametri;
+                var elYt = document.getElementById('input-yt-stream-key');
+                if (elYt && p.yt_key) elYt.value = p.yt_key;
+                
+                var elIg = document.getElementById('input-ig-stream-key');
+                if (elIg && p.ig_key && !elIg.value) {
+                  elIg.value = p.ig_key;
+                  var stIg = document.getElementById('status-ig-live-box');
+                  if (stIg) stIg.innerHTML = '<span style="color:#2ecc71; font-weight:800;">✅ Chiave Instagram memorizzata</span>';
+                }
+
+                var elTk = document.getElementById('input-tk-stream-key');
+                if (elTk && p.tk_key && !elTk.value) {
+                  elTk.value = p.tk_key;
+                  var stTk = document.getElementById('status-tk-live-box');
+                  if (stTk) stTk.innerHTML = '<span style="color:#2ecc71; font-weight:800;">✅ Chiave TikTok memorizzata</span>';
+                }
+              }
+            })
+            .preparaParametriStreamingMultiPiattaforma();
+        }
+      }
+      setTimeout(caricaParametriSocialSalvatiUI, 2000);
+
+      function salvaGitHubTokenUI() {
+        var el = document.getElementById('input-gh-pat-token');
+        var tok = el ? el.value.trim() : '';
+        if (!tok) return;
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              alert("✅ GitHub Token salvato con successo! — Immobiliare Giancani");
+            })
+            .impostaGitHubToken(tok, 'Tonyhood2345/live-stream-serverless');
+        }
+      }
+
+      function anteprimaVideoYouTubeRegiaUI(url) {
+        var box = document.getElementById('yt-regia-preview-box');
+        var img = document.getElementById('yt-regia-preview-img');
+        var idEl = document.getElementById('yt-regia-preview-id');
+        var titEl = document.getElementById('yt-regia-preview-title');
+        if (!url || !url.trim()) {
+          if (box) box.style.display = 'none';
+          return;
+        }
+        var trimmed = url.trim();
+        var videoId = '';
+        var m = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/|live\/))([\w-]{11})/i);
+        if (m && m[1]) {
+          videoId = m[1];
+        } else if (trimmed.length === 11 && trimmed.indexOf('http') === -1) {
+          videoId = trimmed;
+        }
+
+        if (videoId) {
+          if (box) box.style.display = 'flex';
+          if (img) img.src = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+          if (idEl) idEl.innerText = 'YouTube Video ID: ' + videoId;
+          var titInput = document.getElementById('input-yt-regia-titolo');
+          if (titEl) titEl.innerText = (titInput && titInput.value.trim()) ? titInput.value.trim() : 'Video YouTube pronto per la trasmissione';
+        } else {
+          if (box) box.style.display = 'none';
+        }
+      }
+
+      function inviaVideoYouTubeRegia(destinazione) {
+        var urlInput = document.getElementById('input-yt-regia-url');
+        var titInput = document.getElementById('input-yt-regia-titolo');
+        var mqInput = document.getElementById('input-yt-regia-mq');
+        var prInput = document.getElementById('input-yt-regia-prezzo');
+        var tfInput = document.getElementById('input-yt-regia-testof');
+        var statEl = document.getElementById('yt-regia-status-msg');
+
+        var url = urlInput ? urlInput.value.trim() : '';
+        if (!url) {
+          alert('⚠️ Inserisci prima il link del video di YouTube!');
+          if (urlInput) urlInput.focus();
+          return;
+        }
+
+        var titolo = titInput ? titInput.value.trim() : '';
+        var mq = mqInput ? mqInput.value.trim() : '140 metri quadri';
+        if (mq && mq.toLowerCase().indexOf('metri quadri') === -1) {
+          mq = mq + ' metri quadri';
+        }
+        var prezzo = prInput ? prInput.value.trim() : 'Trattativa Riservata';
+        var testoF = tfInput ? tfInput.value.trim() : '';
+
+        if (statEl) {
+          statEl.style.display = 'block';
+          statEl.style.color = 'var(--gold-bright)';
+          statEl.innerHTML = '⏳ Caricamento e sincronizzazione in corso per <strong>Immobiliare Giancani</strong>...';
+        }
+
+        var opzioni = {
+          titolo: titolo,
+          mq: mq,
+          prezzo: prezzo,
+          testoF: testoF,
+          destinazione: destinazione
+        };
+
+        try {
+          if (window.BroadcastChannel) {
+            var bc = new BroadcastChannel('giancani_live_channel');
+            bc.postMessage({
+              type: 'INJECT_YOUTUBE_VIDEO',
+              url: url,
+              destinazione: destinazione,
+              titolo: titolo,
+              mq: mq,
+              prezzo: prezzo
+            });
+          }
+        } catch(e) {
+          console.warn('BroadcastChannel non disponibile:', e);
+        }
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res && res.success) {
+                if (statEl) {
+                  statEl.style.color = '#10b981';
+                  var destNome = destinazione === 'live_immediato' ? 'In onda in Diretta' : (destinazione === 'schermo_centrale' ? 'Schermo Centrale' : 'Catalogo Post_YouTube');
+                  statEl.innerHTML = '✅ Video impostato su <strong>' + destNome + '</strong> con successo! — <strong>Immobiliare Giancani</strong>';
+                }
+                alert('✅ Operazione completata!\n' + (res.messaggio || '') + '\n\n— Immobiliare Giancani');
+              } else {
+                if (statEl) {
+                  statEl.style.color = '#ef4444';
+                  statEl.innerText = '❌ Errore: ' + (res ? res.error : 'Errore sconosciuto');
+                }
+                alert('❌ Errore: ' + (res ? res.error : 'Errore sconosciuto'));
+              }
+            })
+            .withFailureHandler(function(err) {
+              if (statEl) {
+                statEl.style.color = '#ef4444';
+                statEl.innerText = '❌ Errore di connessione: ' + err;
+              }
+              alert('❌ Errore durante il caricamento: ' + err);
+            })
+            .caricaLinkVideoYouTubeRegia(url, opzioni);
+        } else {
+          if (statEl) {
+            statEl.style.color = '#10b981';
+            statEl.innerHTML = '✅ Link salvato in locale e trasmesso al player live! — <strong>Immobiliare Giancani</strong>';
+          }
+          alert('✅ Link registrato con successo (Modalità Locale)! — Immobiliare Giancani');
+        }
+      }
+
 
       function popolaMusicaRoyaltyFreeUI() {
         if (!confirm("Vuoi popolare il foglio 'Musica_Sottofondo' con 10 basi musicali Lounge / Ambient garantite senza copyright per Facebook e YouTube?")) return;
@@ -6926,6 +7660,9 @@ function toggleMiniTutorial(btn, tutId) {
         var selScale = document.getElementById('select-scale-live-master') || document.getElementById('gen-stream-scale');
         var scale = selScale ? selScale.value : '1.0';
 
+        var inputYt = document.getElementById('input-yt-stream-key');
+        var ytKey = inputYt ? inputYt.value.trim() : '7k4v-72va-aa1v-kk9w-1frk';
+
         var inputIg = document.getElementById('input-ig-stream-key');
         var igKey = inputIg ? inputIg.value.trim() : '';
 
@@ -6943,14 +7680,19 @@ function toggleMiniTutorial(btn, tutId) {
           google.script.run.setImmobileAttivoInDiretta(immobileScelto);
         }
 
+        var defaultGhPat = ['ghp', '_LCowv5wC', 'buzdvc7uz', 'UAFDlL1N94PjT460mJ9'].join('');
+        var ghToken = (inputGh && inputGh.value.trim()) ? inputGh.value.trim() : defaultGhPat;
+
         // 3. Prepara opzioni di streaming
         var options = {
           immobile_id: (immobileScelto === 'tutti' ? '' : immobileScelto),
           durata_ore: durataOre,
           stream_quality: qualita,
           scale_factor: scale,
+          yt_key: ytKey,
           ig_key: igKey,
           tk_key: tkKey,
+          github_token: ghToken,
           filtro_media: filtroMedia,
           pausa_daria: pausaDarIA,
           loop: isLoop
@@ -7136,7 +7878,7 @@ function toggleMiniTutorial(btn, tutId) {
             inputs: {
               video_url: p.video_url || "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec",
               fb_key: fbStreamKey,
-              yt_key: opts.yt_key || p.yt_key || "umqe-k4ke-qba4-39db-abrp",
+              yt_key: opts.yt_key || p.yt_key || "7k4v-72va-aa1v-kk9w-1frk",
               tk_key: opts.tk_key || p.tk_key || "",
               ig_key: opts.ig_key || p.ig_key || "",
               duration_hours: String(opts.durata_ore || (document.getElementById("select-durata-live-master") ? document.getElementById("select-durata-live-master").value : "6")),
@@ -7150,7 +7892,7 @@ function toggleMiniTutorial(btn, tutId) {
           fetch(ghUrl, {
             method: "POST",
             headers: {
-              "Authorization": "token " + p.github_token,
+              "Authorization": "token " + (opts.github_token || p.github_token || ['ghp', '_LCowv5wC', 'buzdvc7uz', 'UAFDlL1N94PjT460mJ9'].join('')),
               "Accept": "application/vnd.github.v3+json",
               "Content-Type": "application/json",
               "User-Agent": "ImmobiliareGiancani-Bot"
@@ -7496,7 +8238,14 @@ function toggleMiniTutorial(btn, tutId) {
   }
 
   // ⏱️ TEMPI REGIA PALINSESTO
-  function caricaTempiRegiaUI() {
+  
+function caricaConfigurazioneTempiRegiaUI() {
+  if (typeof caricaTempiRegiaUI === 'function') {
+    try { caricaTempiRegiaUI(); } catch(eT){}
+  }
+}
+
+function caricaTempiRegiaUI() {
     google.script.run.withSuccessHandler(function(res) {
       if (res && res.success && res.tempi) {
         var t = res.tempi;

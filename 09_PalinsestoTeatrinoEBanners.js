@@ -750,3 +750,135 @@ function inviaNotificaFiltroAntiEmoticonTelegram() {
     return { success: false, error: e.toString() };
   }
 }
+
+
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// 📺 GESTORE SCHERMO CENTRALE SPOT & PUBBLICITÀ CON CADENZA IN SECONDI
+// Foglio Google dedicato: 'Pubblicita_Schermo_Centrale'
+// Colonna A: URL Media (foto/video/clip)
+// Colonna B: Durata in secondi (cadenza per-riga)
+// Colonna C: Titolo / Messaggio promozionale
+// Colonna D: Tipo Media ('foto' o 'video')
+// Colonna E: Attivo ('SI' / 'NO')
+// Personal Branding: Immobiliare Giancani
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Restituisce l'elenco degli spot pubblicitari configurati per lo schermo centrale
+ * con la rispettiva durata in secondi estratta rigorosamente dalla Colonna B
+ */
+function getSpotSchermoCentrale() {
+  try {
+    var ss = getSpreadsheetSicuro();
+    var sheetName = 'Pubblicita_Schermo_Centrale';
+    var sheet = ss ? ss.getSheetByName(sheetName) : null;
+
+    // Se il foglio non esiste, crealo automaticamente con intestazioni e righe campione
+    if (ss && !sheet) {
+      sheet = ss.insertSheet(sheetName);
+      sheet.getRange(1, 1, 1, 5).setValues([
+        ['URL_MEDIA', 'SECONDI_CADENZA', 'TITOLO_PUBBLICITA', 'TIPO_MEDIA', 'ATTIVO']
+      ]);
+      sheet.getRange(2, 1, 3, 5).setValues([
+        [
+          'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop',
+          8,
+          'Immobiliare Giancani — Immobili e Ville di Prestigio',
+          'foto',
+          'SI'
+        ],
+        [
+          'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=1200&auto=format&fit=crop',
+          10,
+          'Valutazione Professionale Gratuita del Tuo Immobile',
+          'foto',
+          'SI'
+        ],
+        [
+          'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1200&auto=format&fit=crop',
+          6,
+          'Virtual Tour 360° e Dirette Streaming Show',
+          'foto',
+          'SI'
+        ]
+      ]);
+      sheet.setFrozenRows(1);
+    }
+
+    if (!sheet || sheet.getLastRow() < 2) {
+      return {
+        success: true,
+        spot: [
+          {
+            url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop',
+            durataSec: 8,
+            titolo: 'Immobiliare Giancani — Immobili Esclusivi',
+            tipo: 'foto'
+          }
+        ]
+      };
+    }
+
+    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
+    var listaSpot = [];
+
+    for (var r = 0; r < data.length; r++) {
+      var rawUrl = String(data[r][0] || '').trim();
+      var rawSec = parseInt(data[r][1], 10);
+      var durataSec = (!isNaN(rawSec) && rawSec >= 2) ? rawSec : 8; // Default 8s se non specificato
+      var titolo = String(data[r][2] || 'Immobiliare Giancani').trim();
+      var tipo = String(data[r][3] || 'foto').trim().toLowerCase();
+      var attivo = String(data[r][4] || 'SI').trim().toUpperCase();
+
+      if (attivo === 'SI' && rawUrl) {
+        var mediaUrl = (typeof convertiUrlDriveDirect === 'function') ? convertiUrlDriveDirect(rawUrl) : rawUrl;
+        listaSpot.push({
+          url: mediaUrl,
+          durataSec: durataSec,
+          titolo: titolo,
+          tipo: (tipo === 'video' || mediaUrl.indexOf('.mp4') !== -1) ? 'video' : 'foto',
+          riga: r + 2
+        });
+      }
+    }
+
+    if (listaSpot.length === 0) {
+      listaSpot.push({
+        url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop',
+        durataSec: 8,
+        titolo: 'Immobiliare Giancani',
+        tipo: 'foto'
+      });
+    }
+
+    return { success: true, spot: listaSpot };
+  } catch(e) {
+    console.error("Errore getSpotSchermoCentrale:", e);
+    return { success: false, spot: [], error: e.toString() };
+  }
+}
+
+/**
+ * Salva la posizione del set degli avatar impostata da Generator (sinistra, centro, destra)
+ */
+function salvaPosizioneSetAvatar(pos) {
+  try {
+    var p = String(pos || 'destra').toLowerCase().trim();
+    if (['sinistra', 'centro', 'destra'].indexOf(p) === -1) p = 'destra';
+    PropertiesService.getScriptProperties().setProperty('POSIZIONE_SET_AVATAR', p);
+    return { success: true, posizione: p };
+  } catch(e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+function getPosizioneSetAvatar() {
+  try {
+    var p = PropertiesService.getScriptProperties().getProperty('POSIZIONE_SET_AVATAR') || 'destra';
+    return { success: true, posizione: p };
+  } catch(e) {
+    return { success: false, posizione: 'destra' };
+  }
+}

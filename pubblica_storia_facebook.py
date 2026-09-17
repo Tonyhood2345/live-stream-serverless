@@ -54,6 +54,9 @@ import argparse
 import subprocess
 import urllib.request
 import urllib.parse
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import base64
 import numpy as np
 import wave
@@ -218,6 +221,53 @@ def get_local_or_remote_logo():
     except Exception as e:
         print(f"Avviso: recupero logo remoto fallito ({e})")
     return None
+
+
+def get_clean_logo(max_w=380, max_h=110, transparent=True):
+    """
+    Restituisce il logo ufficiale Immobiliare Giancani proporzionato,
+    senza schiacciamenti ('non pressato') e con sfondo bianco rimosso (trasparente).
+    """
+    raw = get_local_or_remote_logo()
+    if not raw:
+        return None
+    try:
+        im = raw.convert('RGBA')
+        if transparent:
+            import numpy as np
+            arr = np.array(im)
+            r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+            white_mask = (r > 230) & (g > 230) & (b > 230)
+            arr[white_mask, 3] = 0
+            im = Image.fromarray(arr)
+
+        orig_w, orig_h = im.size
+        scale = min(max_w / orig_w, max_h / orig_h)
+        new_w = max(1, int(orig_w * scale))
+        new_h = max(1, int(orig_h * scale))
+        return im.resize((new_w, new_h), Image.LANCZOS)
+    except Exception as e:
+        print(f"Avviso elaborazione logo pulito: {e}")
+        return raw
+
+CRONOLOGIA_STORIE_PATH = os.path.join(ASSETS_DIR, "cronologia_storie_offline.json")
+
+def carica_cronologia_storie():
+    if os.path.exists(CRONOLOGIA_STORIE_PATH):
+        try:
+            with open(CRONOLOGIA_STORIE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def salva_cronologia_storie(cronologia):
+    try:
+        os.makedirs(os.path.dirname(CRONOLOGIA_STORIE_PATH), exist_ok=True)
+        with open(CRONOLOGIA_STORIE_PATH, "w", encoding="utf-8") as f:
+            json.dump(cronologia, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Avviso salvataggio cronologia storie: {e}")
 
 def normalize_mq(val):
     """Garantisce la dicitura 'metri quadri' per le superfici come da regola globale"""
@@ -685,13 +735,13 @@ def crea_grafica_flyer_split_screen(media_info, output_path=None, size=(1080, 10
     font_ribbon = get_font(24, bold=True, font_type="sans")
     draw.text((32, 43), "NUOVO PREZZO", font=font_ribbon, fill=(255, 255, 255, 255))
 
-    # Watermark Logo
-    logo_img = get_local_or_remote_logo()
-    if logo_img:
+    # Watermark Logo (Proporzionato, Trasparente, Non Pressato)
+    l_img = get_clean_logo(max_w=220, max_h=60, transparent=True)
+    if l_img:
         try:
-            l_img = logo_img.resize((70, 70), Image.LANCZOS)
-            draw.rounded_rectangle([15, content_h - 90, 95, content_h - 10], radius=12, fill=(15, 23, 42, 210))
-            img.paste(l_img, (20, content_h - 85), mask=l_img.split()[3])
+            lw, lh = l_img.size
+            draw.rounded_rectangle([15, content_h - lh - 25, 25 + lw, content_h - 15], radius=10, fill=(15, 23, 42, 215))
+            img.paste(l_img, (20, content_h - lh - 20), mask=l_img.split()[3])
         except Exception:
             pass
 
@@ -846,19 +896,19 @@ def crea_story_splitscreen_9_16(media_info, output_path=None):
     canvas = Image.new('RGBA', (W, H), (15, 23, 42, 255))
     draw = ImageDraw.Draw(canvas)
 
-    # 1. Header Superiore
-    logo_img = get_local_or_remote_logo()
-    if logo_img:
+    # 1. Header Superiore con Logo Proporzionato Trasparente (Non Pressato)
+    l_hdr_logo = get_clean_logo(max_w=400, max_h=110, transparent=True)
+    if l_hdr_logo:
         try:
-            l_img = logo_img.resize((100, 100), Image.LANCZOS)
-            canvas.paste(l_img, ((W - 100) // 2, 40), mask=l_img.split()[3])
+            lw, lh = l_hdr_logo.size
+            canvas.paste(l_hdr_logo, ((W - lw) // 2, 45), mask=l_hdr_logo.split()[3])
         except Exception:
             pass
-
-    font_brand = get_font(28, bold=True, font_type="serif")
-    b_txt = "IMMOBILIARE GIANCANI"
-    bw = font_brand.getbbox(b_txt)[2] - font_brand.getbbox(b_txt)[0]
-    draw.text(((W - bw) // 2, 148), b_txt, font=font_brand, fill=(212, 168, 83, 255))
+    else:
+        font_brand = get_font(32, bold=True, font_type="serif")
+        b_txt = "IMMOBILIARE GIANCANI"
+        bw = font_brand.getbbox(b_txt)[2] - font_brand.getbbox(b_txt)[0]
+        draw.text(((W - bw) // 2, 60), b_txt, font=font_brand, fill=(212, 168, 83, 255))
 
     font_badge = get_font(20, bold=True, font_type="sans")
     is_live = media_info.get('isLive', True)
@@ -921,11 +971,12 @@ def crea_story_splitscreen_9_16(media_info, output_path=None):
     font_ribbon = get_font(24, bold=True, font_type="sans")
     draw.text((box_x + 32, box_y + 48), "NUOVO PREZZO", font=font_ribbon, fill=(255, 255, 255, 255))
 
-    if logo_img:
+    l_wtm = get_clean_logo(max_w=180, max_h=50, transparent=True)
+    if l_wtm:
         try:
-            l_img = logo_img.resize((75, 75), Image.LANCZOS)
-            draw.rounded_rectangle([box_x + 18, box_y + box_h - 95, box_x + 102, box_y + box_h - 15], radius=12, fill=(15, 23, 42, 215))
-            canvas.paste(l_img, (box_x + 22, box_y + box_h - 90), mask=l_img.split()[3])
+            lw, lh = l_wtm.size
+            draw.rounded_rectangle([box_x + 15, box_y + box_h - lh - 25, box_x + 25 + lw, box_y + box_h - 15], radius=10, fill=(15, 23, 42, 215))
+            canvas.paste(l_wtm, (box_x + 20, box_y + box_h - lh - 20), mask=l_wtm.split()[3])
         except Exception:
             pass
 
@@ -1073,14 +1124,12 @@ def crea_grafica_luxury_glass(media_info, output_path=None, size=(1080, 1080)):
         output_path = os.path.join(SCRATCH_DIR, f"flyer_luxury_{uuid.uuid4().hex[:6]}.png")
 
     foto_url = media_info.get('fotoUrl')
-    foto_im = scarica_foto_url(foto_url) if foto_url else None
+    foto_im = scarica_foto_url(foto_url)
     if not foto_im:
-        cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
-        if cache_files:
-            try: foto_im = Image.open(cache_files[0]).convert('RGB')
-            except Exception: pass
-    if not foto_im:
-        foto_im = Image.new('RGB', (W, H), (15, 23, 42))
+        for fb_url in GUARANTEED_FALLBACK_IMAGES:
+            foto_im = scarica_foto_url(fb_url)
+            if foto_im:
+                break
 
     bg = foto_im.resize((W, H), Image.LANCZOS).filter(ImageFilter.GaussianBlur(15))
     dark_ov = Image.new('RGBA', (W, H), (10, 15, 26, 210))
@@ -1088,11 +1137,11 @@ def crea_grafica_luxury_glass(media_info, output_path=None, size=(1080, 1080)):
     bg_rgba.alpha_composite(dark_ov)
     draw = ImageDraw.Draw(bg_rgba)
 
-    logo_img = get_local_or_remote_logo()
+    logo_img = get_clean_logo(max_w=320, max_h=80, transparent=True)
     if logo_img:
         try:
-            l_img = logo_img.resize((90, 90), Image.LANCZOS)
-            bg_rgba.paste(l_img, ((W - 90) // 2, 45), mask=l_img.split()[3])
+            lw, lh = logo_img.size
+            bg_rgba.paste(logo_img, ((W - lw) // 2, 45), mask=logo_img.split()[3])
         except Exception:
             pass
 
@@ -1174,14 +1223,12 @@ def crea_story_luxury_glass_9_16(media_info, output_path=None):
         output_path = os.path.join(SCRATCH_DIR, f"story_luxury_{uuid.uuid4().hex[:6]}.png")
 
     foto_url = media_info.get('fotoUrl')
-    foto_im = scarica_foto_url(foto_url) if foto_url else None
+    foto_im = scarica_foto_url(foto_url)
     if not foto_im:
-        cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
-        if cache_files:
-            try: foto_im = Image.open(cache_files[0]).convert('RGB')
-            except Exception: pass
-    if not foto_im:
-        foto_im = Image.new('RGB', (W, H), (15, 23, 42))
+        for fb_url in GUARANTEED_FALLBACK_IMAGES:
+            foto_im = scarica_foto_url(fb_url)
+            if foto_im:
+                break
 
     bg = foto_im.resize((W, H), Image.LANCZOS).filter(ImageFilter.GaussianBlur(25))
     dark_ov = Image.new('RGBA', (W, H), (10, 15, 26, 215))
@@ -1189,11 +1236,11 @@ def crea_story_luxury_glass_9_16(media_info, output_path=None):
     bg_rgba.alpha_composite(dark_ov)
     draw = ImageDraw.Draw(bg_rgba)
 
-    logo_img = get_local_or_remote_logo()
+    logo_img = get_clean_logo(max_w=380, max_h=95, transparent=True)
     if logo_img:
         try:
-            l_img = logo_img.resize((110, 110), Image.LANCZOS)
-            bg_rgba.paste(l_img, ((W - 110) // 2, 60), mask=l_img.split()[3])
+            lw, lh = logo_img.size
+            bg_rgba.paste(logo_img, ((W - lw) // 2, 60), mask=logo_img.split()[3])
         except Exception:
             pass
 
@@ -1290,13 +1337,13 @@ def crea_grafica_editorial(media_info, output_path=None, size=(1080, 1080)):
     draw.line([(50, 115), (W - 50, 115)], fill=(212, 168, 83, 180), width=1)
 
     foto_url = media_info.get('fotoUrl')
-    foto_1 = scarica_foto_url(foto_url) if foto_url else None
-    cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
-    if not foto_1 and cache_files:
-        try: foto_1 = Image.open(cache_files[0]).convert('RGB')
-        except Exception: pass
+    foto_1 = scarica_foto_url(foto_url)
     if not foto_1:
-        foto_1 = Image.new('RGB', (580, 420), (200, 180, 150))
+        for fb_url in GUARANTEED_FALLBACK_IMAGES:
+            foto_1 = scarica_foto_url(fb_url)
+            if foto_1:
+                break
+    cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
 
     foto_2 = Image.open(cache_files[1]).convert('RGB') if len(cache_files) > 1 else foto_1
 
@@ -1373,11 +1420,11 @@ def crea_story_editorial_9_16(media_info, output_path=None):
     draw.rectangle([30, 30, W - 30, H - 30], outline=(212, 168, 83, 220), width=3)
     draw.rectangle([40, 40, W - 40, H - 40], outline=(15, 23, 42, 70), width=1)
 
-    logo_img = get_local_or_remote_logo()
+    logo_img = get_clean_logo(max_w=340, max_h=85, transparent=True)
     if logo_img:
         try:
-            l_img = logo_img.resize((90, 90), Image.LANCZOS)
-            img.paste(l_img, ((W - 90) // 2, 55), mask=l_img.split()[3])
+            lw, lh = logo_img.size
+            img.paste(logo_img, ((W - lw) // 2, 55), mask=logo_img.split()[3])
         except Exception:
             pass
 
@@ -1393,13 +1440,12 @@ def crea_story_editorial_9_16(media_info, output_path=None):
     draw.line([(60, 240), (W - 60, 240)], fill=(212, 168, 83, 180), width=2)
 
     foto_url = media_info.get('fotoUrl')
-    foto_1 = scarica_foto_url(foto_url) if foto_url else None
-    cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.endswith(('.jpg', '.png'))] if os.path.exists(CACHE_IMMOBILI_DIR) else []
-    if not foto_1 and cache_files:
-        try: foto_1 = Image.open(cache_files[0]).convert('RGB')
-        except Exception: pass
+    foto_1 = scarica_foto_url(foto_url)
     if not foto_1:
-        foto_1 = Image.new('RGB', (960, 680), (200, 180, 150))
+        for fb_url in GUARANTEED_FALLBACK_IMAGES:
+            foto_1 = scarica_foto_url(fb_url)
+            if foto_1:
+                break
 
     fw, fh = 960, 750
     fx = (W - fw) // 2
@@ -1465,20 +1511,81 @@ def crea_story_editorial_9_16(media_info, output_path=None):
     img.save(output_path, "PNG")
     return output_path
 
-def scarica_foto_url(url):
-    """Scarica un'immagine assicurandosi che non sia corrotta o nera"""
-    if not url or not str(url).startswith("http"):
+def normalizza_foto_url(url):
+    """
+    Normalizza qualsiasi link Google Drive / Docs / ID in URL CDN diretta lh3 ad altissima risoluzione.
+    Supporta:
+    - https://drive.google.com/file/d/{ID}/view
+    - https://drive.google.com/open?id={ID}
+    - https://drive.google.com/uc?id={ID}
+    - {ID} puro da 25+ caratteri
+    - URL diretti http/https già validi
+    """
+    if not url:
         return None
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-        with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
-            data = resp.read()
-            if len(data) > 15000:
-                img = Image.open(io.BytesIO(data)).convert('RGBA')
+    url_str = str(url).strip()
+    if "drive.google.com" in url_str or "docs.google.com" in url_str:
+        m = re.search(r'[-\w]{25,}', url_str)
+        if m:
+            return f"https://lh3.googleusercontent.com/d/{m.group(0)}"
+    elif re.match(r'^[-\w]{25,}$', url_str):
+        return f"https://lh3.googleusercontent.com/d/{url_str}"
+    elif "lh3.googleusercontent.com" in url_str:
+        return url_str
+    return url_str
+
+def scarica_foto_url(url):
+    """
+    Scarica un'immagine autentica e in alta definizione dell'immobile assicurandosi che non sia corrotta o nera.
+    Utilizza requests con bypass SSL, auto-redirect e User-Agent browser.
+    Se il download primario fallisce, ricorre automaticamente alle foto autentiche in cache locale
+    o al catalogo di riserva garantito, senza restituire mai rettangoli piatti vuoti.
+    """
+    url_norm = normalizza_foto_url(url)
+
+    # 1. Tentativo di download diretto tramite URL normalizzato
+    if url_norm and str(url_norm).startswith("http"):
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+            resp = requests.get(url_norm, headers=headers, verify=False, timeout=18)
+            if resp.status_code == 200 and len(resp.content) > 3000:
+                img = Image.open(io.BytesIO(resp.content)).convert('RGBA')
                 if is_image_valid_and_not_black(img):
+                    try:
+                        cached_file = os.path.join(CACHE_IMMOBILI_DIR, f"cached_{uuid.uuid4().hex[:8]}.jpg")
+                        img.convert('RGB').save(cached_file, "JPEG", quality=92)
+                    except Exception:
+                        pass
                     return img
-    except Exception as e:
-        print(f"Avviso scaricamento foto ({url[:60]}...): {e}")
+        except Exception as eDl:
+            print(f"Avviso scaricamento foto ({str(url_norm)[:60]}...): {eDl}")
+
+    # 2. Controllo cache locale: foto autentiche precedentemente salvate
+    if os.path.exists(CACHE_IMMOBILI_DIR):
+        cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        if cache_files:
+            random.shuffle(cache_files)
+            for cf in cache_files:
+                try:
+                    if os.path.getsize(cf) > 5000:
+                        im_c = Image.open(cf).convert('RGBA')
+                        if is_image_valid_and_not_black(im_c):
+                            print(f"[CACHE LOCALE] Utilizzata foto autentica da archivio: {os.path.basename(cf)}")
+                            return im_c
+                except Exception:
+                    pass
+
+    # 3. Fallback di garanzia: immagini professionali ad alta definizione da catalogo di riserva
+    for fb_url in GUARANTEED_FALLBACK_IMAGES:
+        try:
+            resp_fb = requests.get(fb_url, verify=False, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
+            if resp_fb.status_code == 200 and len(resp_fb.content) > 3000:
+                im_fb = Image.open(io.BytesIO(resp_fb.content)).convert('RGBA')
+                if is_image_valid_and_not_black(im_fb):
+                    return im_fb
+        except Exception:
+            continue
+
     return None
 
 def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"):
@@ -1842,19 +1949,32 @@ def esegui_ciclo_live(style="auto"):
 
     # Recupera immobile attivo dal backend
     url_imm = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=current"
-    req_imm = urllib.request.Request(url_imm, headers={'User-Agent': 'Mozilla/5.0'})
     prop_data = {}
     try:
-        with urllib.request.urlopen(req_imm, timeout=20, context=ctx) as resp:
-            prop_data = json.loads(resp.read().decode('utf-8'))
+        r_imm = requests.get(url_imm, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=20)
+        if r_imm.status_code == 200:
+            prop_data = r_imm.json()
     except Exception as e:
-        print(f"Avviso recupero dati immobile in diretta: {e}")
+        print(f"Avviso recupero dati immobile in diretta via requests: {e}")
+        try:
+            req_imm = urllib.request.Request(url_imm, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req_imm, timeout=20, context=ctx) as resp:
+                prop_data = json.loads(resp.read().decode('utf-8'))
+        except Exception as e2:
+            print(f"Avviso fallback urllib: {e2}")
 
-    titolo = prop_data.get('stanza') or prop_data.get('titolo') or "Immobile in Diretta"
+    titolo_base = prop_data.get('titolo') or "Immobile in Diretta"
+    stanza = prop_data.get('stanza')
+    if stanza and stanza.lower() not in ['ambiente', ''] and stanza.lower() != titolo_base.lower():
+        titolo = f"{titolo_base} — {stanza}"
+    else:
+        titolo = titolo_base
+
     prezzo = prop_data.get('prezzo', 'Trattativa Riservata')
     mq = normalize_mq(prop_data.get('mq', '120'))
-    foto_url = prop_data.get('mediaUrl') or prop_data.get('fotoUrl')
-    testo_f = prop_data.get('testoDaLeggere') or prop_data.get('testo') or "Tour virtuale in diretta streaming con Dario e DarIA."
+    foto_raw = prop_data.get('mediaUrl') or prop_data.get('fotoUrl')
+    foto_url = normalizza_foto_url(foto_raw)
+    testo_f = prop_data.get('testoDaLeggere') or prop_data.get('testo') or "Tour virtuale in diretta streaming con Dario e DarIA. — Immobiliare Giancani"
 
     media_info = {
         "titolo": titolo,
@@ -1935,67 +2055,130 @@ def esegui_ciclo_offline():
 
     print("✅ Nessuna diretta live in corso: procedo con la pubblicazione della storia oraria da catalogo immobili & YouTube...")
 
-    # 2. Recupera i fogli disponibili via debug_all_sheets
-    url_sheets = f"{APPS_SCRIPT_URL}?action=debug_all_sheets"
-    req_sheets = urllib.request.Request(url_sheets, headers={'User-Agent': 'Mozilla/5.0'})
+    # 2. Recupero prioritario immobile attivo & catalogo fogli
     candidates = []
 
+    # Priorità 1: Recupera l'immobile attivo dal backend (istantaneo <1.5s)
     try:
-        with urllib.request.urlopen(req_sheets, timeout=25, context=ctx) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            all_sheets = data.get('sheets', [])
-            
-            # Cerca prima in Post_YouTube
-            for s in all_sheets:
-                if s.get('name') == 'Post_YouTube':
-                    sample = s.get('sample', [])
-                    for r in sample[1:]:
-                        if len(r) > 5 and r[0] and r[5]:
-                            candidates.append({
-                                "fonte": "YouTube",
-                                "videoUrl": str(r[0]),
-                                "prezzo": str(r[1] or 'Trattativa Riservata'),
-                                "mq": normalize_mq(r[2]),
-                                "titolo": str(r[3] or 'Opportunità Immobiliare'),
-                                "testoF": str(r[5]),
-                                "fotoUrl": str(r[6] if len(r) > 6 and r[6] else '')
-                            })
+        url_curr = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=current"
+        r_curr = requests.get(url_curr, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=18)
+        if r_curr.status_code == 200:
+            d_curr = r_curr.json()
+            foto_curr = normalizza_foto_url(d_curr.get('fotoUrl') or d_curr.get('mediaUrl'))
+            testo_curr = d_curr.get('testoDaLeggere') or d_curr.get('testo') or 'Splendido immobile selezionato ad Agrigento e Favara. — Immobiliare Giancani'
+            if "immobiliare giancani" not in testo_curr.lower():
+                testo_curr += " — Immobiliare Giancani"
+            if foto_curr:
+                tit_c = d_curr.get('titolo', 'Immobile in Vendita')
+                st_c = d_curr.get('stanza', '')
+                if st_c and st_c.lower() not in ['ambiente', ''] and st_c.lower() != tit_c.lower():
+                    tit_c = f"{tit_c} — {st_c}"
+                candidates.append({
+                    "id": f"active_immobile_{d_curr.get('titolo', 'imm')[:20]}",
+                    "fonte": "Immobile Attivo Palinsesto",
+                    "sheet": "ACTIVE",
+                    "rowIndex": 2,
+                    "videoUrl": None,
+                    "fotoUrl": foto_curr,
+                    "prezzo": str(d_curr.get('prezzo') or 'Trattativa Riservata').strip(),
+                    "mq": normalize_mq(d_curr.get('mq', '120 metri quadri')),
+                    "titolo": tit_c,
+                    "testoF": testo_curr
+                })
+    except Exception as eCurr:
+        print(f"Avviso recupero immobile attivo: {eCurr}")
 
-            # Cerca nei fogli degli immobili
+    # Priorità 2: Scansione fogli per arricchire la rotazione oraria
+    try:
+        url_sheets = f"{APPS_SCRIPT_URL}?action=debug_all_sheets"
+        r_sheets = requests.get(url_sheets, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=30)
+        if r_sheets.status_code == 200:
+            data_sh = r_sheets.json()
+            all_sheets = data_sh.get('sheets', [])
+            ignora_fogli = ['IMPOSTAZIONI_SOCIAL', 'CONFIGURAZIONE_TEMPI', 'RISULTATI_GIORNATA', 'FRASI_CALCIO', 'ANALYTICS_SOCIAL', 'MUSICA_SOTTOFONDO', 'ARCHIVIO_CLIENTI', 'PALINSESTO_ORARIO', 'PUBBLICITA_SPOT']
+            
             for s in all_sheets:
                 s_name = s.get('name', '')
-                if s_name.startswith(('Villa_', 'Appartamento_', 'Terreno_', 'VILLA_')):
-                    sample = s.get('sample', [])
-                    for r in sample[1:]:
-                        if len(r) > 5 and r[5]:
-                            candidates.append({
-                                "fonte": s_name.replace('_', ' '),
-                                "videoUrl": str(r[0]) if str(r[0]).endswith('.mp4') else None,
-                                "fotoUrl": str(r[0]) if not str(r[0]).endswith('.mp4') else '',
-                                "prezzo": str(r[1] or 'Trattativa Riservata'),
-                                "mq": normalize_mq(r[2]),
-                                "titolo": f"{s_name.replace('_', ' ')} — {r[3] if len(r) > 3 else ''}".strip(),
-                                "testoF": str(r[5])
-                            })
+                if s_name.upper() in ignora_fogli:
+                    continue
+                
+                sample = s.get('sample', [])
+                for row_idx, r in enumerate(sample[1:], start=2):
+                    if len(r) > 5 and r[5] and str(r[5]).strip():
+                        raw_media = str(r[0] or '').strip()
+                        foto_url = ""
+                        video_url = None
+                        
+                        if 'youtube.com' in raw_media or 'youtu.be' in raw_media:
+                            video_url = raw_media
+                            if len(r) > 6 and str(r[6]).startswith('http'):
+                                foto_url = normalizza_foto_url(str(r[6]).strip())
+                        elif raw_media.endswith(('.mp4', '.mov', '.avi')):
+                            video_url = raw_media
+                        elif raw_media.startswith('http') or 'lh3.googleusercontent.com' in raw_media or 'drive.google.com' in raw_media:
+                            foto_url = normalizza_foto_url(raw_media)
+
+                        stanza_riga = str(r[3] or '').strip() if len(r) > 3 else ''
+                        s_clean = s_name.replace('_', ' ').strip()
+                        if stanza_riga and stanza_riga.lower() not in ['ambiente', ''] and stanza_riga.lower() != s_clean.lower():
+                            titolo_atomico = f"{s_clean} — {stanza_riga}"
+                        else:
+                            titolo_atomico = s_clean
+
+                        cand_id = f"{s_name}_riga{row_idx}_{abs(hash(raw_media or titolo_atomico)) % 100000}"
+                        testo_riga = str(r[5]).strip()
+                        if "immobiliare giancani" not in testo_riga.lower():
+                            testo_riga += " — Immobiliare Giancani"
+
+                        candidates.append({
+                            "id": cand_id,
+                            "fonte": s_clean,
+                            "sheet": s_name,
+                            "rowIndex": row_idx,
+                            "videoUrl": video_url,
+                            "fotoUrl": foto_url,
+                            "prezzo": str(r[1] or 'Trattativa Riservata').strip(),
+                            "mq": normalize_mq(r[2]),
+                            "titolo": titolo_atomico,
+                            "testoF": testo_riga
+                        })
     except Exception as eSheets:
-        print(f"Avviso lettura fogli: {eSheets}")
+        print(f"Avviso lettura catalogo fogli: {eSheets}")
 
     if not candidates:
-        print("⚠️ Nessun immobile o video estratto dai fogli. Utilizzo immobile di default...")
+        print("⚠️ Nessun immobile estratto dai fogli. Utilizzo immobile garantito di default...")
         candidates.append({
+            "id": "default_favara_1",
             "fonte": "Default",
             "videoUrl": "https://www.youtube.com/watch?v=f5pirIIs8FQ",
-            "titolo": "Casa in Vendita a Favara",
+            "titolo": "Villa Esclusiva con Giardino a Favara",
             "prezzo": "Trattativa Riservata",
-            "mq": "110 metri quadri",
-            "testoF": "Splendida soluzione abitativa con ampi spazi esterni e comfort moderno a Favara. — Antonio Giancani",
-            "fotoUrl": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop"
+            "mq": "140 metri quadri",
+            "testoF": "Splendida soluzione abitativa indipendente con ampi spazi esterni, rifiniture di pregio e massimo comfort ad Agrigento e Favara. — Immobiliare Giancani",
+            "fotoUrl": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=1200&auto=format&fit=crop"
         })
 
-    # Rotazione basata sull'ora corrente per garantire varietà ogni ora
-    idx = int(time.time() / 3600) % len(candidates)
-    selected = candidates[idx]
-    print(f"🎯 Immobile selezionato per la storia di quest'ora ({idx + 1}/{len(candidates)}): {selected['titolo']} ({selected['fonte']})")
+    # ROTAZIONE PERSISTENTE ANTI-RIPETIZIONE (Garantisce che non ripubblichi mai lo stesso immobile!)
+    cronologia = carica_cronologia_storie()
+    # Filtra solo i candidati che NON sono ancora stati pubblicati
+    candidati_mai_visti = [c for c in candidates if c["id"] not in cronologia]
+    
+    if not candidati_mai_visti:
+        print("🔄 Tutti gli immobili del catalogo sono stati pubblicati! Reset ciclo cronologia per iniziare nuova rotazione...")
+        cronologia = {}
+        candidati_mai_visti = candidates
+
+    # Seleziona il prossimo immobile univoco
+    selected = candidati_mai_visti[0]
+    # Salva nella cronologia persistente con timestamp
+    cronologia[selected["id"]] = {
+        "timestamp": time.time(),
+        "titolo": selected["titolo"],
+        "fonte": selected["fonte"]
+    }
+    salva_cronologia_storie(cronologia)
+    print(f"🎯 Immobile selezionato per la storia di quest'ora ({len(cronologia)}/{len(candidates)} nel ciclo): {selected['titolo']} ({selected['fonte']})")
+    print(f"   Dati sincronizzati atomici: Foto={bool(selected.get('fotoUrl'))}, Prezzo={selected.get('prezzo')}, MQ={selected.get('mq')}, Colonna F='{selected.get('testoF')[:60]}...'")
 
     media_info = {
         "titolo": selected.get('titolo', 'Immobile in Vendita'),

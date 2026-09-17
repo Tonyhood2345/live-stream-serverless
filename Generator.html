@@ -419,6 +419,113 @@ if (typeof google === 'undefined' || !google.script || !google.script.run) {
         border: 2px dashed var(--gold); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 20px;
       }
 
+      /* 🏷️ FINESTRELLE E CHIP INTELLIGENTI STANZE — IMMOBILIARE GIANCANI */
+      .smart-stanze-container {
+        margin: 4px 0 6px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        width: 100%;
+      }
+      .smart-stanze-scroll {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding: 3px 0 5px 0;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(201, 163, 94, 0.4) transparent;
+      }
+      .smart-stanze-scroll::-webkit-scrollbar {
+        height: 4px;
+      }
+      .smart-stanze-scroll::-webkit-scrollbar-thumb {
+        background: rgba(201, 163, 94, 0.4);
+        border-radius: 4px;
+      }
+      .smart-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(22, 16, 12, 0.88);
+        border: 1px solid rgba(201, 163, 94, 0.32);
+        border-radius: 12px;
+        color: #e8e2d8;
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 3px 8px;
+        cursor: pointer;
+        transition: all 0.16s ease-in-out;
+        flex-shrink: 0;
+        user-select: none;
+      }
+      .smart-chip:hover {
+        background: rgba(201, 163, 94, 0.25);
+        border-color: var(--gold);
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(201, 163, 94, 0.25);
+      }
+      .smart-chip:active {
+        background: var(--gold);
+        color: #120c04;
+        transform: scale(0.96);
+      }
+      .smart-chip-more {
+        background: rgba(52, 152, 219, 0.15);
+        border-color: rgba(52, 152, 219, 0.45);
+        color: #5dade2;
+      }
+      .smart-chip-more:hover {
+        background: rgba(52, 152, 219, 0.32);
+        border-color: #3498db;
+        color: #fff;
+      }
+      .smart-subdetails-bar {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding: 4px 6px;
+        background: rgba(10, 26, 36, 0.85);
+        border: 1px dashed rgba(46, 204, 113, 0.45);
+        border-radius: 8px;
+        animation: fadeInSmartSub 0.2s ease-out;
+      }
+      @keyframes fadeInSmartSub {
+        from { opacity: 0; transform: translateY(-3px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .smart-subchip {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: rgba(46, 204, 113, 0.14);
+        border: 1px solid rgba(46, 204, 113, 0.35);
+        border-radius: 10px;
+        color: #2ecc71;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 7px;
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+        flex-shrink: 0;
+        user-select: none;
+      }
+      .smart-subchip:hover {
+        background: rgba(46, 204, 113, 0.28);
+        border-color: #2ecc71;
+        color: #fff;
+        transform: translateY(-1px);
+      }
+      .smart-subchip:active {
+        background: #2ecc71;
+        color: #0c1a11;
+        transform: scale(0.96);
+      }
+
       #galleria-bulk-bar {
         display: none; gap: 8px; padding: 12px 16px; background: rgba(20, 10, 8, 0.95);
         border: 1px solid rgba(231,76,60,0.4); border-radius: var(--radius-md);
@@ -2118,7 +2225,25 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
 
                 <div class="form-group" style="margin-bottom: 12px;">
                   <label style="font-size: 11px; color: var(--gold); font-weight: 700;">Titolo del Blocco:</label>
-                  <input type="text" id="add-blocco-titolo" placeholder="es. Cucina &amp; Living o Rubrica del Giorno" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line); border-radius: 6px;">
+                  <input type="text" id="add-blocco-titolo" onfocus="autoAttivaSottoDettagli('add-blocco-titolo', 'smart-sub-blocco')" placeholder="es. Cucina &amp; Living o Rubrica del Giorno" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line); border-radius: 6px;">
+                  <div class="smart-stanze-container" id="smart-stanze-blocco-container">
+                    <div class="smart-stanze-scroll">
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Bagno', 'smart-sub-blocco')">🚿 Bagno</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Cucina', 'smart-sub-blocco')">🍳 Cucina</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Salotto', 'smart-sub-blocco')">🛋️ Salotto</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Zona Living', 'smart-sub-blocco')">🏡 Zona Living</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Camera da Letto', 'smart-sub-blocco')">🛏️ Camera da Letto</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Cameretta', 'smart-sub-blocco')">🧸 Cameretta</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Balcone', 'smart-sub-blocco')">🌇 Balcone</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Terrazzo', 'smart-sub-blocco')">☀️ Terrazzo</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Giardino', 'smart-sub-blocco')">🌿 Giardino</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Garage / Box', 'smart-sub-blocco')">🚗 Garage</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Lavanderia', 'smart-sub-blocco')">🧺 Lavanderia</button>
+                      <button type="button" class="smart-chip" onclick="inserisciStanzaSmart('add-blocco-titolo', 'Ripostiglio', 'smart-sub-blocco')">📦 Ripostiglio</button>
+                      <button type="button" class="smart-chip smart-chip-more" onclick="apriCatalogoCompletoStanze('add-blocco-titolo', 'smart-sub-blocco')">➕ Tutte...</button>
+                    </div>
+                    <div class="smart-subdetails-bar" id="smart-sub-blocco" style="display:none;"></div>
+                  </div>
                 </div>
 
                 <div class="form-grid cols-2" style="margin-bottom: 12px;">
@@ -3347,6 +3472,29 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
       </div>
     </div>
 
+    <!-- ═══ MODALE FINESTRA INTELLIGENTE STANZE & DETTAGLI — IMMOBILIARE GIANCANI ═══ -->
+    <div id="modal-smart-stanze-catalogo" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:99999; align-items:center; justify-content:center; backdrop-filter:blur(8px); padding:16px;">
+      <div style="background:#120d09; border:2px solid var(--gold); border-radius:14px; width:100%; max-width:680px; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 15px 50px rgba(0,0,0,0.9); overflow:hidden;">
+        <div style="padding:14px 18px; background:linear-gradient(135deg, rgba(201,163,94,0.18), rgba(166,81,45,0.18)); border-bottom:1px solid rgba(201,163,94,0.3); display:flex; align-items:center; justify-content:space-between;">
+          <div style="font-weight:800; font-size:14px; color:var(--gold); display:flex; align-items:center; gap:8px;">
+            <span>🏠 Finestra Intelligente Stanze & Ambienti</span>
+            <span style="font-size:11px; color:var(--sand); font-weight:600; padding:2px 8px; background:rgba(0,0,0,0.4); border-radius:10px; border:1px solid rgba(201,163,94,0.25);">Immobiliare Giancani</span>
+          </div>
+          <button type="button" onclick="chiudiCatalogoCompletoStanze()" style="background:transparent; border:none; color:#fff; font-size:22px; cursor:pointer; line-height:1; min-width:32px; min-height:32px;">✕</button>
+        </div>
+        <div style="padding:12px 18px; border-bottom:1px solid var(--line-soft); background:rgba(0,0,0,0.35);">
+          <input type="text" id="smart-stanze-search" oninput="filtraCatalogoStanze(this.value)" placeholder="🔍 Cerca ambiente (es. Bagno, Cucina, Salotto, Living, Terrazzo, Mansarda...)" style="width:100%; padding:9px 12px; background:rgba(0,0,0,0.6); border:1px solid rgba(201,163,94,0.4); border-radius:8px; color:#fff; font-size:12px; outline:none;">
+        </div>
+        <div id="smart-stanze-catalog-body" style="padding:16px 18px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:16px;">
+          <!-- Popolato dinamicamente da JS per categorie -->
+        </div>
+        <div style="padding:10px 18px; background:rgba(0,0,0,0.5); border-top:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; color:var(--sand);">💡 Clicca sulla stanza: il nome viene inserito e puoi continuare a scrivere subito i tuoi dettagli!</span>
+          <button type="button" onclick="chiudiCatalogoCompletoStanze()" style="background:var(--gold); border:none; border-radius:6px; padding:6px 14px; color:#120c04; font-weight:700; font-size:11px; cursor:pointer;">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══ MODALE EDITOR FOTO & 360° AVANZATO ═══ -->
     <div id="modal-photo-editor">
       <div class="photo-editor-inner">
@@ -3463,6 +3611,436 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
 
     <script>
 var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
+
+      // ═════════════════════════════════════════════════════════════════════════
+      // 🏷️ FINESTRELLE E CHIP INTELLIGENTI STANZE — IMMOBILIARE GIANCANI
+      // Inserimento ultra-rapido con categorie, focus, cursore a fine riga
+      // e chip dinamici per particolari (es. lavabo bidè e wc)
+      // ═════════════════════════════════════════════════════════════════════════
+      var SMART_STANZE_CONFIG = {
+        topList: [
+          { n: 'Bagno', i: '🚿' },
+          { n: 'Cucina', i: '🍳' },
+          { n: 'Salotto', i: '🛋️' },
+          { n: 'Zona Living', i: '🏡' },
+          { n: 'Camera da Letto', i: '🛏️' },
+          { n: 'Cameretta', i: '🧸' },
+          { n: 'Balcone', i: '🌇' },
+          { n: 'Terrazzo', i: '☀️' },
+          { n: 'Giardino', i: '🌿' },
+          { n: 'Garage', i: '🚗' },
+          { n: 'Lavanderia', i: '🧺' },
+          { n: 'Ripostiglio', i: '📦' },
+          { n: 'Disimpegno', i: '🧭' },
+          { n: 'Ingresso', i: '🚪' },
+          { n: 'Taverna', i: '🍷' },
+          { n: 'Mansarda', i: '📐' },
+          { n: 'Piscina', i: '🏊' },
+          { n: 'Vista Panoramica', i: '🌅' },
+          { n: 'Facciata Esterna', i: '🏛️' },
+          { n: 'Studio', i: '💼' }
+        ],
+        categorie: {
+          '🚿 Bagni & Servizi Igienici': [
+            { n: 'Bagno', i: '🚿' },
+            { n: 'Bagno Padronale', i: '🛁' },
+            { n: 'Bagno di Servizio', i: '🚾' },
+            { n: 'Doppio Servizio', i: '✨' },
+            { n: 'Lavanderia', i: '🧺' }
+          ],
+          '🍳 Cucina & Zona Pranzo': [
+            { n: 'Cucina', i: '🍳' },
+            { n: 'Cucina Abitabile', i: '🍲' },
+            { n: 'Angolo Cottura', i: '🔥' },
+            { n: 'Cucinino', i: '🍴' },
+            { n: 'Tinello', i: '🪑' },
+            { n: 'Zona Pranzo', i: '🍽️' }
+          ],
+          '🛋️ Salotto & Zona Giorno': [
+            { n: 'Salotto', i: '🛋️' },
+            { n: 'Zona Living', i: '🏡' },
+            { n: 'Soggiorno', i: '🛋️' },
+            { n: 'Open Space', i: '✨' },
+            { n: 'Salone di Rappresentanza', i: '🏛️' },
+            { n: 'Sala TV / Relax', i: '📺' }
+          ],
+          '🛏️ Camere da Letto & Zona Notte': [
+            { n: 'Camera da Letto', i: '🛏️' },
+            { n: 'Camera Matrimoniale', i: '👑' },
+            { n: 'Cameretta', i: '🧸' },
+            { n: 'Camera Singola', i: '🛌' },
+            { n: 'Camera Doppia', i: '🛏️' },
+            { n: 'Cabina Armadio', i: '👔' }
+          ],
+          '🌅 Esterni, Balconi & Panorami': [
+            { n: 'Balcone', i: '🌇' },
+            { n: 'Terrazzo', i: '☀️' },
+            { n: 'Veranda', i: '🪟' },
+            { n: 'Giardino', i: '🌿' },
+            { n: 'Porticato', i: '🏡' },
+            { n: 'Cortile', i: '🧱' },
+            { n: 'Vista Panoramica', i: '🌅' },
+            { n: 'Vista Mare', i: '🌊' },
+            { n: 'Facciata Esterna', i: '🏛️' }
+          ],
+          '🚗 Garage, Accessori & Pertinenze': [
+            { n: 'Garage / Box', i: '🚗' },
+            { n: 'Posto Auto', i: '🅿️' },
+            { n: 'Cantina', i: '🍷' },
+            { n: 'Taverna', i: '🪵' },
+            { n: 'Mansarda', i: '📐' },
+            { n: 'Soffitta', i: '📦' },
+            { n: 'Ingresso', i: '🚪' },
+            { n: 'Corridoio', i: '🧭' },
+            { n: 'Disimpegno', i: '🚶' },
+            { n: 'Ripostiglio', i: '🗄️' },
+            { n: 'Studio / Ufficio', i: '💼' },
+            { n: 'Piscina', i: '🏊' }
+          ]
+        },
+        particolariPerStanza: {
+          'bagno': [
+            'lavabo bidè e wc',
+            'con box doccia',
+            'con vasca idromassaggio',
+            'finestrato e luminoso',
+            'padronale con finiture di pregio',
+            'di servizio con lavatrice',
+            'con sanitari sospesi',
+            'doppio lavabo moderno'
+          ],
+          'cucin': [
+            'abitabile e spaziosa',
+            'a vista open space',
+            'con penisola moderna',
+            'con isola centrale',
+            'angolo cottura attrezzato',
+            'piano cottura a induzione',
+            'con affaccio sul balcone',
+            'arredata con elettrodomestici'
+          ],
+          'salott': [
+            'open space luminoso',
+            'con camino moderno',
+            'con affaccio sul terrazzo',
+            'con zona pranzo integrata',
+            'con divano e parete TV',
+            'ampio con vetrate panoramiche'
+          ],
+          'living': [
+            'open space luminoso',
+            'con camino e zona relax',
+            'con affaccio sul terrazzo',
+            'con accesso al giardino',
+            'ampio e accogliente'
+          ],
+          'soggiorn': [
+            'open space accogliente',
+            'con balcone panoramico',
+            'con sala da pranzo',
+            'luminoso con doppia esposizione'
+          ],
+          'salon': [
+            'di rappresentanza ampio',
+            'con finiture signorili',
+            'con grandi vetrate'
+          ],
+          'letto': [
+            'matrimoniale ampia',
+            'con cabina armadio',
+            'con bagno privato in suite',
+            'luminosa con balcone',
+            'con pavimentazione in parquet',
+            'climatizzata e silenziosa'
+          ],
+          'matrimonial': [
+            'ampia e confortevole',
+            'con cabina armadio',
+            'con bagno in camera',
+            'con parquet e balcone'
+          ],
+          'cameretta': [
+            'luminosa per ragazzi',
+            'con doppio letto',
+            'con zona studio scrivania',
+            'con armadio a ponte',
+            'con balcone'
+          ],
+          'balcon': [
+            'panoramico vivibile',
+            'vista mare e monti',
+            'con tende da sole',
+            'con ripostiglio esterno'
+          ],
+          'terrazz': [
+            'panoramico a livello',
+            'vivibile per cene all\'aperto',
+            'coperto con pergolato',
+            'con vista a 360° aperta'
+          ],
+          'verand': [
+            'chiusa e condonata',
+            'luminosa ad uso lavanderia/relax',
+            'con vetrate scorrevoli'
+          ],
+          'giardin': [
+            'privato recintato',
+            'con prato all\'inglese',
+            'con zona barbecue attrezzata',
+            'con alberi e piante ornamentali',
+            'con impianto di irrigazione'
+          ],
+          'garag': [
+            'singolo comodo pavimentato',
+            'doppio con soppalco',
+            'con saracinesca elettrica',
+            'con punto acqua',
+            'con accesso diretto all\'ascensore'
+          ],
+          'box': [
+            'comodo pavimentato',
+            'con soppalco e saracinesca'
+          ],
+          'tavern': [
+            'con camino e forno a legna',
+            'con cucina in muratura e bancone',
+            'rifinita in stile rustico in pietra',
+            'ideale per feste e cene'
+          ],
+          'mansard': [
+            'con travi in legno a vista',
+            'con lucernari velux luminosi',
+            'abitabile e climatizzata',
+            'con pavimentazione in parquet'
+          ],
+          'lavander': [
+            'attrezzata con lavatrice e asciugatrice',
+            'con pilozzo e stenditoio',
+            'con armadiature su misura'
+          ],
+          'ripost': [
+            'spazioso con scaffalature',
+            'adiacente alla cucina'
+          ],
+          'ingress': [
+            'ampio con porta blindata',
+            'con guardaroba a scomparsa',
+            'con controsoffitto e faretti led'
+          ],
+          'corrido': [
+            'con controsoffitto e faretti led',
+            'disimpegno notte armadiabile'
+          ],
+          'disimpegn': [
+            'luminoso e ben organizzato',
+            'zona notte armadiabile'
+          ],
+          'facciat': [
+            'esterna signorile e moderna',
+            'in ottimo stato conservativo',
+            'con cappotto termico'
+          ],
+          'vista': [
+            'panoramica aperta',
+            'mozzafiato sul mare',
+            'sulla vallata e centro storico'
+          ],
+          'piscin': [
+            'interrata con solarium',
+            'a sfioro panoramica',
+            'attrezzata con lettini e doccia'
+          ],
+          'studio': [
+            'professionale silenzioso',
+            'attrezzato con librerie',
+            'luminoso con balcone'
+          ]
+        }
+      };
+
+      function renderSmartStanzeBarHtml(inputId, subContainerId) {
+        var topList = SMART_STANZE_CONFIG.topList.slice(0, 10);
+        var chips = '';
+        for (var i = 0; i < topList.length; i++) {
+          var it = topList[i];
+          chips += '<button type="button" class="smart-chip" onclick="inserisciStanzaSmart(\'' + inputId + '\', \'' + it.n + '\', \'' + subContainerId + '\')" title="Imposta ' + it.n + ' e continua a scrivere">' + it.i + ' ' + it.n + '</button>';
+        }
+        chips += '<button type="button" class="smart-chip smart-chip-more" onclick="apriCatalogoCompletoStanze(\'' + inputId + '\', \'' + subContainerId + '\')" title="Catalogo completo stanze e pertinenze — Immobiliare Giancani">➕ Tutte...</button>';
+
+        return '<div class="smart-stanze-container">'
+             + '<div class="smart-stanze-scroll">' + chips + '</div>'
+             + '<div class="smart-subdetails-bar" id="' + subContainerId + '" style="display:none;"></div>'
+             + '</div>';
+      }
+
+      function inserisciStanzaSmart(inputId, nomeStanza, subContainerId) {
+        var el = document.getElementById(inputId);
+        if (!el) return;
+        var tabN = typeof _galleriaTabCorrente !== 'undefined' ? _galleriaTabCorrente : '';
+        var fallbackTipo = typeof estraiTipoImmobileDaNomeCartella === 'function' ? estraiTipoImmobileDaNomeCartella(tabN) : 'Ambiente';
+        var currentVal = el.value.trim();
+
+        // Se vuoto o valore generico tipo "Ambiente" o "Appartamento"
+        var isDefault = !currentVal ||
+                        currentVal.toLowerCase() === 'ambiente' ||
+                        currentVal.toLowerCase().indexOf('ambiente ') === 0 ||
+                        (fallbackTipo && currentVal.toLowerCase() === fallbackTipo.toLowerCase());
+
+        if (isDefault) {
+          el.value = nomeStanza + ' ';
+        } else {
+          // L'utente clicca una stanza per iniziare la definizione (es. Bagno -> poi digita lavabo bidè e wc)
+          el.value = nomeStanza + ' ';
+        }
+
+        el.focus();
+        var len = el.value.length;
+        if (typeof el.setSelectionRange === 'function') {
+          el.setSelectionRange(len, len);
+        }
+
+        if (subContainerId) {
+          mostraSottoDettagliSmart(inputId, nomeStanza, subContainerId);
+        }
+      }
+
+      function aggiungiParticolareStanza(inputId, particolare) {
+        var el = document.getElementById(inputId);
+        if (!el) return;
+        var val = el.value.trim();
+        if (val.toLowerCase().indexOf(particolare.toLowerCase()) === -1) {
+          el.value = val ? (val + ' ' + particolare + ' ') : (particolare + ' ');
+        } else {
+          el.value = val + ' ';
+        }
+        el.focus();
+        var len = el.value.length;
+        if (typeof el.setSelectionRange === 'function') {
+          el.setSelectionRange(len, len);
+        }
+      }
+
+      function mostraSottoDettagliSmart(inputId, nomeStanza, subContainerId) {
+        var subBox = document.getElementById(subContainerId);
+        if (!subBox) return;
+
+        var k = (nomeStanza || '').toLowerCase();
+        var list = null;
+
+        for (var key in SMART_STANZE_CONFIG.particolariPerStanza) {
+          if (k.indexOf(key) !== -1) {
+            list = SMART_STANZE_CONFIG.particolariPerStanza[key];
+            break;
+          }
+        }
+
+        if (!list) {
+          list = [
+            'luminoso e accogliente',
+            'ristrutturato di recente',
+            'con finiture moderne',
+            'con vista aperta',
+            'climatizzato'
+          ];
+        }
+
+        var html = '<span style="font-size:10px; color:#2ecc71; font-weight:700; margin-right:4px; flex-shrink:0;">✨ Particolari:</span>';
+        for (var i = 0; i < list.length; i++) {
+          var d = list[i];
+          html += '<button type="button" class="smart-subchip" onclick="aggiungiParticolareStanza(\'' + inputId + '\', \'' + d.replace(/'/g, "\\'") + '\')" title="Aggiungi: ' + d + '">+ ' + d + '</button>';
+        }
+        subBox.innerHTML = html;
+        subBox.style.display = 'flex';
+      }
+
+      function autoAttivaSottoDettagli(inputId, subContainerId) {
+        var el = document.getElementById(inputId);
+        if (!el) return;
+        var val = el.value.trim();
+        if (val && val.toLowerCase() !== 'ambiente' && val.length >= 3) {
+          mostraSottoDettagliSmart(inputId, val, subContainerId);
+        }
+      }
+
+      var _activeSmartTargetInputId = null;
+      var _activeSmartSubContainerId = null;
+
+      function apriCatalogoCompletoStanze(targetInputId, subContainerId) {
+        _activeSmartTargetInputId = targetInputId;
+        _activeSmartSubContainerId = subContainerId;
+        var modal = document.getElementById('modal-smart-stanze-catalogo');
+        if (!modal) return;
+        modal.style.display = 'flex';
+
+        var search = document.getElementById('smart-stanze-search');
+        if (search) {
+          search.value = '';
+          search.focus();
+        }
+        renderCatalogoStanzeFiltro('');
+      }
+
+      function chiudiCatalogoCompletoStanze() {
+        var modal = document.getElementById('modal-smart-stanze-catalogo');
+        if (modal) modal.style.display = 'none';
+        if (_activeSmartTargetInputId) {
+          var el = document.getElementById(_activeSmartTargetInputId);
+          if (el) {
+            el.focus();
+            var len = el.value.length;
+            if (typeof el.setSelectionRange === 'function') el.setSelectionRange(len, len);
+          }
+        }
+      }
+
+      function filtraCatalogoStanze(term) {
+        renderCatalogoStanzeFiltro(term);
+      }
+
+      function renderCatalogoStanzeFiltro(term) {
+        var container = document.getElementById('smart-stanze-catalog-body');
+        if (!container) return;
+
+        var q = (term || '').trim().toLowerCase();
+        var html = '';
+        var totalFound = 0;
+
+        for (var catName in SMART_STANZE_CONFIG.categorie) {
+          var items = SMART_STANZE_CONFIG.categorie[catName];
+          var matching = items.filter(function(it) {
+            if (!q) return true;
+            return it.n.toLowerCase().indexOf(q) !== -1 || catName.toLowerCase().indexOf(q) !== -1;
+          });
+
+          if (matching.length > 0) {
+            totalFound += matching.length;
+            html += '<div style="background:rgba(255,255,255,0.03); border:1px solid var(--line-soft); border-radius:10px; padding:10px 14px;">';
+            html += '<div style="font-size:11.5px; font-weight:800; color:var(--gold); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.03em;">' + catName + '</div>';
+            html += '<div style="display:flex; flex-wrap:wrap; gap:6px;">';
+            for (var j = 0; j < matching.length; j++) {
+              var st = matching[j];
+              html += '<button type="button" class="smart-chip" onclick="selezionaStanzaDaCatalogo(\'' + st.n.replace(/'/g, "\\'") + '\')" style="font-size:11.5px; padding:5px 10px;" title="Seleziona ' + st.n + '">' + st.i + ' ' + st.n + '</button>';
+            }
+            html += '</div></div>';
+          }
+        }
+
+        if (totalFound === 0) {
+          html = '<div style="text-align:center; padding:24px; color:var(--sand);">'
+               + '<div>Nessuna stanza predefinita trovata per "<strong>' + q + '</strong>"</div>'
+               + '<div style="margin-top:10px;"><button type="button" class="btn-gold" onclick="selezionaStanzaDaCatalogo(\'' + q.replace(/'/g, "\\'") + '\')" style="padding:6px 14px; font-size:11px;">Usa comunque "' + q + '"</button></div>'
+               + '</div>';
+        }
+
+        container.innerHTML = html;
+      }
+
+      function selezionaStanzaDaCatalogo(nomeStanza) {
+        if (_activeSmartTargetInputId) {
+          inserisciStanzaSmart(_activeSmartTargetInputId, nomeStanza, _activeSmartSubContainerId);
+        }
+        chiudiCatalogoCompletoStanze();
+      }
 
       var TELEFONO_AUTORIZZATO = "3201667156";
       var phoneUrlParam = "<?= phoneParam ?>";
@@ -4936,10 +5514,11 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
               if (!stVal || stVal.toLowerCase() === 'ambiente' || stVal.toLowerCase().indexOf('ambiente ') === 0) {
                 stVal = tipoImm;
               }
-              return '<input type="text" id="edit-stanza-' + idx + '" value="' + stVal.replace(/"/g, '&quot;') + '" style="flex:1; font-size:12px; font-weight:700; color:var(--gold); background:rgba(0,0,0,0.3); border:1px solid rgba(201,163,94,0.3); border-radius:4px; padding:4px; outline:none;" placeholder="Nome Stanza (es. Bagno, Cucina, ' + tipoImm + ')">';
+              return '<input type="text" id="edit-stanza-' + idx + '" value="' + stVal.replace(/"/g, '&quot;') + '" onfocus="autoAttivaSottoDettagli(\'edit-stanza-' + idx + '\', \'smart-sub-' + idx + '\')" onkeydown="if(event.key===\'Enter\'){event.preventDefault();salvaStanzaGalleria(' + idx + ');}" style="flex:1; font-size:12px; font-weight:700; color:var(--gold); background:rgba(0,0,0,0.3); border:1px solid rgba(201,163,94,0.3); border-radius:4px; padding:4px; outline:none;" placeholder="Nome Stanza (es. Bagno, Cucina, ' + tipoImm + ')">';
             })()
-          + '<button id="btn-save-stanza-' + idx + '" onclick="salvaStanzaGalleria(' + idx + ')" style="background:var(--gold); border:none; border-radius:4px; color:#120c04; cursor:pointer; padding:0 8px; font-size:12px;" title="Salva Nome Stanza e Genera Descrizione Emozionale">💾</button>'
+          + '<button id="btn-save-stanza-' + idx + '" onclick="salvaStanzaGalleria(' + idx + ')" style="background:var(--gold); border:none; border-radius:4px; color:#120c04; cursor:pointer; padding:0 8px; font-size:12px;" title="Salva Nome Stanza e Genera Descrizione Emozionale (oppure premi INVIO)">💾</button>'
           + '</div>'
+          + renderSmartStanzeBarHtml('edit-stanza-' + idx, 'smart-sub-' + idx)
           + '<textarea class="card-text-edit" id="testo-' + idx + '" readonly>' + (item.testo || '(nessun testo)') + '</textarea>'
           + '<div class="card-controls">'
           + '<button class="card-btn card-btn-play" onclick="riproduciTTSGalleria(' + idx + ')" title="Ascolta Lettura Voce">🔊</button>'

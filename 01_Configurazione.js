@@ -144,13 +144,74 @@ function salvaScalaLogoAgenzia(scala) {
 
 /**
  * 🎨 GESTIONE STILE GRAFICO DIRETTA STREAMING
- * Valori supportati: 'modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'
+ * 4 Stili Professionali:
+ * 1. 'modern_broadcast': News TV Istituzionale, layout L, accenti oro e navy
+ * 2. 'editorial_minimal': Magazine di lusso, font Cinzel, sabbia e terracotta
+ * 3. 'tech_dark': Cyberpunk HUD, accenti neon ciano e viola
+ * 4. 'comic_pop': Pop Art dinamico, contorni decisi, giallo e rosso brillante
+ *
+ * MODALITÀ DI ROTAZIONE:
+ * - 'auto' o 'rotazione_oraria' (DEFAULT): Lo stile cambia automaticamente ogni ora esatta!
+ *   Ore 00, 04, 08, 12, 16, 20 -> modern_broadcast
+ *   Ore 01, 05, 09, 13, 17, 21 -> editorial_minimal
+ *   Ore 02, 06, 10, 14, 18, 22 -> tech_dark
+ *   Ore 03, 07, 11, 15, 19, 23 -> comic_pop
+ * - Uno stile specifico fisso se impostato manualmente dal regista.
  */
+function getStileGraficaOrarioAutomatico() {
+  var stili = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'];
+  var d = new Date();
+  var hourStr = Utilities.formatDate(d, 'Europe/Rome', 'H');
+  var hour = parseInt(hourStr, 10);
+  if (isNaN(hour)) hour = d.getHours();
+  return stili[hour % stili.length];
+}
+
+function getInfoRotazioneStileOrario() {
+  var stili = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'];
+  var labels = {
+    'modern_broadcast': '📡 Modern Broadcast',
+    'editorial_minimal': '🏛️ Editorial Minimal',
+    'tech_dark': '⚡ Tech & Dark UI',
+    'comic_pop': '💥 Fumetto Pop'
+  };
+  var d = new Date();
+  var hour = parseInt(Utilities.formatDate(d, 'Europe/Rome', 'H'), 10);
+  if (isNaN(hour)) hour = d.getHours();
+  var min = parseInt(Utilities.formatDate(d, 'Europe/Rome', 'm'), 10);
+  if (isNaN(min)) min = d.getMinutes();
+  
+  var raw = PropertiesService.getScriptProperties().getProperty('STILE_GRAFICA_DIRETTA') || 'auto';
+  var isAuto = (!raw || raw === 'auto' || raw === 'rotazione_oraria');
+  var stileCorrente = isAuto ? stili[hour % stili.length] : raw;
+  var prossimoStile = stili[(hour + 1) % stili.length];
+  var minAlCambio = 60 - min;
+
+  return {
+    modalita: isAuto ? 'auto' : 'manuale',
+    isAuto: isAuto,
+    oraCorrente: hour,
+    minutiCorrenti: min,
+    minutiAlCambio: minAlCambio,
+    stileAttivo: stileCorrente,
+    labelStileAttivo: labels[stileCorrente] || stileCorrente,
+    prossimoStile: prossimoStile,
+    labelProssimoStile: labels[prossimoStile] || prossimoStile,
+    messaggio: isAuto
+      ? ('Ora ' + hour + ':00 in corso: stile ' + (labels[stileCorrente] || stileCorrente) + '. Prossimo cambio tra ' + minAlCambio + ' min (' + labels[prossimoStile] + '). — Immobiliare Giancani')
+      : ('Stile bloccato manualmente su: ' + (labels[stileCorrente] || stileCorrente) + ' — Immobiliare Giancani')
+  };
+}
+
 function getStileGraficaDiretta() {
   try {
     var raw = PropertiesService.getScriptProperties().getProperty('STILE_GRAFICA_DIRETTA');
     var validi = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'];
-    return (raw && validi.indexOf(raw) !== -1) ? raw : 'modern_broadcast';
+    // Se non impostato, o impostato su 'auto'/'rotazione_oraria', calcola la rotazione ad ogni ora
+    if (!raw || raw === 'auto' || raw === 'rotazione_oraria' || validi.indexOf(raw) === -1) {
+      return getStileGraficaOrarioAutomatico();
+    }
+    return raw;
   } catch(e) {
     return 'modern_broadcast';
   }
@@ -158,11 +219,21 @@ function getStileGraficaDiretta() {
 
 function salvaStileGraficaDiretta(stile) {
   try {
-    var validi = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'];
-    var st = String(stile || 'modern_broadcast').toLowerCase().trim();
-    if (validi.indexOf(st) === -1) st = 'modern_broadcast';
+    var validi = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop', 'auto', 'rotazione_oraria'];
+    var st = String(stile || 'auto').toLowerCase().trim();
+    if (validi.indexOf(st) === -1) st = 'auto';
     PropertiesService.getScriptProperties().setProperty('STILE_GRAFICA_DIRETTA', st);
-    return { success: true, stile: st, message: 'Stile grafica diretta aggiornato a ' + st + ' — Immobiliare Giancani' };
+    var info = getInfoRotazioneStileOrario();
+    return {
+      success: true,
+      stile: st,
+      stileAttivo: info.stileAttivo,
+      isAuto: info.isAuto,
+      info: info,
+      message: (st === 'auto' || st === 'rotazione_oraria')
+        ? ('Rotazione oraria automatica attivata! Stile ora in onda: ' + info.labelStileAttivo + ' (cambio ad ogni ora) — Immobiliare Giancani')
+        : ('Stile grafica diretta impostato manualmente a ' + info.labelStileAttivo + ' — Immobiliare Giancani')
+    };
   } catch(e) {
     return { success: false, error: e.toString() };
   }

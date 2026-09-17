@@ -2057,17 +2057,58 @@ function applicaScalaLogoAgenzia(scala) {
 /**
  * 🎨 APPLICAZIONE DINAMICA DELLO STILE GRAFICO DELLA DIRETTA
  * modern_broadcast | editorial_minimal | tech_dark | comic_pop
+ * Supporta sia il cambio ad ogni ora in automatico che l'impostazione da regia.
  */
-function applicaStileGrafica(stile) {
-  var s = String(stile || 'modern_broadcast').toLowerCase().trim();
+var _stiliOrari = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'];
+var _ultimaOraVerificataStile = -1;
+
+function applicaStileGrafica(stile, daRegiaManuale) {
+  var s = String(stile || '').toLowerCase().trim();
+  if (daRegiaManuale) {
+    if (s === 'auto' || s === 'rotazione_oraria') {
+      window._stileBloccatoManualmente = false;
+      _ultimaOraVerificataStile = -1;
+      verificaCambioStileOrarioAutomatico();
+      return;
+    } else {
+      window._stileBloccatoManualmente = true;
+    }
+  }
+
+  if (!s || s === 'auto' || s === 'rotazione_oraria') {
+    var curHour = new Date().getHours();
+    s = _stiliOrari[curHour % _stiliOrari.length];
+  }
+
   var validi = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'];
   if (validi.indexOf(s) === -1) s = 'modern_broadcast';
+  
+  if (window._stileGraficaAttivo !== s) {
+    console.log('🎨 [STILE GRAFICA DIRETTA] Attivato stile: ' + s + ' — Immobiliare Giancani');
+  }
   
   document.body.classList.remove('style-modern-broadcast', 'style-editorial-minimal', 'style-tech-dark', 'style-comic-pop');
   document.body.classList.add('style-' + s.replace(/_/g, '-'));
   window._stileGraficaAttivo = s;
 }
 window.applicaStileGrafica = applicaStileGrafica;
+
+/**
+ * ⏰ TIMER DI ROTAZIONE ORARIA AUTOMATICA DELLA DIRETTA
+ * Ad ogni cambio d'ora (es. 15:00, 16:00, 17:00...), lo stile grafico
+ * della diretta ruota istantaneamente e senza interruzioni.
+ */
+function verificaCambioStileOrarioAutomatico() {
+  if (window._stileBloccatoManualmente) return;
+  var currentHour = new Date().getHours();
+  if (currentHour !== _ultimaOraVerificataStile) {
+    _ultimaOraVerificataStile = currentHour;
+    var stileOrario = _stiliOrari[currentHour % _stiliOrari.length];
+    applicaStileGrafica(stileOrario, false);
+  }
+}
+setInterval(verificaCambioStileOrarioAutomatico, 5000);
+verificaCambioStileOrarioAutomatico();
 
 function popolaElencoStanzeChat(stanze) {
   var container = document.getElementById('chat-rooms-chips');
@@ -4329,8 +4370,12 @@ function applicaCoppiaAvatar(coppia) {
 try {
   var avatarBroadcastChannel = new BroadcastChannel('giancani_live_channel');
   avatarBroadcastChannel.onmessage = function(ev) {
-    if (ev && ev.data && ev.data.type === 'CAMBIO_AVATAR' && ev.data.coppia) {
+    if (!ev || !ev.data) return;
+    if (ev.data.type === 'CAMBIO_AVATAR' && ev.data.coppia) {
       applicaCoppiaAvatar(ev.data.coppia);
+    }
+    if (ev.data.type === 'CAMBIO_STILE_GRAFICA' && ev.data.stile) {
+      applicaStileGrafica(ev.data.stile, true);
     }
   };
 } catch(eBC) {}

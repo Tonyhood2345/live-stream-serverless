@@ -2106,15 +2106,18 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid rgba(245,212,133,0.25); padding-bottom: 14px;">
               <div>
                 <div class="section-title" style="margin: 0; font-size: 17px; color: var(--gold-bright); display: flex; align-items: center; gap: 10px;">
-                  <span>📅</span> Calendario Palinsesto Serale (19:00 - 01:00) • Rotazione Immobili Diversi
+                  <span>📅</span> Calendario Palinsesto Serale (19:00 - 01:00) • Rotazione Immobili Senza Ripetizioni
                 </div>
                 <div style="font-size: 12px; color: var(--sand); margin-top: 5px; line-height: 1.5;">
-                  Programmazione delle dirette televisive: <b>ogni sera dalle 19:00 alle 01:00</b> con un immobile diverso per ciascun giorno della settimana (&gt; 7 immobili a rotazione). Ad ogni salvataggio viene inviata la <b>notifica immediata su Telegram</b>.
+                  Programmazione serale in diretta (<b>19:00 - 01:00</b>). Regola di <b>Equa Rotazione ad Esaurimento</b>: se un immobile è andato in onda, <b>non torna in onda se prima non lo fanno tutti gli altri</b> a catalogo.
                 </div>
               </div>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button type="button" onclick="autoProgrammaRotazioneImmobiliDiversi()" class="btn-gold" style="width: auto; min-height: 38px; padding: 8px 16px; font-size: 11.5px; background: linear-gradient(135deg, #e67e22, #d35400); color: white; border: none; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px;" title="Assegna automaticamente un immobile diverso a ciascun giorno della settimana">
-                  🔄 AUTO-PROGRAMMA ROTAZIONE
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <button type="button" id="btn-toggle-prog-serale" onclick="toggleProgrammaSeraleAutomaticoUI()" class="btn-gold" style="width: auto; min-height: 38px; padding: 8px 14px; font-size: 11.5px; background: rgba(46,204,113,0.18); color: #2ecc71; border: 1px solid #2ecc71; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px;" title="Attiva o disattiva l'avvio automatico serale alle 19:00">
+                  <span id="icon-prog-serale">🟢</span> <span id="label-prog-serale">SERALE: ATTIVO (19:00 - 01:00)</span>
+                </button>
+                <button type="button" onclick="autoProgrammaRotazioneEquaUI()" class="btn-gold" style="width: auto; min-height: 38px; padding: 8px 16px; font-size: 11.5px; background: linear-gradient(135deg, #e67e22, #d35400); color: white; border: none; border-radius: 8px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px;" title="Distribuisce prioritariamente gli immobili non ancora andati in onda (Zero Ripetizioni)">
+                  🔄 AUTO-PROGRAMMA ROTAZIONE EQUA
                 </button>
                 <button type="button" onclick="salvaCalendarioPalinsestoSettimanaleUI()" class="btn-gold" style="width: auto; min-height: 38px; padding: 8px 18px; font-size: 11.5px; background: linear-gradient(135deg, #2ecc71, #27ae60); color: white; border: none; border-radius: 8px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px rgba(46,204,113,0.35); display: flex; align-items: center; gap: 6px;">
                   💾 SALVA &amp; NOTIFICA TELEGRAM
@@ -2124,6 +2127,27 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
 
             <!-- STATUS BAR SALVATAGGIO & TELEGRAM FEEDBACK -->
             <div id="status-calendario-palinsesto" style="display: none; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 12px; font-weight: 700;"></div>
+
+            <!-- WIDGET AVANZAMENTO EQUA ROTAZIONE AD ESAURIMENTO -->
+            <div id="box-stato-rotazione-equa" style="background: rgba(0,0,0,0.45); border: 1px solid rgba(201,163,94,0.35); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 800; color: var(--gold-bright);">
+                  <span>⚖️ STATO EQUA ROTAZIONE:</span>
+                  <span id="rot-badge-ciclo" style="background: rgba(201,163,94,0.22); border: 1px solid var(--gold); border-radius: 6px; padding: 2px 8px; font-size: 11px; color: var(--gold);">Caricamento ciclo...</span>
+                </div>
+                <div id="rot-text-conteggio" style="font-size: 11.5px; color: var(--sand); font-weight: 700;">
+                  Calcolo immobili in attesa...
+                </div>
+              </div>
+              <div style="width: 100%; height: 9px; background: rgba(255,255,255,0.08); border-radius: 5px; overflow: hidden; position: relative;">
+                <div id="rot-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #e67e22, #2ecc71); border-radius: 5px; transition: width 0.4s ease;"></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--sand-dim); flex-wrap: wrap; gap: 6px;">
+                <span id="rot-stat-andati">⏳ 0 andati in onda</span>
+                <span id="rot-stat-regola" style="color: var(--gold-dark); font-style: italic;">🔒 Regola attiva: nessun immobile si ripete finché tutti non sono andati in onda</span>
+                <span id="rot-stat-rimanenti">⏳ 0 in attesa del loro turno</span>
+              </div>
+            </div>
 
             <!-- GRIGLIA SETTIMANALE 7 GIORNI -->
             <div id="grid-calendario-settimanale" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 16px;">
@@ -6987,11 +7011,15 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
       
       // ═══════════════════════════════════════════════════════════════════════
       // 📅 GESTORE CALENDARIO PALINSESTO SERALE (19:00 - 01:00) & NOTIFICHE TELEGRAM
-      // Rotazione immobili diversi (> 7 immobili) per ciascun giorno della settimana
+      // Equa Rotazione Immobili ad Esaurimento Completo (Fair Round-Robin)
+      // Nessun immobile si ripete finché tutti non sono andati in onda
+      // Branding: Immobiliare Giancani
       // ═══════════════════════════════════════════════════════════════════════
       var _palinsestoSettimanaleDati = [];
       var _fogliImmobiliCalendario = [];
       var _giornoIdOggi = 'lunedi';
+      var _datiRotazioneEqua = null;
+      var _programmaSeraleAttivo = true;
 
       function caricaCalendarioPalinsestoSettimanaleUI() {
         if (typeof google === 'undefined' || !google.script || !google.script.run) {
@@ -7006,6 +7034,8 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
               _palinsestoSettimanaleDati = res.calendario || [];
               _fogliImmobiliCalendario = res.fogliDisponibili || [];
               _giornoIdOggi = res.giornoIdOggi || 'lunedi';
+              _datiRotazioneEqua = res.rotazioneEqua || null;
+              _programmaSeraleAttivo = (res.programmaSeraleAttivo !== false);
               renderCalendarioSettimanaleUI();
             } else {
               mostraStatusCalendario('⚠️ Errore caricamento calendario: ' + (res ? res.error : ''), '#e74c3c');
@@ -7018,13 +7048,62 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
       }
 
       function renderCalendarioSettimanaleUI() {
+        // 1. Aggiorna il Widget di Avanzamento Equa Rotazione
+        if (_datiRotazioneEqua) {
+          var rot = _datiRotazioneEqua;
+          var elBadgeCiclo = document.getElementById('rot-badge-ciclo');
+          if (elBadgeCiclo) {
+            elBadgeCiclo.textContent = 'Ciclo #' + (rot.cicloAttivo || 1) + (rot.cicloCompleto ? ' (100% Completato! 🏆)' : ' (In corso)');
+          }
+          var elConteggio = document.getElementById('rot-text-conteggio');
+          if (elConteggio) {
+            elConteggio.textContent = (rot.conteggioAndatiInOnda || 0) + ' su ' + (rot.totaleImmobili || 0) + ' immobili trasmessi (' + (rot.percentualeAvanzamento || 0) + '%)';
+          }
+          var elProgressBar = document.getElementById('rot-progress-bar');
+          if (elProgressBar) {
+            elProgressBar.style.width = (rot.percentualeAvanzamento || 0) + '%';
+          }
+          var elStatAndati = document.getElementById('rot-stat-andati');
+          if (elStatAndati) {
+            elStatAndati.innerHTML = '✅ <b>' + (rot.conteggioAndatiInOnda || 0) + '</b> già andati in onda';
+          }
+          var elStatRimanenti = document.getElementById('rot-stat-rimanenti');
+          if (elStatRimanenti) {
+            elStatRimanenti.innerHTML = '⏳ <b>' + (rot.conteggioRimanenti || 0) + '</b> in attesa del loro turno';
+          }
+        }
+
+        // 2. Aggiorna il pulsante Toggle Programma Serale (19:00 - 01:00)
+        var btnToggle = document.getElementById('btn-toggle-prog-serale');
+        var iconToggle = document.getElementById('icon-prog-serale');
+        var labelToggle = document.getElementById('label-prog-serale');
+        if (btnToggle && iconToggle && labelToggle) {
+          if (_programmaSeraleAttivo) {
+            btnToggle.style.background = 'rgba(46,204,113,0.18)';
+            btnToggle.style.color = '#2ecc71';
+            btnToggle.style.border = '1px solid #2ecc71';
+            iconToggle.textContent = '🟢';
+            labelToggle.textContent = 'SERALE: ATTIVO (19:00 - 01:00)';
+          } else {
+            btnToggle.style.background = 'rgba(231,76,60,0.18)';
+            btnToggle.style.color = '#e74c3c';
+            btnToggle.style.border = '1px solid #e74c3c';
+            iconToggle.textContent = '⏸️';
+            labelToggle.textContent = 'SERALE: IN PAUSA';
+          }
+        }
+
+        // 3. Renderizza la griglia delle 7 Card dei giorni
         var container = document.getElementById('grid-calendario-settimanale');
         if (!container) return;
 
         if (!_palinsestoSettimanaleDati || _palinsestoSettimanaleDati.length === 0) {
-          container.innerHTML = '<div style="color:var(--sand); text-align:center; padding:20px; grid-column: 1 / -1;">Nessuna programmazione trovata. Clicca "AUTO-PROGRAMMA ROTAZIONE".</div>';
+          container.innerHTML = '<div style="color:var(--sand); text-align:center; padding:20px; grid-column: 1 / -1;">Nessuna programmazione trovata. Clicca "🔄 AUTO-PROGRAMMA ROTAZIONE EQUA".</div>';
           return;
         }
+
+        var andatiList = (_datiRotazioneEqua && _datiRotazioneEqua.andatiInOnda) ? _datiRotazioneEqua.andatiInOnda : [];
+        var cicloNum = (_datiRotazioneEqua && _datiRotazioneEqua.cicloAttivo) ? _datiRotazioneEqua.cicloAttivo : 1;
 
         var html = '';
         for (var i = 0; i < _palinsestoSettimanaleDati.length; i++) {
@@ -7032,6 +7111,8 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
           var isOggi = (item.id === _giornoIdOggi);
           var cardBorder = isOggi ? '2px solid var(--gold-bright)' : '1px solid rgba(245,212,133,0.2)';
           var cardBg = isOggi ? 'linear-gradient(180deg, rgba(201,163,94,0.18), rgba(20,16,12,0.95))' : 'rgba(25, 20, 15, 0.85)';
+
+          var giaAndato = andatiList.indexOf(item.tabImmobile) !== -1;
 
           html += '<div style="background:' + cardBg + '; border:' + cardBorder + '; border-radius:12px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; gap:10px; position:relative; box-shadow:0 6px 18px rgba(0,0,0,0.5);">';
 
@@ -7045,9 +7126,20 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
           html += '  </div>';
 
           // Orario fisso 19:00 - 01:00
-          html += '  <div style="font-size:11px; font-weight:700; color:var(--sand); display:flex; align-items:center; gap:5px; margin-bottom:12px; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">';
+          html += '  <div style="font-size:11px; font-weight:700; color:var(--sand); display:flex; align-items:center; gap:5px; margin-bottom:10px; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">';
           html += '    <span>🌙</span> <span>19:00 - 01:00</span> <span style="font-size:9.5px; color:var(--gold-dark); margin-left:auto;">(6 ore)</span>';
           html += '  </div>';
+
+          // Badge di stato Equa Rotazione per questo immobile
+          if (giaAndato) {
+            html += '  <div style="font-size:10px; font-weight:800; color:#2ecc71; background:rgba(46,204,113,0.12); border:1px solid rgba(46,204,113,0.35); padding:3px 7px; border-radius:5px; margin-bottom:10px; display:flex; align-items:center; gap:5px;">';
+            html += '    <span>✅</span> <span>Già trasmesso nel Ciclo #' + cicloNum + '</span>';
+            html += '  </div>';
+          } else {
+            html += '  <div style="font-size:10px; font-weight:800; color:#e67e22; background:rgba(230,126,34,0.12); border:1px solid rgba(230,126,34,0.35); padding:3px 7px; border-radius:5px; margin-bottom:10px; display:flex; align-items:center; gap:5px;">';
+            html += '    <span>⏳</span> <span>Prioritario • In coda Ciclo #' + cicloNum + '</span>';
+            html += '  </div>';
+          }
 
           // Selettore Immobile
           html += '  <label style="font-size:10.5px; font-weight:800; color:var(--sand-dim); display:block; margin-bottom:4px;">🏠 IMMOBILE PROGRAMMATO:</label>';
@@ -7090,7 +7182,60 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
             break;
           }
         }
+        renderCalendarioSettimanaleUI();
         mostraStatusCalendario('✏️ Modificato ' + giornoId + ' con ' + tabName.replace(/_/g, ' ') + '. Clicca "SALVA & NOTIFICA TELEGRAM" per confermare.', '#f1c40f');
+      }
+
+      function autoProgrammaRotazioneEquaUI() {
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+          autoProgrammaRotazioneImmobiliDiversi();
+          return;
+        }
+
+        mostraStatusCalendario('🔄 Calcolo rotazione equa ad esaurimento (nessun duplicato finché tutti non hanno trasmesso)...', '#f1c40f');
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) {
+              _palinsestoSettimanaleDati = res.calendario || [];
+              _datiRotazioneEqua = res.statoRotazione || null;
+              renderCalendarioSettimanaleUI();
+              mostraStatusCalendario('✅ ' + (res.messaggio || 'Palinsesto settimanale programmato con equa rotazione!'), '#2ecc71');
+            } else {
+              mostraStatusCalendario('⚠️ Errore programmazione equa: ' + (res ? res.error : ''), '#e74c3c');
+            }
+          })
+          .withFailureHandler(function(err) {
+            mostraStatusCalendario('❌ Errore programmazione equa: ' + (err && err.message ? err.message : err), '#e74c3c');
+          })
+          .autoProgrammaRotazioneEquaSettimanale();
+      }
+
+      function toggleProgrammaSeraleAutomaticoUI() {
+        var nuovoStato = !_programmaSeraleAttivo;
+        mostraStatusCalendario('⏳ Aggiornamento automazione serale (19:00 - 01:00)...', '#f1c40f');
+
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+          _programmaSeraleAttivo = nuovoStato;
+          renderCalendarioSettimanaleUI();
+          mostraStatusCalendario('ℹ️ Ambiente locale: stato programma serale impostato su ' + (nuovoStato ? 'ATTIVO' : 'IN PAUSA'), '#3498db');
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) {
+              _programmaSeraleAttivo = res.attivo;
+              renderCalendarioSettimanaleUI();
+              mostraStatusCalendario('✅ ' + (res.messaggio || 'Automazione serale aggiornata con successo!'), '#2ecc71');
+            } else {
+              mostraStatusCalendario('⚠️ Errore aggiornamento serale: ' + (res ? res.error : ''), '#e74c3c');
+            }
+          })
+          .withFailureHandler(function(err) {
+            mostraStatusCalendario('❌ Errore aggiornamento serale: ' + (err && err.message ? err.message : err), '#e74c3c');
+          })
+          .attivaProgrammaSeraleAutomatico(nuovoStato);
       }
 
       function autoProgrammaRotazioneImmobiliDiversi() {
@@ -7122,6 +7267,10 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
           .withSuccessHandler(function(res) {
             if (res && res.success) {
               mostraStatusCalendario('✅ ' + (res.messaggio || 'Palinsesto salvato con successo e notifica Telegram inviata!'), '#2ecc71');
+              if (res.statoRotazione) {
+                _datiRotazioneEqua = res.statoRotazione;
+                renderCalendarioSettimanaleUI();
+              }
             } else {
               mostraStatusCalendario('⚠️ Errore salvataggio: ' + (res ? res.error : ''), '#e74c3c');
             }
@@ -7156,6 +7305,16 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
           { id: 'domenica', giorno: 'Domenica', orario: '19:00 - 01:00', tabImmobile: 'PENTHOUSE_TERRAZZA_MARE', titoloImmobile: 'Penthouse Terrazza Mare' }
         ];
         _fogliImmobiliCalendario = _palinsestoSettimanaleDati.map(function(x) { return { tabName: x.tabImmobile, titolo: x.titoloImmobile }; });
+        _datiRotazioneEqua = {
+          cicloAttivo: 1,
+          cicliCompletati: 0,
+          totaleImmobili: 28,
+          andatiInOnda: ['VILLA_FAVARA_RIFINITA', 'ATTICO_CENTRO_AGRIGENTO'],
+          conteggioAndatiInOnda: 2,
+          conteggioRimanenti: 26,
+          percentualeAvanzamento: 7,
+          cicloCompleto: false
+        };
         renderCalendarioSettimanaleUI();
       }
 

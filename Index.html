@@ -152,7 +152,7 @@
       position:fixed;
       bottom:10px;
       left:14px;
-      right:650px; /* Spazio per lo Studio Broadcast Avatar */
+      right:340px; /* Spazio per lo Studio Broadcast Avatar a Destra (Standard) */
       z-index:35;
       display:flex;
       flex-direction:column;
@@ -259,8 +259,8 @@
     }
     .chat-submit-min:hover{box-shadow:0 0 10px var(--gold-glow);transform:scale(1.02)}
 
-    /* === 6. CO-HOST STUDIO POD (IN BASSO: STRETTO & TRASPARENTE) === */
-    .bottom-right-studio{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);right:auto;z-index:40;display:flex;flex-direction:column;align-items:center;gap:5px;max-width:780px;}
+    /* === 6. CO-HOST STUDIO POD (IN BASSO A DESTRA: STRETTO & TRASPARENTE) === */
+    .bottom-right-studio{position:fixed;bottom:10px;right:20px;left:auto;transform:none;z-index:40;display:flex;flex-direction:column;align-items:center;gap:5px;max-width:780px;}
 
     /* SOTTOTITOLI E PARLATO RIMOSSI SU RICHIESTA UTENTE */
     .narr-bubble,
@@ -1156,7 +1156,7 @@
   <div id="daria-focus-backdrop"></div>
 
   <!-- 6. CO-HOST STUDIO POD (IN BASSO A DESTRA: STRETTO & TRASPARENTE) -->
-  <div class="bottom-right-studio" id="bottom-right-studio">
+  <div class="bottom-right-studio pos-destra" id="bottom-right-studio">
 
     <!-- 1. SOTTOTITOLI DINAMICI TOP BAR (Spazio orizzontale fisso sopra i riquadri dei personaggi) -->
     <div class="studio-subtitles-top-bar" id="studio-subtitles-bar">
@@ -4054,6 +4054,7 @@ function caricaDatiStanza(direction, isSyncPoll){
           if(data.titolo && propTitle) propTitle.textContent = data.titolo;
           if(data.scalaLogoAgenzia) applicaScalaLogoAgenzia(data.scalaLogoAgenzia);
           if(data.stileGrafica) applicaStileGrafica(data.stileGrafica);
+          if(data.posizioneSetAvatar) applicaPosizioneSetAvatar(data.posizioneSetAvatar);
           if(data.elencoStanze && Array.isArray(data.elencoStanze)) popolaElencoStanzeChat(data.elencoStanze);
 
           var idx = (data.indiceCorrente !== undefined ? data.indiceCorrente : 0) + 1;
@@ -4102,11 +4103,25 @@ function applicaPosizioneSetAvatar(pos) {
   var pod = document.getElementById('bottom-right-studio') || document.querySelector('.bottom-right-studio');
   if (!pod) return;
   pod.classList.remove('pos-sinistra', 'pos-centro', 'pos-destra');
-  var p = String(pos || 'centro').toLowerCase().trim();
+  var p = String(pos || 'destra').toLowerCase().trim();
   if (p === 'sinistra') pod.classList.add('pos-sinistra');
-  else if (p === 'destra') pod.classList.add('pos-destra');
-  else pod.classList.add('pos-centro');
+  else if (p === 'centro') pod.classList.add('pos-centro');
+  else pod.classList.add('pos-destra');
   window._posizioneSetAvatarCorrente = p;
+
+  var bottomBar = document.querySelector('.bottom-luxury-floor-bar');
+  if (bottomBar) {
+    if (p === 'sinistra') {
+      bottomBar.style.left = '340px';
+      bottomBar.style.right = '14px';
+    } else if (p === 'centro') {
+      bottomBar.style.left = '14px';
+      bottomBar.style.right = '14px';
+    } else { // 'destra' (standard)
+      bottomBar.style.left = '14px';
+      bottomBar.style.right = '340px';
+    }
+  }
 }
 
 function applicaModalitaAvatar(mode) {
@@ -4116,10 +4131,13 @@ function applicaModalitaAvatar(mode) {
   
   if (mode === 'VUOTO' || mode === 'SENZA_AVATAR') {
     studioPod.style.display = 'none';
-    if (bottomBar) bottomBar.style.right = '14px';
+    if (bottomBar) {
+      bottomBar.style.right = '14px';
+      bottomBar.style.left = '14px';
+    }
   } else {
     studioPod.style.display = 'flex';
-    if (bottomBar) bottomBar.style.right = '330px';
+    applicaPosizioneSetAvatar(window._posizioneSetAvatarCorrente || 'destra');
   }
 }
 

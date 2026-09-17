@@ -152,7 +152,8 @@
       position:fixed;
       bottom:10px;
       left:14px;
-      right:340px; /* Spazio per lo Studio Broadcast Avatar a Destra (Standard) */
+      right:585px; /* Ampio spazio dedicato per lo Studio Broadcast Avatar a Destra (Nessuna Sovrapposizione) */
+      max-width:calc(100vw - 600px);
       z-index:35;
       display:flex;
       flex-direction:column;
@@ -165,94 +166,128 @@
       border-radius:20px;
       padding:8px 16px 10px;
       box-shadow:0 12px 36px rgba(0,0,0,.9), 0 0 20px rgba(212,168,83,.2);
-      transition:right .3s ease;
+      transition:right .3s ease, left .3s ease;
+      overflow:hidden;
     }
     @media(max-width:980px){
-      .bottom-luxury-floor-bar{right:14px;bottom:165px}
+      .bottom-luxury-floor-bar{
+        right:14px !important;
+        left:14px !important;
+        bottom:240px !important;
+        max-width:calc(100vw - 28px) !important;
+      }
     }
 
-    /* Info Immobile Orizzontale Di Pregio (TITOLO, PREZZO E ZONA MASSIMAMENTE EVIDENTI) */
-    .prop-info-strip{display:flex;align-items:center;gap:12px;white-space:nowrap;flex-wrap:nowrap}
+    /* Info Immobile Orizzontale Di Pregio (I 5 ELEMENTI CHIAVE: VENDESI + PREZZO ANCORATI A SINISTRA) */
+    .prop-info-strip{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      width:100%;
+      min-width:0;
+      white-space:nowrap;
+      flex-wrap:nowrap;
+      overflow:hidden;
+    }
     .badge-vende-inline{
       display:inline-flex;align-items:center;gap:4px;color:#fff !important;font-family:'Space Grotesk',sans-serif;
-      font-size:12.5px;font-weight:900;letter-spacing:1.5px;padding:4px 10px;border-radius:6px;
+      font-size:12px;font-weight:900;letter-spacing:1.2px;padding:4px 9px;border-radius:7px;
       border:1.5px solid #ffffff;animation:vendeColorShift 4.5s linear infinite;box-shadow:0 2px 10px rgba(0,0,0,.6);
-      text-transform:uppercase;
-    }
-    .prop-name{font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:.8px;text-shadow:0 2px 10px rgba(0,0,0,.95), 0 0 12px rgba(212,168,83,.45)}
-    .badge-zona{
-      background:linear-gradient(135deg, rgba(30,58,138,.92), rgba(15,23,42,.95));
-      border:1.5px solid #38bdf8;color:#e0f2fe;font-family:'Space Grotesk',sans-serif;
-      font-size:15px;font-weight:800;padding:5px 12px;border-radius:10px;
-      box-shadow:0 3px 12px rgba(56,189,248,.35);letter-spacing:.5px;
+      text-transform:uppercase;flex-shrink:0;
     }
     .badge-price{
       background:linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #d97706 100%);
-      color:#07090e;font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:900;
-      padding:5px 16px;border-radius:10px;border:1.5px solid #ffffff;
-      box-shadow:0 0 22px rgba(245,158,11,.8), 0 4px 14px rgba(0,0,0,.85);
+      color:#07090e;font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:900;
+      padding:4px 14px;border-radius:8px;border:1.5px solid #ffffff;
+      box-shadow:0 0 18px rgba(245,158,11,.75), 0 4px 12px rgba(0,0,0,.85);
       animation:pulsePrice 2.5s infinite alternate ease-in-out;
-      letter-spacing:.5px;
+      letter-spacing:.5px;flex-shrink:0;white-space:nowrap;
     }
     @keyframes pulsePrice{
       0%{transform:scale(1);box-shadow:0 0 14px rgba(245,158,11,.65)}
-      100%{transform:scale(1.04);box-shadow:0 0 26px rgba(254,240,138,.95), 0 0 35px rgba(245,158,11,.7)}
+      100%{transform:scale(1.03);box-shadow:0 0 24px rgba(254,240,138,.95), 0 0 32px rgba(245,158,11,.7)}
     }
-    .badge-mq{background:rgba(255,255,255,.08);border:1px solid var(--hairline-soft);color:var(--cyan);font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:700;padding:3px 9px;border-radius:8px;opacity:0.75}
+    .prop-name{
+      font-family:'Cinzel',serif;font-size:17px;font-weight:900;color:#ffffff;letter-spacing:.6px;
+      text-shadow:0 2px 10px rgba(0,0,0,.95), 0 0 12px rgba(212,168,83,.45);
+      flex:1 1 auto;min-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .badge-zona{
+      background:linear-gradient(135deg, rgba(30,58,138,.92), rgba(15,23,42,.95));
+      border:1.5px solid #38bdf8;color:#e0f2fe;font-family:'Space Grotesk',sans-serif;
+      font-size:12.5px;font-weight:800;padding:4px 9px;border-radius:8px;
+      box-shadow:0 3px 10px rgba(56,189,248,.35);letter-spacing:.4px;
+      flex-shrink:0;white-space:nowrap;
+    }
+    .badge-mq{
+      background:rgba(255,255,255,.08);border:1px solid var(--hairline-soft);color:var(--cyan);
+      font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;padding:3px 8px;
+      border-radius:7px;opacity:0.85;flex-shrink:0;white-space:nowrap;
+    }
 
     /* Container Secondario Lower-Third: Controlli Navigazione & Chat con Elenco Stanze */
-    .prop-controls-strip{display:flex;align-items:center;gap:10px;width:100%}
+    .prop-controls-strip{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      width:100%;
+      min-width:0;
+      overflow:hidden;
+    }
 
     /* Pulsanti Navigazione Stanza */
-    .nav-btn-group{display:flex;gap:6px;align-items:center}
-    .btn-nav{background:rgba(255,255,255,.08);border:1px solid var(--border);color:#fff;padding:6px 11px;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;transition:all .2s ease}
+    .nav-btn-group{display:flex;gap:5px;align-items:center;flex-shrink:0}
+    .btn-nav{background:rgba(255,255,255,.08);border:1px solid var(--border);color:#fff;padding:5px 9px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;transition:all .2s ease}
     .btn-nav:hover{background:rgba(212,168,83,.3);border-color:var(--gold)}
 
     /* Elenco Stanze Visitabili in Chat */
     .chat-rooms-container{
-      display:flex;align-items:center;gap:6px;overflow-x:auto;padding:2px 0;max-width:380px;scrollbar-width:none;
+      display:flex;align-items:center;gap:5px;overflow-x:auto;padding:2px 0;
+      flex:1 1 auto;min-width:80px;max-width:320px;scrollbar-width:none;
     }
     .chat-rooms-container::-webkit-scrollbar{display:none}
-    .chat-rooms-label{font-size:11px;font-weight:800;color:var(--gold);white-space:nowrap;letter-spacing:.5px;text-transform:uppercase}
-    .chat-rooms-chips{display:flex;gap:5px;align-items:center;white-space:nowrap}
+    .chat-rooms-label{font-size:10.5px;font-weight:800;color:var(--gold);white-space:nowrap;letter-spacing:.5px;text-transform:uppercase;flex-shrink:0}
+    .chat-rooms-chips{display:flex;gap:4px;align-items:center;white-space:nowrap}
     .chat-room-chip{
       background:rgba(212,168,83,.12);border:1px solid rgba(212,168,83,.35);color:var(--gold-lt);
-      font-size:11.5px;font-weight:800;padding:3px 8px;border-radius:8px;cursor:pointer;white-space:nowrap;
+      font-size:11px;font-weight:800;padding:3px 7px;border-radius:7px;cursor:pointer;white-space:nowrap;
       transition:all .2s ease;
     }
-    .chat-room-chip:hover{background:rgba(212,168,83,.35);border-color:var(--gold);transform:scale(1.05);color:#fff}
+    .chat-room-chip:hover{background:rgba(212,168,83,.35);border-color:var(--gold);transform:scale(1.04);color:#fff}
 
     /* Chip Rapidi Tematici */
-    .quick-chips-row{display:flex;gap:6px;overflow-x:auto}
-    .quick-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--gold-lt);font-size:12px;font-weight:800;padding:4px 9px;border-radius:12px;cursor:pointer;white-space:nowrap;transition:all .2s}
-    .quick-chip:hover{background:rgba(212,168,83,.25);border-color:var(--gold)}
-    @media(max-width:1180px){.quick-chips-row{display:none}}
+    .quick-chips-row{display:none}
+    @media(min-width:1450px){
+      .quick-chips-row{display:flex;gap:5px;overflow-x:auto}
+      .quick-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--gold-lt);font-size:11px;font-weight:800;padding:3px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;transition:all .2s}
+      .quick-chip:hover{background:rgba(212,168,83,.25);border-color:var(--gold)}
+    }
 
     /* Chat Minimale In-Line */
-    .chat-minimal-wrapper{display:flex;align-items:center;gap:8px;flex:1;min-width:200px}
+    .chat-minimal-wrapper{display:flex;align-items:center;gap:6px;flex:0 1 190px;min-width:120px}
     .chat-input-min{
       flex:1;
-      height:36px;
+      height:32px;
       background:rgba(0,0,0,.5);
       border:1px solid var(--border);
-      border-radius:18px;
-      padding:0 14px;
+      border-radius:16px;
+      padding:0 12px;
       color:#fff;
-      font-size:13px;
+      font-size:11.5px;
       font-family:'Outfit',sans-serif;
       outline:none;
       transition:border-color .2s;
     }
     .chat-input-min:focus{border-color:var(--gold)}
     .chat-submit-min{
-      height:36px;
+      height:32px;
       background:linear-gradient(135deg,#d4a853,#b88a38);
       border:none;
       color:#07090e;
-      font-size:13px;
+      font-size:11.5px;
       font-weight:900;
-      padding:0 14px;
-      border-radius:18px;
+      padding:0 11px;
+      border-radius:16px;
       cursor:pointer;
       white-space:nowrap;
       transition:all .2s ease;
@@ -1096,12 +1131,12 @@
   <!-- 5. PRESTIGIOUS BOTTOM LOWER-THIRD ("NEL PIANO IN BASSO DI PREGIO") -->
   <div class="bottom-luxury-floor-bar">
     
-    <!-- Info Immobile Orizzontale Di Pregio (I 5 ELEMENTI IN MASSIMA EVIDENZA: TITOLO, ZONA, PREZZO) -->
+    <!-- Info Immobile Orizzontale Di Pregio (I 5 ELEMENTI CHIAVE: VENDESI + PREZZO AD ALTA PRIORITÀ) -->
     <div class="prop-info-strip">
       <span class="badge-vende-inline">VENDESI</span>
+      <span class="badge-price" id="prop-price">Prezzo in Diretta</span>
       <span class="prop-name" id="prop-title">&#127984; Dimora Esclusiva di Pregio</span>
       <span class="badge-zona" id="prop-zona">&#128205; Favara (AG)</span>
-      <span class="badge-price" id="prop-price">Prezzo in Diretta</span>
       <span class="badge-mq" id="prop-mq">120 metri quadri</span>
     </div>
 
@@ -4112,14 +4147,17 @@ function applicaPosizioneSetAvatar(pos) {
   var bottomBar = document.querySelector('.bottom-luxury-floor-bar');
   if (bottomBar) {
     if (p === 'sinistra') {
-      bottomBar.style.left = '340px';
+      bottomBar.style.left = '585px';
       bottomBar.style.right = '14px';
+      bottomBar.style.maxWidth = 'calc(100vw - 600px)';
     } else if (p === 'centro') {
       bottomBar.style.left = '14px';
       bottomBar.style.right = '14px';
+      bottomBar.style.maxWidth = 'calc(100vw - 28px)';
     } else { // 'destra' (standard)
       bottomBar.style.left = '14px';
-      bottomBar.style.right = '340px';
+      bottomBar.style.right = '585px';
+      bottomBar.style.maxWidth = 'calc(100vw - 600px)';
     }
   }
 }
@@ -4134,6 +4172,7 @@ function applicaModalitaAvatar(mode) {
     if (bottomBar) {
       bottomBar.style.right = '14px';
       bottomBar.style.left = '14px';
+      bottomBar.style.maxWidth = 'calc(100vw - 28px)';
     }
   } else {
     studioPod.style.display = 'flex';

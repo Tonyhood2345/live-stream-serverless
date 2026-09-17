@@ -870,6 +870,59 @@ if (window.location.protocol === 'file:') {
               </div>
             </div>
 
+            <!-- 6-TER. 🎨 STILE GRAFICO DIRETTA STREAMING (4 STILI PROFESSIONALI) -->
+            <div style="background: rgba(15,23,42,0.65); border: 1.5px solid var(--gold); border-radius: 8px; padding: 10px; margin-top: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="font-size: 11.5px; font-weight: 800; color: var(--gold-bright); display: flex; align-items: center; gap: 6px;">
+                  <span>🎨</span> Stile Grafico Diretta Streaming:
+                </label>
+                <span id="badge-stile-grafica-attivo" style="font-size: 10.5px; font-weight: 800; color: #38bdf8; background: rgba(56,189,248,0.15); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(56,189,248,0.3);">
+                  Modern Broadcast
+                </span>
+              </div>
+              
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;" id="grid-selettore-stili-grafica">
+                <!-- 1. Modern Broadcast -->
+                <button type="button" class="btn-stile-regia active" id="btn-stile-modern_broadcast" onclick="selezionaStileGraficaDiretta('modern_broadcast')" style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px; background: rgba(15,23,42,0.95); border: 1.5px solid #38bdf8; border-radius: 6px; padding: 7px; cursor: pointer; text-align: left; transition: all 0.2s;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span style="font-size: 11px; font-weight: 800; color: #fff;">📡 Modern Broadcast</span>
+                    <span class="stile-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; display: inline-block;"></span>
+                  </div>
+                  <span style="font-size: 9.5px; color: #94a3b8;">News TV • Layout L • Navy/Oro</span>
+                </button>
+
+                <!-- 2. Editorial Minimal -->
+                <button type="button" class="btn-stile-regia" id="btn-stile-editorial_minimal" onclick="selezionaStileGraficaDiretta('editorial_minimal')" style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px; background: rgba(24,24,27,0.95); border: 1.5px solid #444; border-radius: 6px; padding: 7px; cursor: pointer; text-align: left; transition: all 0.2s;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span style="font-size: 11px; font-weight: 800; color: #f5f0e6;">🏛️ Editorial Minimal</span>
+                    <span class="stile-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #c26d53; display: inline-block;"></span>
+                  </div>
+                  <span style="font-size: 9.5px; color: #a1a1aa;">Luxury Serif • Sabbia/Terracotta</span>
+                </button>
+
+                <!-- 3. Tech & Dark UI -->
+                <button type="button" class="btn-stile-regia" id="btn-stile-tech_dark" onclick="selezionaStileGraficaDiretta('tech_dark')" style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px; background: rgba(18,18,24,0.95); border: 1.5px solid #444; border-radius: 6px; padding: 7px; cursor: pointer; text-align: left; transition: all 0.2s;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span style="font-size: 11px; font-weight: 800; color: #38bdf8;">⚡ Tech & Dark UI</span>
+                    <span class="stile-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #7c3aed; display: inline-block;"></span>
+                  </div>
+                  <span style="font-size: 9.5px; color: #818cf8;">Glass Neon • Viola/Ciano HUD</span>
+                </button>
+
+                <!-- 4. Comic Pop -->
+                <button type="button" class="btn-stile-regia" id="btn-stile-comic_pop" onclick="selezionaStileGraficaDiretta('comic_pop')" style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px; background: rgba(30,20,10,0.95); border: 1.5px solid #444; border-radius: 6px; padding: 7px; cursor: pointer; text-align: left; transition: all 0.2s;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span style="font-size: 11px; font-weight: 900; color: #facc15;">💥 Fumetto Pop</span>
+                    <span class="stile-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; display: inline-block;"></span>
+                  </div>
+                  <span style="font-size: 9.5px; color: #fbbf24;">Pop Art • Outlines • Giallo/Rosso</span>
+                </button>
+              </div>
+
+              <!-- Indicatore stato sincronizzazione -->
+              <div id="status-stile-grafica-msg" style="margin-top: 6px; font-size: 10px; color: #94a3b8; text-align: right; display: none;"></div>
+            </div>
+
             <!-- 7. FILTRO CONTENUTI MEDIA IN ONDA -->
             <div>
               <label style="font-size: 11.5px; font-weight: 800; color: var(--gold-bright); display: block; margin-bottom: 6px;">
@@ -4087,6 +4140,7 @@ var SHEET_ID_GLOBAL = "1V1U67iYY7G4UyRw-D5QJgIcltH2QM34ifFfqEr9T7TE";
         if (tabId === 'tab-live') {
           try { caricaStatoMaratonaUI(); } catch(e){}
           try { if (typeof caricaModalitaAvatarUI === 'function') caricaModalitaAvatarUI(); } catch(eAv){}
+          try { if (typeof caricaStileGraficaUI === 'function') caricaStileGraficaUI(); } catch(eSt){}
         }
         if (tabId === 'tab-analytics') {
           try { caricaGraficiCrossSocial(); } catch(e){}
@@ -7133,6 +7187,106 @@ function toggleMiniTutorial(btn, tutId) {
         cambiaScalaLogoDinamico(num);
       }
 
+      // 🎨 GESTIONE SELEZIONE STILE GRAFICO DIRETTA IN REGIA
+      var _stileGraficaSelezionato = 'modern_broadcast';
+
+      function aggiornaUISelettoreStile(stile) {
+        var s = String(stile || 'modern_broadcast').toLowerCase().trim();
+        var validi = ['modern_broadcast', 'editorial_minimal', 'tech_dark', 'comic_pop'];
+        if (validi.indexOf(s) === -1) s = 'modern_broadcast';
+        _stileGraficaSelezionato = s;
+
+        var labels = {
+          'modern_broadcast': '📡 Modern Broadcast',
+          'editorial_minimal': '🏛️ Editorial Minimal',
+          'tech_dark': '⚡ Tech & Dark UI',
+          'comic_pop': '💥 Fumetto Pop'
+        };
+
+        var b = document.getElementById('badge-stile-grafica-attivo');
+        if (b) b.innerText = labels[s] || s;
+
+        validi.forEach(function(item) {
+          var btn = document.getElementById('btn-stile-' + item);
+          if (btn) {
+            if (item === s) {
+              btn.style.borderColor = (item === 'comic_pop' ? '#facc15' : (item === 'editorial_minimal' ? '#c26d53' : (item === 'tech_dark' ? '#7c3aed' : '#38bdf8')));
+              btn.style.boxShadow = '0 0 12px rgba(56,189,248,0.5)';
+              btn.classList.add('active');
+            } else {
+              btn.style.borderColor = '#444';
+              btn.style.boxShadow = 'none';
+              btn.classList.remove('active');
+            }
+          }
+        });
+      }
+
+      function selezionaStileGraficaDiretta(stile) {
+        aggiornaUISelettoreStile(stile);
+
+        var msgEl = document.getElementById('status-stile-grafica-msg');
+        if (msgEl) {
+          msgEl.style.display = 'block';
+          msgEl.style.color = '#38bdf8';
+          msgEl.innerText = '⏳ Sincronizzazione stile ' + stile + ' in corso...';
+        }
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (msgEl) {
+                msgEl.style.color = '#4ade80';
+                msgEl.innerText = '✅ Stile grafica applicato in diretta! — Immobiliare Giancani';
+                setTimeout(function() { msgEl.style.display = 'none'; }, 3000);
+              }
+              if (typeof mostraNotificaGen === 'function') {
+                mostraNotificaGen('🎨 Stile grafica impostato: ' + (stile || 'Modern Broadcast') + ' — Immobiliare Giancani', 'success');
+              }
+            })
+            .withFailureHandler(function(err) {
+              if (msgEl) {
+                msgEl.style.color = '#f87171';
+                msgEl.innerText = '❌ Errore: ' + err;
+              }
+            })
+            .salvaStileGraficaDiretta(stile);
+        } else if (typeof SCRIPT_URL !== 'undefined') {
+          fetch(SCRIPT_URL + '?action=salva_stile_grafica&stile=' + encodeURIComponent(stile))
+            .then(function(r){ return r.json(); })
+            .then(function(res){
+              if (msgEl) {
+                msgEl.style.color = '#4ade80';
+                msgEl.innerText = '✅ Stile grafica applicato in diretta! — Immobiliare Giancani';
+                setTimeout(function() { msgEl.style.display = 'none'; }, 3000);
+              }
+            })
+            .catch(function(e){
+              if (msgEl) {
+                msgEl.style.color = '#f87171';
+                msgEl.innerText = '⚠️ Errore rete: ' + e;
+              }
+            });
+        }
+      }
+
+      function caricaStileGraficaUI() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(function(st) {
+              if (st) aggiornaUISelettoreStile(st);
+            })
+            .getStileGraficaDiretta();
+        } else if (typeof SCRIPT_URL !== 'undefined') {
+          fetch(SCRIPT_URL + '?action=get_stile_grafica')
+            .then(function(r){ return r.json(); })
+            .then(function(res){
+              if (res && res.stile) aggiornaUISelettoreStile(res.stile);
+            })
+            .catch(function(e){});
+        }
+      }
+
       function salvaParametriQualitaMaster() {
         var qSel = document.getElementById('select-qualita-live-master') || document.getElementById('gen-stream-quality');
         var sSel = document.getElementById('select-scale-live-master') || document.getElementById('gen-stream-scale');
@@ -8869,6 +9023,7 @@ function caricaTempiRegiaUI() {
     setTimeout(caricaChiaviGroqPoolUI, 3500);
     setTimeout(caricaModalitaAvatarUI, 1500);
     setTimeout(caricaCoppiaAvatarUI, 1200);
+    setTimeout(caricaStileGraficaUI, 1000);
     setTimeout(caricaStoricoCommentiLiveUI, 2000);
     setInterval(caricaStoricoCommentiLiveUI, 12000);
   });

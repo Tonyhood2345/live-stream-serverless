@@ -207,13 +207,35 @@ function getConfigurazione360() { return { success: true }; }
 // ═══════════════════════════════════════════════════════════════════════
 
 var FOGLI_SISTEMA_ESCLUSI = [
+  'IMPOSTAZIONI_SOCIAL',
+  'PUBBLICITA_SPOT',
+  'CALCIO_FRASI',
+  'FRASI_CALCIO',
+  'RISULTATI_CALCIO',
   'RISULTATI_GIORNATA',
-  'ANALYTICS_SOCIAL',
+  'CONFIGURAZIONE_TEMPI',
+  'TEATRINO',
+  'TEATRINO_COMICO',
+  'BANNER_CTA',
+  'REPORT_PROPRIETARIO',
+  'REGIA_IMMOBILE',
   '360',
   'PALINSESTO_ORARIO',
   'MUSICA_SOTTOFONDO',
-  'IMPOSTAZIONI_SOCIAL',
-  'ARCHIVIO_CLIENTI'
+  'ARCHIVIO_CLIENTI',
+  'ANALYTICS_SOCIAL',
+  'POST_FACEBOOK',
+  'POST_YOUTUBE',
+  'PUBBLICITA_SCHERMO_CENTRALE',
+  'NOTIZIE_SPORT_ATTUALITA',
+  'NOZIONI_IMMOBILIARI',
+  'DIRETTA_O_DARIA_E_DARIO_INFLUENCER',
+  'DIALOGHI_DUO',
+  'STORYTELLER_CITTA',
+  'BATTUTE_DARIO',
+  'STORIE_FAVARA_AGRIGENTO',
+  'STORIE_CITTA',
+  'NOTIZIE_CITTA'
 ];
 
 /**
@@ -230,11 +252,12 @@ function getFogliDisponibiliPerPalinsesto() {
     for (var i = 0; i < sheets.length; i++) {
       var sName = sheets[i].getName();
       var sUpper = sName.toUpperCase().trim();
-      if (FOGLI_SISTEMA_ESCLUSI.indexOf(sUpper) === -1) {
+      var lastR = sheets[i].getLastRow();
+      if (FOGLI_SISTEMA_ESCLUSI.indexOf(sUpper) === -1 && lastR >= 2) {
         disponibili.push({
           tabName: sName,
           titolo: sName.replace(/_/g, ' '),
-          righe: sheets[i].getLastRow()
+          righe: lastR
         });
       }
     }
@@ -514,14 +537,280 @@ function getRichiestaStanzaChatPendente() {
 
 
 // ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // 📅 SEZIONE: CALENDARIO PALINSESTO DIRETTE SERALI (19:00 - 01:00)
-// Gestione rotazione immobili diversi (> 7 immobili) & Notifiche Telegram
+// 🔄 EQUA ROTAZIONE AD ESAURIMENTO COMPLETO: NESSUNA RIPETIZIONE
+//    Finché tutti gli immobili non sono andati in onda nel ciclo corrente!
 // Personal Branding: Immobiliare Giancani
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
+ * Restituisce lo stato dettagliato dell'equa rotazione ad esaurimento completo
+ */
+function getDatiRotazioneEqua() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var rawRot = props.getProperty('ROTAZIONE_EQUA_STATO');
+    var fogliRes = getFogliDisponibiliPerPalinsesto();
+    var tuttiFogli = (fogliRes && fogliRes.success) ? fogliRes.fogli : [];
+
+    var stato = null;
+    if (rawRot) {
+      try {
+        stato = JSON.parse(rawRot);
+      } catch(e) { stato = null; }
+    }
+
+    if (!stato) {
+      stato = {
+        cicloAttivo: 1,
+        andatiInOnda: [],
+        storicoDate: {},
+        cicliCompletati: 0,
+        ultimoAggiornamento: new Date().toISOString()
+      };
+    }
+
+    // Mappa di tutti i tabName validi a catalogo
+    var tuttiTabMap = {};
+    var tuttiTabList = [];
+    for (var i = 0; i < tuttiFogli.length; i++) {
+      var tName = tuttiFogli[i].tabName;
+      tuttiTabMap[tName] = tuttiFogli[i];
+      tuttiTabList.push(tName);
+    }
+
+    // Pulisci andatiInOnda da eventuali tab eliminate o duplicate
+    var andatiFiltrati = [];
+    var andatiSet = {};
+    for (var j = 0; j < (stato.andatiInOnda || []).length; j++) {
+      var aTab = stato.andatiInOnda[j];
+      if (tuttiTabMap[aTab] && !andatiSet[aTab]) {
+        andatiFiltrati.push(aTab);
+        andatiSet[aTab] = true;
+      }
+    }
+    stato.andatiInOnda = andatiFiltrati;
+
+    // Calcola rimanenti che NON sono ancora andati in onda
+    var rimanenti = [];
+    for (var k = 0; k < tuttiTabList.length; k++) {
+      var candTab = tuttiTabList[k];
+      if (!andatiSet[candTab]) {
+        rimanenti.push(candTab);
+      }
+    }
+
+    var totale = tuttiTabList.length;
+    var cicloCompleto = (totale > 0 && rimanenti.length === 0);
+
+    return {
+      success: true,
+      cicloAttivo: stato.cicloAttivo || 1,
+      cicliCompletati: stato.cicliCompletati || 0,
+      totaleImmobili: totale,
+      andatiInOnda: stato.andatiInOnda,
+      conteggioAndatiInOnda: stato.andatiInOnda.length,
+      rimanenti: rimanenti,
+      conteggioRimanenti: rimanenti.length,
+      percentualeAvanzamento: totale > 0 ? Math.round((stato.andatiInOnda.length / totale) * 100) : 0,
+      cicloCompleto: cicloCompleto,
+      programmaSeraleAttivo: props.getProperty('PROGRAMMA_SERALE_ATTIVO') !== 'false',
+      tuttiFogli: tuttiFogli,
+      storicoDate: stato.storicoDate || {}
+    };
+  } catch(e) {
+    console.error("Errore getDatiRotazioneEqua:", e);
+    return { success: false, error: e.toString() };
+  }
+}
+
+/**
+ * Registra che un immobile è andato in onda stasera.
+ * Se tutti gli immobili del catalogo hanno completato il giro, chiude il ciclo corrente
+ * con notifica Telegram e resetta la coda per il nuovo ciclo equo.
+ */
+function registraImmobileAndatoInOnda(tabName) {
+  try {
+    if (!tabName) return { success: false, error: "Nome tab non specificato" };
+    var props = PropertiesService.getScriptProperties();
+    var rotData = getDatiRotazioneEqua();
+    if (!rotData.success) return rotData;
+
+    var andati = rotData.andatiInOnda.slice();
+    var storicoDate = rotData.storicoDate || {};
+    var ciclo = rotData.cicloAttivo;
+    var completati = rotData.cicliCompletati;
+    var oraIso = new Date().toISOString();
+
+    if (andati.indexOf(tabName) === -1) {
+      andati.push(tabName);
+    }
+    storicoDate[tabName] = oraIso;
+
+    var totale = rotData.totaleImmobili;
+    var cicloFinitoOra = (totale > 0 && andati.length >= totale);
+
+    if (cicloFinitoOra) {
+      completati++;
+      var nuovoCiclo = ciclo + 1;
+      var nuovoStato = {
+        cicloAttivo: nuovoCiclo,
+        andatiInOnda: [], // Reset per il nuovo ciclo
+        storicoDate: storicoDate,
+        cicliCompletati: completati,
+        ultimoAggiornamento: oraIso
+      };
+      props.setProperty('ROTAZIONE_EQUA_STATO', JSON.stringify(nuovoStato));
+
+      // Notifica Telegram di traguardo ciclo completato
+      if (typeof inviaNotificaTelegram === 'function') {
+        var msgCiclo = "🎉 <b>CICLO DI EQUA ROTAZIONE COMPLETATO!</b> 🏆✨\n\n" +
+                       "Tutti i <b>" + totale + " immobili a catalogo</b> sono andati in onda nella diretta serale (19:00 - 01:00).\n" +
+                       "Nessun immobile è stato trascurato: a ciascun proprietario è stata garantita parità di esposizione su tutti i canali!\n\n" +
+                       "🔄 <b>AVVIO AUTOMATICO CICLO #" + nuovoCiclo + "</b>: la rotazione equa riparte con lo stesso principio rigoroso.\n\n" +
+                       "— <b>Immobiliare Giancani</b>";
+        inviaNotificaTelegram(msgCiclo, null, "HTML");
+      }
+
+      return {
+        success: true,
+        cicloFinito: true,
+        cicloCompletato: ciclo,
+        nuovoCiclo: nuovoCiclo,
+        messaggio: "Ciclo #" + ciclo + " completato! Avviato Ciclo #" + nuovoCiclo
+      };
+    } else {
+      var statoAggiornato = {
+        cicloAttivo: ciclo,
+        andatiInOnda: andati,
+        storicoDate: storicoDate,
+        cicliCompletati: completati,
+        ultimoAggiornamento: oraIso
+      };
+      props.setProperty('ROTAZIONE_EQUA_STATO', JSON.stringify(statoAggiornato));
+      return {
+        success: true,
+        cicloFinito: false,
+        cicloAttivo: ciclo,
+        andatiCount: andati.length,
+        rimanentiCount: Math.max(0, totale - andati.length)
+      };
+    }
+  } catch(e) {
+    console.error("Errore registraImmobileAndatoInOnda:", e);
+    return { success: false, error: e.toString() };
+  }
+}
+
+/**
+ * Resetta manualmente il ciclo di rotazione equa
+ */
+function resetCicloRotazioneEqua() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var rotData = getDatiRotazioneEqua();
+    var nuovoStato = {
+      cicloAttivo: (rotData.cicloAttivo || 1) + 1,
+      andatiInOnda: [],
+      storicoDate: rotData.storicoDate || {},
+      cicliCompletati: rotData.cicliCompletati || 0,
+      ultimoAggiornamento: new Date().toISOString()
+    };
+    props.setProperty('ROTAZIONE_EQUA_STATO', JSON.stringify(nuovoStato));
+    return { success: true, messaggio: "Ciclo resettato con successo.", stato: getDatiRotazioneEqua() };
+  } catch(e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+/**
+ * 🔄 AUTO-PROGRAMMA ROTAZIONE EQUA SENZA RIPETIZIONI (7 GIORNI)
+ * Assegna ai 7 giorni della settimana esclusivamente gli immobili che NON sono ancora
+ * andati in onda nel ciclo corrente. Se i rimanenti sono meno di 7, chiude il ciclo e
+ * preleva i restanti dal ciclo successivo: NESSUN IMMOBILE SI RIPETE PRIMA CHE TUTTI ABBIANO TRASMESSO.
+ */
+function autoProgrammaRotazioneEquaSettimanale() {
+  try {
+    var rotData = getDatiRotazioneEqua();
+    if (!rotData.success) return rotData;
+
+    var tuttiFogli = rotData.tuttiFogli || [];
+    if (tuttiFogli.length === 0) {
+      return { success: false, error: "Nessun immobile disponibile a catalogo." };
+    }
+
+    var giorniSettimana = [
+      { id: 'lunedi', nome: 'Lunedì', orario: '19:00 - 01:00' },
+      { id: 'martedi', nome: 'Martedì', orario: '19:00 - 01:00' },
+      { id: 'mercoledi', nome: 'Mercoledì', orario: '19:00 - 01:00' },
+      { id: 'giovedi', nome: 'Giovedì', orario: '19:00 - 01:00' },
+      { id: 'venerdi', nome: 'Venerdì', orario: '19:00 - 01:00' },
+      { id: 'sabato', nome: 'Sabato', orario: '19:00 - 01:00' },
+      { id: 'domenica', nome: 'Domenica', orario: '19:00 - 01:00' }
+    ];
+
+    var rimanenti = rotData.rimanenti.slice();
+    // Se non ci sono rimanenti (ciclo già al 100%), tutti tornano disponibili per il nuovo ciclo
+    if (rimanenti.length === 0) {
+      for (var f = 0; f < tuttiFogli.length; f++) {
+        rimanenti.push(tuttiFogli[f].tabName);
+      }
+    }
+
+    // Pool sequenziale di selezione equa senza ripetizioni
+    var codaScelta = rimanenti.slice();
+    // Se la coda ha meno di 7 elementi, aggiungi dal catalogo generale (nuovo ciclo) evitando duplicati immediati
+    if (codaScelta.length < giorniSettimana.length) {
+      for (var k = 0; k < tuttiFogli.length; k++) {
+        var tCand = tuttiFogli[k].tabName;
+        if (codaScelta.indexOf(tCand) === -1) {
+          codaScelta.push(tCand);
+          if (codaScelta.length >= giorniSettimana.length) break;
+        }
+      }
+    }
+
+    // Mappa rapida tabName -> titolo
+    var titoloMap = {};
+    for (var m = 0; m < tuttiFogli.length; m++) {
+      titoloMap[tuttiFogli[m].tabName] = tuttiFogli[m].titolo;
+    }
+
+    var nuovoCalendario = [];
+    for (var i = 0; i < giorniSettimana.length; i++) {
+      var g = giorniSettimana[i];
+      var tabScelto = codaScelta[i % codaScelta.length] || (tuttiFogli[0] ? tuttiFogli[0].tabName : 'VILLA_FAVARA_RIFINITA');
+      var titScelto = titoloMap[tabScelto] || tabScelto.replace(/_/g, ' ');
+
+      nuovoCalendario.push({
+        id: g.id,
+        giorno: g.nome,
+        orario: g.orario,
+        tabImmobile: tabScelto,
+        titoloImmobile: titScelto,
+        attivo: true
+      });
+    }
+
+    // Salva il nuovo calendario programmato
+    salvaCalendarioPalinsestoSettimanale({ calendario: nuovoCalendario, skipTelegram: false });
+
+    return {
+      success: true,
+      calendario: nuovoCalendario,
+      statoRotazione: getDatiRotazioneEqua(),
+      messaggio: "Palinsesto programmato con equa rotazione! Nessun immobile ripetuto prima dell'esaurimento del catalogo."
+    };
+  } catch(e) {
+    console.error("Errore autoProgrammaRotazioneEquaSettimanale:", e);
+    return { success: false, error: e.toString() };
+  }
+}
+
+/**
  * Recupera il calendario settimanale delle dirette serali (19:00 - 01:00)
- * Assegna ad ogni giorno della settimana un immobile programmato diverso
+ * Inclusivo di stato di equa rotazione e giorno attivo
  */
 function getCalendarioPalinsestoSettimanale() {
   try {
@@ -529,8 +818,8 @@ function getCalendarioPalinsestoSettimanale() {
     var rawCal = props.getProperty('PALINSESTO_CALENDARIO_SETTIMANALE');
     var fogliRes = getFogliDisponibiliPerPalinsesto();
     var fogliDisponibili = (fogliRes && fogliRes.success) ? fogliRes.fogli : [];
+    var rotData = getDatiRotazioneEqua();
 
-    // Nomi standard dei giorni della settimana
     var giorniSettimana = [
       { id: 'lunedi', nome: 'Lunedì', orario: '19:00 - 01:00', defaultTab: 'VILLA_FAVARA_RIFINITA' },
       { id: 'martedi', nome: 'Martedì', orario: '19:00 - 01:00', defaultTab: 'ATTICO_CENTRO_AGRIGENTO' },
@@ -550,7 +839,6 @@ function getCalendarioPalinsestoSettimanale() {
       }
     }
 
-    // Se non esiste ancora o è vuoto, costruisci una programmazione con immobili diversi
     if (!calendario || calendario.length === 0) {
       for (var i = 0; i < giorniSettimana.length; i++) {
         var g = giorniSettimana[i];
@@ -569,15 +857,14 @@ function getCalendarioPalinsestoSettimanale() {
         });
       }
     } else {
-      // Assicura che i campi orario e giorno siano coerenti
       for (var k = 0; k < calendario.length; k++) {
         if (!calendario[k].orario) calendario[k].orario = '19:00 - 01:00';
       }
     }
 
-    // Calcola il giorno corrente
-    var now = new Date();
-    var dayOfWeek = now.getDay(); // 0 = Domenica, 1 = Lunedì...
+    // Giorno corrente in orario Roma
+    var nowRome = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+    var dayOfWeek = nowRome.getDay(); // 0 = Domenica, 1 = Lunedì...
     var mappaGiornoId = ['domenica', 'lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi', 'sabato'];
     var giornoIdOggi = mappaGiornoId[dayOfWeek] || 'lunedi';
 
@@ -586,7 +873,9 @@ function getCalendarioPalinsestoSettimanale() {
       calendario: calendario,
       fogliDisponibili: fogliDisponibili,
       giornoIdOggi: giornoIdOggi,
-      fasciaOrariaUfficiale: '19:00 - 01:00'
+      fasciaOrariaUfficiale: '19:00 - 01:00',
+      rotazioneEqua: rotData,
+      programmaSeraleAttivo: props.getProperty('PROGRAMMA_SERALE_ATTIVO') !== 'false'
     };
   } catch(e) {
     console.error("Errore getCalendarioPalinsestoSettimanale:", e);
@@ -607,11 +896,17 @@ function salvaCalendarioPalinsestoSettimanale(payload) {
     var props = PropertiesService.getScriptProperties();
     props.setProperty('PALINSESTO_CALENDARIO_SETTIMANALE', JSON.stringify(cal));
 
+    // Assicura l'installazione dei trigger automatici 19:00 - 01:00
+    assicuraTriggerProgrammaSerale();
+
+    var rotData = getDatiRotazioneEqua();
+
     // Costruisci il messaggio Telegram dettagliato
     var righe = [];
     righe.push("📅 <b>PALINSESTO DIRETTE SERALI AGGIORNATO (19:00 - 01:00)</b>\n");
-    righe.push("È stata registrata una modifica alla programmazione delle dirette televisive serali.");
-    righe.push("Ogni sera dalle 19:00 alle 01:00 un immobile diverso in rotazione esclusiva con DarIA & DarIO:\n");
+    righe.push("Programmazione ufficiale delle dirette serali con regola di <b>Equa Rotazione ad Esaurimento</b>.");
+    righe.push("<i>Nessun immobile si ripete prima che tutti gli altri abbiano effettuato il passaggio in diretta.</i>\n");
+    righe.push("📊 <b>Stato Rotazione:</b> Ciclo #" + (rotData.cicloAttivo || 1) + " • " + (rotData.conteggioAndatiInOnda || 0) + "/" + (rotData.totaleImmobili || 0) + " già andati in onda (" + (rotData.percentualeAvanzamento || 0) + "% completato)\n");
 
     for (var i = 0; i < cal.length; i++) {
       var item = cal[i];
@@ -626,9 +921,8 @@ function salvaCalendarioPalinsestoSettimanale(payload) {
 
     var testoTelegram = righe.join("\n");
 
-    // Invio notifica su Telegram
     var notificaResult = { success: false };
-    if (typeof inviaNotificaTelegram === 'function') {
+    if (!payload.skipTelegram && typeof inviaNotificaTelegram === 'function') {
       notificaResult = inviaNotificaTelegram(testoTelegram, null, "HTML");
     }
 
@@ -636,7 +930,8 @@ function salvaCalendarioPalinsestoSettimanale(payload) {
       success: true,
       calendario: cal,
       telegram: notificaResult,
-      messaggio: "Palinsesto salvato con successo e notifica Telegram inviata!"
+      rotazioneEqua: rotData,
+      messaggio: "Palinsesto serale (19:00 - 01:00) salvato con successo e notifica Telegram inviata!"
     };
   } catch(e) {
     console.error("Errore salvaCalendarioPalinsestoSettimanale:", e);
@@ -644,6 +939,171 @@ function salvaCalendarioPalinsestoSettimanale(payload) {
       inviaAllertaErroreTelegram("09_PalinsestoTeatrinoEBanners.js", "salvaCalendarioPalinsestoSettimanale", e.toString());
     }
     return { success: false, error: e.toString() };
+  }
+}
+
+/**
+ * Restituisce l'immobile designato per stasera dal palinsesto serale (19:00 - 01:00)
+ */
+function getImmobileSeraleDelGiorno() {
+  try {
+    var calRes = getCalendarioPalinsestoSettimanale();
+    if (!calRes || !calRes.success || !calRes.calendario) return null;
+
+    var gId = calRes.giornoIdOggi || 'lunedi';
+    for (var i = 0; i < calRes.calendario.length; i++) {
+      if (calRes.calendario[i].id === gId) {
+        return {
+          tabName: calRes.calendario[i].tabImmobile,
+          titolo: calRes.calendario[i].titoloImmobile,
+          giorno: calRes.calendario[i].giorno,
+          orario: calRes.calendario[i].orario
+        };
+      }
+    }
+    return null;
+  } catch(e) {
+    console.error("Errore getImmobileSeraleDelGiorno:", e);
+    return null;
+  }
+}
+
+/**
+ * ⏰ ESECUZIONE AUTOMATICA SERALE ALLE ORE 19:00
+ * Attiva l'immobile del giorno, lo registra nella rotazione equa,
+ * aggiorna la regia e invia notifica Telegram istituzionale.
+ */
+function eseguiCheckPalinsestoSerale19_01() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var attivo = props.getProperty('PROGRAMMA_SERALE_ATTIVO') !== 'false';
+    if (!attivo) {
+      console.log("Programma serale disattivato dall'utente.");
+      return;
+    }
+
+    var immSerale = getImmobileSeraleDelGiorno();
+    if (!immSerale || !immSerale.tabName) {
+      console.warn("Nessun immobile programmato trovato per stasera.");
+      return;
+    }
+
+    // 1. Imposta l'immobile attivo nella regia
+    props.setProperty('ACTIVE_IMMOBILE_TAB', immSerale.tabName);
+
+    // 2. Registra l'immobile come andato in onda nel ciclo equo
+    var regRes = registraImmobileAndatoInOnda(immSerale.tabName);
+
+    // 3. Notifica Telegram ufficiale di inizio diretta serale
+    if (typeof inviaNotificaTelegram === 'function') {
+      var rot = getDatiRotazioneEqua();
+      var msg = "🌙 <b>INIZIO DIRETTA SERALE (19:00 - 01:00)!</b> 🏠✨\n\n" +
+                "I conduttori <b>DarIA</b> e <b>DarIO</b> sono in onda con la presentazione esclusiva di:\n" +
+                "🏠 <b>" + (immSerale.titolo || immSerale.tabName.replace(/_/g, ' ')).toUpperCase() + "</b>\n\n" +
+                "📊 <b>Equa Rotazione:</b> " + (rot.conteggioAndatiInOnda || 1) + " di " + (rot.totaleImmobili || 20) + " immobili andati in onda (Ciclo #" + (rot.cicloAttivo || 1) + ")\n" +
+                "📐 Descrizioni dettagliate da <b>Colonna F</b> con superfici espresse in <b>metri quadri</b>.\n" +
+                "💬 Gli spettatori possono richiedere le singole stanze nei commenti live!\n\n" +
+                "— <b>Immobiliare Giancani</b>";
+      inviaNotificaTelegram(msg, null, "HTML");
+    }
+
+    // 4. Se è configurata la diretta streaming, assicurati che sia attiva
+    if (typeof avviaDirettaMultistream === 'function' && props.getProperty('AUTO_STREAM_START_SERALE') === 'true') {
+      avviaDirettaMultistream();
+    }
+  } catch(e) {
+    console.error("Errore eseguiCheckPalinsestoSerale19_01:", e);
+    if (typeof inviaAllertaErroreTelegram === 'function') {
+      inviaAllertaErroreTelegram("09_PalinsestoTeatrinoEBanners.js", "eseguiCheckPalinsestoSerale19_01", e.toString());
+    }
+  }
+}
+
+/**
+ * ⏰ CHIUSURA AUTOMATICA SERALE ALLE ORE 01:00
+ * Conclude la sessione serale e predispone il sistema per il giorno successivo.
+ */
+function eseguiChiusuraPalinsestoSerale01() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var attivo = props.getProperty('PROGRAMMA_SERALE_ATTIVO') !== 'false';
+    if (!attivo) return;
+
+    if (typeof inviaNotificaTelegram === 'function') {
+      var msg = "🏁 <b>FINE DIRETTA SERALE (19:00 - 01:00)</b> 🌙\n\n" +
+                "La trasmissione serale si è conclusa regolarmente.\n" +
+                "I nostri avatar DarIA e DarIO torneranno in onda domani sera alle 19:00 con il prossimo immobile in equa rotazione.\n\n" +
+                "— <b>Immobiliare Giancani</b>";
+      inviaNotificaTelegram(msg, null, "HTML");
+    }
+  } catch(e) {
+    console.error("Errore eseguiChiusuraPalinsestoSerale01:", e);
+  }
+}
+
+/**
+ * Attiva o disattiva l'azionamento automatico del programma serale (19:00 - 01:00)
+ */
+function attivaProgrammaSeraleAutomatico(attivo) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var statoBool = (attivo === true || attivo === 'true');
+    props.setProperty('PROGRAMMA_SERALE_ATTIVO', statoBool ? 'true' : 'false');
+
+    if (statoBool) {
+      assicuraTriggerProgrammaSerale();
+    }
+
+    if (typeof inviaNotificaTelegram === 'function') {
+      var icona = statoBool ? "🟢" : "🔴";
+      var statoTesto = statoBool ? "ATTIVATO (19:00 - 01:00)" : "DISATTIVATO";
+      inviaNotificaTelegram(icona + " <b>PROGRAMMA SERALE AUTOMATICO " + statoTesto + "</b>\n\n" +
+                            "Modalità: Equa Rotazione senza ripetizioni fino a catalogo esaurito.\n\n" +
+                            "— <b>Immobiliare Giancani</b>", null, "HTML");
+    }
+
+    return {
+      success: true,
+      attivo: statoBool,
+      messaggio: "Programma serale automatico " + (statoBool ? "attivato" : "disattivato") + " con successo."
+    };
+  } catch(e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+/**
+ * Assicura l'esistenza dei trigger giornalieri per le 19:00 e 01:00 senza duplicati
+ */
+function assicuraTriggerProgrammaSerale() {
+  try {
+    var triggers = ScriptApp.getProjectTriggers();
+    var has19 = false;
+    var has01 = false;
+    for (var i = 0; i < triggers.length; i++) {
+      var hf = triggers[i].getHandlerFunction();
+      if (hf === 'eseguiCheckPalinsestoSerale19_01') has19 = true;
+      if (hf === 'eseguiChiusuraPalinsestoSerale01') has01 = true;
+    }
+
+    if (!has19) {
+      ScriptApp.newTrigger('eseguiCheckPalinsestoSerale19_01')
+        .timeBased()
+        .atHour(19)
+        .everyDays(1)
+        .inTimezone('Europe/Rome')
+        .create();
+    }
+    if (!has01) {
+      ScriptApp.newTrigger('eseguiChiusuraPalinsestoSerale01')
+        .timeBased()
+        .atHour(1)
+        .everyDays(1)
+        .inTimezone('Europe/Rome')
+        .create();
+    }
+  } catch(e) {
+    console.warn("assicuraTriggerProgrammaSerale:", e);
   }
 }
 

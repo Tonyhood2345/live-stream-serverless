@@ -508,6 +508,23 @@ function getImmobileData(direction) {
     var props = PropertiesService.getScriptProperties();
     var activeTab = props.getProperty('ACTIVE_IMMOBILE_TAB') || 'VILLA_FAVARA_RIFINITA';
 
+    // 🌙 VERIFICA PROGRAMMA SERALE AUTOMATICO (19:00 - 01:00)
+    // Se siamo nella fascia 19:00 - 01:00 e il programma serale è attivo,
+    // trasmetti rigorosamente l'immobile del palinsesto serale con equa rotazione!
+    try {
+      var nowRome = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+      var hRome = nowRome.getHours();
+      var isSerale = (hRome >= 19 || hRome < 1);
+      var progSeraleAttivo = props.getProperty('PROGRAMMA_SERALE_ATTIVO') !== 'false';
+      
+      if (isSerale && progSeraleAttivo && typeof getImmobileSeraleDelGiorno === 'function') {
+        var immSerale = getImmobileSeraleDelGiorno();
+        if (immSerale && immSerale.tabName) {
+          activeTab = immSerale.tabName;
+        }
+      }
+    } catch(eSerale) {}
+
     // Se la scheda attiva è Post_YouTube, attiva il Carosello Video Intelligente (> 1 minuto)
     if (activeTab && activeTab.toUpperCase() === 'POST_YOUTUBE') {
       return getCaroselloPostYouTube(direction);

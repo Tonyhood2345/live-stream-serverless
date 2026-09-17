@@ -235,7 +235,8 @@ var FOGLI_SISTEMA_ESCLUSI = [
   'BATTUTE_DARIO',
   'STORIE_FAVARA_AGRIGENTO',
   'STORIE_CITTA',
-  'NOTIZIE_CITTA'
+  'NOTIZIE_CITTA',
+  'DIALOGHI_AVAT_TUTTI'
 ];
 
 /**
@@ -253,6 +254,9 @@ function getFogliDisponibiliPerPalinsesto() {
       var sName = sheets[i].getName();
       var sUpper = sName.toUpperCase().trim();
       var lastR = sheets[i].getLastRow();
+      if (sUpper.indexOf('DIALOGHI_') === 0 || sUpper.indexOf('POST_') === 0 || sUpper.indexOf('STATISTICHE_') === 0) {
+        continue;
+      }
       if (FOGLI_SISTEMA_ESCLUSI.indexOf(sUpper) === -1 && lastR >= 2) {
         disponibili.push({
           tabName: sName,

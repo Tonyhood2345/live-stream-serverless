@@ -87,7 +87,8 @@ function getElencoImmobiliDisponibili() {
       'BATTUTE_DARIO',
       'STORIE_FAVARA_AGRIGENTO',
       'STORIE_CITTA',
-      'NOTIZIE_CITTA'
+      'NOTIZIE_CITTA',
+      'DIALOGHI_AVAT_TUTTI'
     ];
 
     var immobili = [];
@@ -95,7 +96,11 @@ function getElencoImmobiliDisponibili() {
     if (sheets) {
       for (var i = 0; i < sheets.length; i++) {
         var sName = sheets[i].getName();
-        if (ignorati.indexOf(sName.toUpperCase()) === -1) {
+        var sUpper = sName.toUpperCase().trim();
+        if (sUpper.indexOf('DIALOGHI_') === 0 || sUpper.indexOf('POST_') === 0 || sUpper.indexOf('STATISTICHE_') === 0) {
+          continue;
+        }
+        if (ignorati.indexOf(sUpper) === -1) {
           var cleanName = sName.replace(/_/g, ' ');
           var lastRow = sheets[i].getLastRow();
           var prezzo = '';

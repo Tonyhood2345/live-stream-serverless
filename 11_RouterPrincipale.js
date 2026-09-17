@@ -228,13 +228,13 @@ function doGet(e) {
     }
 
     if (action === 'salva_posizione_avatar') {
-      var posP = (e && e.parameter && e.parameter.posizione) ? e.parameter.posizione : 'centro';
+      var posP = (e && e.parameter && e.parameter.posizione) ? e.parameter.posizione : 'destra';
       var resPosS = (typeof salvaPosizioneSetAvatar === 'function') ? salvaPosizioneSetAvatar(posP) : { success: true, posizione: posP };
       return ContentService.createTextOutput(JSON.stringify(resPosS, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === 'get_posizione_avatar') {
-      var resPosG = (typeof getPosizioneSetAvatar === 'function') ? getPosizioneSetAvatar() : { success: true, posizione: 'centro' };
+      var resPosG = (typeof getPosizioneSetAvatar === 'function') ? getPosizioneSetAvatar() : { success: true, posizione: 'destra' };
       return ContentService.createTextOutput(JSON.stringify(resPosG, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 

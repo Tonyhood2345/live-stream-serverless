@@ -43,6 +43,11 @@ function doGet(e) {
       return ContentService.createTextOutput(JSON.stringify({ success: true, name: sName, totalRows: rows.length, rows: rows }, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (action === 'get_elenco_immobili' || action === 'immobili') {
+      var elImm = (typeof getElencoImmobiliDisponibili === 'function') ? getElencoImmobiliDisponibili() : [];
+      return ContentService.createTextOutput(JSON.stringify({ success: true, immobili: elImm }, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (action === 'get_carosello_youtube') {
       var dir = (e && e.parameter && e.parameter.dir) ? e.parameter.dir : 'current';
       var dataCarosello = getCaroselloPostYouTube(dir);
@@ -294,6 +299,28 @@ function doGet(e) {
     if (action === 'get_zoom') {
       var curZoom = getZoomDiretta();
       return ContentService.createTextOutput(JSON.stringify({ success: true, zoom: curZoom }, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'salva_scala_logo' || action === 'imposta_scala_logo') {
+      var scVal = (e && e.parameter && e.parameter.scala) ? e.parameter.scala : '1.0';
+      var resSc = salvaScalaLogoAgenzia(scVal);
+      return ContentService.createTextOutput(JSON.stringify(resSc, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'get_scala_logo') {
+      var curSc = getScalaLogoAgenzia();
+      return ContentService.createTextOutput(JSON.stringify({ success: true, scala: curSc }, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'salva_stile_grafica' || action === 'imposta_stile_grafica') {
+      var stVal = (e && e.parameter && e.parameter.stile) ? e.parameter.stile : 'modern_broadcast';
+      var resSt = salvaStileGraficaDiretta(stVal);
+      return ContentService.createTextOutput(JSON.stringify(resSt, null, 2)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'get_stile_grafica') {
+      var curSt = getStileGraficaDiretta();
+      return ContentService.createTextOutput(JSON.stringify({ success: true, stile: curSt }, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === 'salva_voci') {
@@ -698,6 +725,12 @@ function doPost(e) {
     if (payload.action === 'imposta_coppia_avatar') {
       var resCoppiaPost = impostaAvatarInOnda(payload.donna, payload.uomo);
       return ContentService.createTextOutput(JSON.stringify(resCoppiaPost)).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 0-BIS. Gestione Cambio Stile Grafico Diretta da POST
+    if (payload.action === 'salva_stile_grafica' || payload.action === 'imposta_stile_grafica') {
+      var resStPost = salvaStileGraficaDiretta(payload.stile);
+      return ContentService.createTextOutput(JSON.stringify(resStPost)).setMimeType(ContentService.MimeType.JSON);
     }
 
     // 1. Salvataggio Batch Video & Shorts YouTube da Python

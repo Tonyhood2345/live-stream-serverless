@@ -320,7 +320,8 @@ function doGet(e) {
 
     if (action === 'get_stile_grafica') {
       var curSt = getStileGraficaDiretta();
-      return ContentService.createTextOutput(JSON.stringify({ success: true, stile: curSt }, null, 2)).setMimeType(ContentService.MimeType.JSON);
+      var infoSt = (typeof getInfoRotazioneStileOrario === 'function') ? getInfoRotazioneStileOrario() : null;
+      return ContentService.createTextOutput(JSON.stringify({ success: true, stile: curSt, info: infoSt }, null, 2)).setMimeType(ContentService.MimeType.JSON);
     }
 
     if (action === 'salva_voci') {

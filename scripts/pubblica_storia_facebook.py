@@ -2237,15 +2237,7 @@ def esegui_ciclo_offline(style="auto"):
         print(f"❌ Errore TikTok Stories: {eTk}")
         risultati.append({"nome": "TikTok Stories (@immobiliare_giancani)", "success": False, "error": str(eTk)})
 
-    # Pubblica la Nota di Facebook del momento (Buongiorno / Buon pomeriggio / Buona sera / Buonanotte)
-    try:
-        fascia_corrente = determina_fascia_oraria()
-        print(f"📝 Pubblicazione Nota Facebook del momento ({fascia_corrente['saluto']})...")
-        for target in PAGES:
-            res_nota = pubblica_nota_facebook_pagina(target['id'], target['token'], media_info, fascia_corrente)
-            risultati.append({"nome": f"Nota FB ({target['nome']})", **res_nota})
-    except Exception as eNota:
-        print(f"Avviso pubblicazione nota Facebook: {eNota}")
+    # Nota Facebook rimossa su richiesta utente
 
     invia_notifica_telegram(selected['titolo'], selected['mq'], selected['prezzo'], risultati, is_live=False)
     print("✨ Ciclo storia oraria multi-piattaforma completato con successo. — Immobiliare Giancani\n")

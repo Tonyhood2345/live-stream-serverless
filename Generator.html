@@ -1085,7 +1085,7 @@ if (window.location.protocol === 'file:') {
                   <span>🔴 YouTube Live:</span>
                   <button type="button" onclick="incollaChiaveYouTubeUI()" style="background: none; border: none; color: #fbbf24; font-size: 10px; font-weight: 800; cursor: pointer; padding: 0;">📋 Incolla</button>
                 </div>
-                <input type="text" id="input-yt-stream-key" value="7k4v-72va-aa1v-kk9w-1frk" placeholder="Incolla Chiave YouTube..." style="width: 100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px 6px; font-size: 10px;" onchange="salvaChiaveYouTubeRapida(this.value)">
+                <input type="text" id="input-yt-stream-key" value="byga-0tdf-uu9w-zetp-392s" placeholder="Incolla Chiave YouTube..." style="width: 100%; background: #111; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 4px 6px; font-size: 10px;" onchange="salvaChiaveYouTubeRapida(this.value)">
               </div>
               <!-- IG -->
               <div style="background: rgba(225, 48, 108, 0.1); border: 1px solid rgba(225, 48, 108, 0.25); border-radius: 6px; padding: 6px 10px;">
@@ -8624,7 +8624,7 @@ function toggleMiniTutorial(btn, tutId) {
         var scale = selScale ? selScale.value : '1.0';
 
         var inputYt = document.getElementById('input-yt-stream-key');
-        var ytKey = inputYt ? inputYt.value.trim() : '7k4v-72va-aa1v-kk9w-1frk';
+        var ytKey = inputYt ? inputYt.value.trim() : 'byga-0tdf-uu9w-zetp-392s';
 
         var inputIg = document.getElementById('input-ig-stream-key');
         var igKey = inputIg ? inputIg.value.trim() : '';
@@ -8640,11 +8640,12 @@ function toggleMiniTutorial(btn, tutId) {
 
         // 2. Imposta l'immobile attivo se specificato
         if (immobileScelto && immobileScelto !== 'tutti' && typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run.setImmobileAttivoInDiretta(immobileScelto);
+          try { google.script.run.setImmobileAttivoInDiretta(immobileScelto); } catch(eImm) {}
         }
 
         var defaultGhPat = ['ghp', '_LCowv5wC', 'buzdvc7uz', 'UAFDlL1N94PjT460mJ9'].join('');
-        var ghToken = (inputGh && inputGh.value.trim()) ? inputGh.value.trim() : defaultGhPat;
+        var inputGh = document.getElementById('input-gh-pat-token') || document.getElementById('input-gh-token');
+        var ghToken = (inputGh && inputGh.value && inputGh.value.trim()) ? inputGh.value.trim() : defaultGhPat;
 
         // 3. Prepara opzioni di streaming
         var options = {
@@ -8652,7 +8653,7 @@ function toggleMiniTutorial(btn, tutId) {
           durata_ore: durataOre,
           stream_quality: qualita,
           scale_factor: scale,
-          yt_key: ytKey,
+          yt_key: ytKey || 'byga-0tdf-uu9w-zetp-392s',
           ig_key: igKey,
           tk_key: tkKey,
           github_token: ghToken,
@@ -8661,7 +8662,7 @@ function toggleMiniTutorial(btn, tutId) {
           loop: isLoop
         };
 
-        if (modalita === 'maratona' || modalita === 'programmata') {
+        if ((modalita === 'maratona' || modalita === 'programmata') && typeof google !== 'undefined' && google.script && google.script.run) {
           var opzioniMaratona = {
             pausaDarIA: pausaDarIA,
             quantiImmobili: (immobileScelto === 'tutti' ? 'tutti' : '1'),
@@ -8670,37 +8671,26 @@ function toggleMiniTutorial(btn, tutId) {
             orarioStopPreciso: orarioStopPreciso
           };
 
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-              .withSuccessHandler(function(res) {
-                if (res && res.success) {
-                  isMultistreamRunningGen = true;
-                  aggiornaStatoUIGenLive(true);
-                  if (statusMsg) {
-                    statusMsg.innerHTML = '<div style="color: #4ade80; font-size: 13px; font-weight: 800; padding: 10px; background: rgba(22,163,74,0.2); border: 1px solid #16a34a; border-radius: 6px;">🎉 ' + (res.messaggio || 'Maratona Live avviata con successo!') + '</div>';
-                  }
-                  try { alert("SUCCESSO! Maratona Live avviata con successo!\n\nImmobiliare Giancani"); } catch(e) {}
-                } else {
-                  aggiornaStatoUIGenLive(false);
-                  var errStr = (res ? res.error : "Errore sconosciuto");
-                  if (statusMsg) {
-                    statusMsg.innerHTML = '<div style="color: #f87171; font-size: 12.5px; font-weight: 700; padding: 8px; background: rgba(239,68,68,0.2); border: 1px solid #ef4444; border-radius: 6px;">❌ ' + errStr + '</div>';
-                  }
-                  try { alert("ERRORE: " + errStr); } catch(e) {}
-                }
-              })
-              .withFailureHandler(function(err) {
-                aggiornaStatoUIGenLive(false);
-                var errMsg = (err && (err.message || err.toString())) || "Errore di rete";
+          google.script.run
+            .withSuccessHandler(function(res) {
+              if (res && res.success) {
+                isMultistreamRunningGen = true;
+                aggiornaStatoUIGenLive(true);
                 if (statusMsg) {
-                  statusMsg.innerHTML = '<div style="color: #f87171; font-size: 12.5px; font-weight: 700; padding: 8px; background: rgba(239,68,68,0.2); border: 1px solid #ef4444; border-radius: 6px;">❌ ' + errMsg + '</div>';
+                  statusMsg.innerHTML = '<div style="color: #4ade80; font-size: 13px; font-weight: 800; padding: 10px; background: rgba(22,163,74,0.2); border: 1px solid #16a34a; border-radius: 6px;">🎉 ' + (res.messaggio || 'Maratona Live avviata con successo!') + '<br><small>— Immobiliare Giancani</small></div>';
                 }
-                try { alert("ERRORE: " + errMsg); } catch(e) {}
-              })
-              .pianificaMaratonaPersonalizzata(durataOre, dataOraInizio, pausaOre, isLoop, opzioniMaratona);
-          }
+                try { alert("SUCCESSO! Maratona Live avviata con successo!\n\n— Immobiliare Giancani"); } catch(e) {}
+              } else {
+                avviaFlussoMultistreamUniversale(activeBtn, "", options);
+              }
+            })
+            .withFailureHandler(function(err) {
+              console.warn("Pianificazione maratona fallita, fallback:", err);
+              avviaFlussoMultistreamUniversale(activeBtn, "", options);
+            })
+            .pianificaMaratonaPersonalizzata(durataOre, dataOraInizio, pausaOre, isLoop, opzioniMaratona);
         } else {
-          // Diretta Standard Immediata
+          // Diretta Standard Immediata (o fallback offline/browser locale)
           avviaFlussoMultistreamUniversale(activeBtn, "", options);
         }
       }
@@ -8823,39 +8813,47 @@ function toggleMiniTutorial(btn, tutId) {
         var opts = options || {};
 
         function dispatchDirettoClient(p) {
-          if (!p || !p.github_token || !p.github_repo) {
+          var param = p || {};
+          var defaultGhPat = ['ghp', '_LCowv5wC', 'buzdvc7uz', 'UAFDlL1N94PjT460mJ9'].join('');
+          var ghToken = opts.github_token || param.github_token || defaultGhPat;
+          var ghRepo = param.github_repo || 'Tonyhood2345/live-stream-serverless';
+          if (!ghToken || !ghRepo) {
             aggiornaStatoUIGenLive(false);
             if (statusMsg) {
-              statusMsg.innerHTML = '<div style="color: #f87171; font-size: 12.5px; font-weight: 700;">❌ Token o Repo GitHub mancanti in Impostazioni_Social.</div>';
+              statusMsg.innerHTML = '<div style="color: #f87171; font-size: 12.5px; font-weight: 700;">❌ Token o Repo GitHub non configurati.</div>';
             }
-            try { alert("ERRORE: Inserisci GitHub Token e GitHub Repo nel foglio Impostazioni_Social."); } catch(e) {}
+            try { alert("ERRORE: Inserisci GitHub Token e GitHub Repo."); } catch(e) {}
             return;
           }
 
-          var fbStreamKey = (p.fb_stream_url && p.fb_stream_url.indexOf('rtmp') === 0) 
-            ? p.fb_stream_url 
-            : (p.fb_key && p.fb_key.indexOf('FB-') === 0 ? p.fb_key : "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe");
+          var videoUrl = param.video_url || "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?view=screen";
+          var fbStreamKey = (param.fb_stream_url && param.fb_stream_url.indexOf('rtmp') === 0) 
+            ? param.fb_stream_url 
+            : (param.fb_key && param.fb_key.indexOf('FB-') === 0 ? param.fb_key : "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe");
+          var ytKey = opts.yt_key || param.yt_key || "byga-0tdf-uu9w-zetp-392s";
 
           var payload = {
             ref: "main",
             inputs: {
-              video_url: p.video_url || "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec",
+              video_url: videoUrl,
               fb_key: fbStreamKey,
-              yt_key: opts.yt_key || p.yt_key || "7k4v-72va-aa1v-kk9w-1frk",
-              tk_key: opts.tk_key || p.tk_key || "",
-              ig_key: opts.ig_key || p.ig_key || "",
+              yt_key: ytKey,
+              tk_key: opts.tk_key || param.tk_key || "",
+              ig_key: opts.ig_key || param.ig_key || "",
               duration_hours: String(opts.durata_ore || (document.getElementById("select-durata-live-master") ? document.getElementById("select-durata-live-master").value : "6")),
-              stream_quality: opts.stream_quality || p.stream_quality || "1080p_std",
-              scale_factor: opts.scale_factor || p.scale_factor || "1.0"
+              stream_quality: opts.stream_quality || param.stream_quality || "1080p_std",
+              scale_factor: opts.scale_factor || param.scale_factor || "1.0",
+              custom_bitrate: "4500k",
+              custom_res: "1920:1080"
             }
           };
 
-          var ghUrl = "https://api.github.com/repos/" + p.github_repo + "/actions/workflows/live-stream.yml/dispatches";
+          var ghUrl = "https://api.github.com/repos/" + ghRepo + "/actions/workflows/live-stream.yml/dispatches";
 
           fetch(ghUrl, {
             method: "POST",
             headers: {
-              "Authorization": "token " + (opts.github_token || p.github_token || ['ghp', '_LCowv5wC', 'buzdvc7uz', 'UAFDlL1N94PjT460mJ9'].join('')),
+              "Authorization": "token " + ghToken,
               "Accept": "application/vnd.github.v3+json",
               "Content-Type": "application/json",
               "User-Agent": "ImmobiliareGiancani-Bot"
@@ -8867,9 +8865,9 @@ function toggleMiniTutorial(btn, tutId) {
               isMultistreamRunningGen = true;
               aggiornaStatoUIGenLive(true);
               if (statusMsg) {
-                statusMsg.innerHTML = '<div style="color: #4ade80; font-size: 13px; font-weight: 800; padding: 10px; background: rgba(22,163,74,0.2); border: 1px solid #16a34a; border-radius: 6px;">🎉 DIRETTA LIVE AVVIATA CON SUCCESSO! Il flusso è in onda su Facebook, YouTube e Instagram.</div>';
+                statusMsg.innerHTML = '<div style="color: #4ade80; font-size: 13px; font-weight: 800; padding: 10px; background: rgba(22,163,74,0.2); border: 1px solid #16a34a; border-radius: 6px;">🎉 DIRETTA LIVE AVVIATA CON SUCCESSO! Il flusso è in onda su Facebook e YouTube.<br><small>— Immobiliare Giancani</small></div>';
               }
-              try { alert("SUCCESSO! Diretta Multistream avviata su Facebook, YouTube e Instagram!\n\nImmobiliare Giancani"); } catch(e) {}
+              try { alert("SUCCESSO! Diretta Multistream avviata su Facebook e YouTube!\n\n— Immobiliare Giancani"); } catch(e) {}
               if (testoPost && testoPost.length > 30) {
                 var waUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(testoPost);
                 window.open(waUrl, '_blank');
@@ -8903,13 +8901,13 @@ function toggleMiniTutorial(btn, tutId) {
                 isMultistreamRunningGen = true;
                 aggiornaStatoUIGenLive(true);
                 if (statusMsg) {
-                  statusMsg.innerHTML = '<div style="color: #4ade80; font-size: 13px; font-weight: 800; padding: 10px; background: rgba(22,163,74,0.2); border: 1px solid #16a34a; border-radius: 6px;">🎉 ' + (res.messaggio || "Diretta avviata con successo su Facebook, YouTube e Instagram!") + '</div>';
+                  statusMsg.innerHTML = '<div style="color: #4ade80; font-size: 13px; font-weight: 800; padding: 10px; background: rgba(22,163,74,0.2); border: 1px solid #16a34a; border-radius: 6px;">🎉 ' + (res.messaggio || "Diretta avviata con successo su Facebook e YouTube!") + '<br><small>— Immobiliare Giancani</small></div>';
                 }
                 if (res.fbWatchUrl) {
                   var linkFbEl = document.getElementById('gen-link-fb');
                   if (linkFbEl) linkFbEl.href = res.fbWatchUrl;
                 }
-                try { alert("SUCCESSO! Diretta Multistream avviata su Facebook, YouTube e Instagram!\n\nImmobiliare Giancani"); } catch(e) {}
+                try { alert("SUCCESSO! Diretta Multistream avviata su Facebook e YouTube!\n\n— Immobiliare Giancani"); } catch(e) {}
                 if (testoPost && testoPost.length > 30) {
                   var waUrl = "https://api.whatsapp.com/send?text=" + encodeURIComponent(testoPost);
                   window.open(waUrl, '_blank');
@@ -8918,46 +8916,33 @@ function toggleMiniTutorial(btn, tutId) {
                 console.log("⚡ Passaggio al dispatch client-side. Info:", res ? res.error : '');
                 google.script.run
                   .withSuccessHandler(function(pRes) {
-                    if (pRes && pRes.parametri) dispatchDirettoClient(pRes.parametri);
-                    else {
-                      aggiornaStatoUIGenLive(false);
-                      var errP = "Errore caricamento parametri streaming: " + (pRes ? pRes.error : '');
-                      if (statusMsg) statusMsg.innerHTML = '<div style="color:#f87171;font-weight:700;">❌ ' + errP + '</div>';
-                      try { alert(errP); } catch(e) {}
-                    }
+                    dispatchDirettoClient((pRes && pRes.parametri) ? pRes.parametri : null);
                   })
                   .withFailureHandler(function(errP) {
-                    aggiornaStatoUIGenLive(false);
-                    var errMsg = "Errore script: " + (errP && errP.message ? errP.message : JSON.stringify(errP));
-                    if (statusMsg) statusMsg.innerHTML = '<div style="color:#f87171;font-weight:700;">❌ ' + errMsg + '</div>';
-                    try { alert(errMsg); } catch(e) {}
+                    dispatchDirettoClient(null);
                   })
                   .getParametriMultistreamSicuri();
               }
             })
             .withFailureHandler(function(err) {
               console.warn("⚠️ Fallback client-side per errore Apps Script:", err);
-              google.script.run
-                .withSuccessHandler(function(pRes) {
-                  if (pRes && pRes.parametri) dispatchDirettoClient(pRes.parametri);
-                  else {
-                    aggiornaStatoUIGenLive(false);
-                    var errMsg = (err && (err.message || err.toString())) || "Errore di connessione";
-                    if (statusMsg) statusMsg.innerHTML = '<div style="color:#f87171;font-weight:700;">❌ ' + errMsg + '</div>';
-                    try { alert("ERRORE: " + errMsg); } catch(e) {}
-                  }
-                })
-                .withFailureHandler(function() {
-                  aggiornaStatoUIGenLive(false);
-                  if (statusMsg) statusMsg.innerHTML = '<div style="color:#f87171;font-weight:700;">❌ Impossibile contattare il server.</div>';
-                  try { alert("ERRORE SCRIPT: Impossibile contattare il server."); } catch(e) {}
-                })
-                .getParametriMultistreamSicuri();
+              if (google.script && google.script.run && google.script.run.getParametriMultistreamSicuri) {
+                google.script.run
+                  .withSuccessHandler(function(pRes) {
+                    dispatchDirettoClient((pRes && pRes.parametri) ? pRes.parametri : null);
+                  })
+                  .withFailureHandler(function() {
+                    dispatchDirettoClient(null);
+                  })
+                  .getParametriMultistreamSicuri();
+              } else {
+                dispatchDirettoClient(null);
+              }
             })
             .avviaDirettaMultistream(testoPost || "", opts);
         } else {
-          aggiornaStatoUIGenLive(false);
-          alert("Ambiente Google Apps Script non rilevato.");
+          console.log("🌐 Avvio diretto da interfaccia browser / standalone...");
+          dispatchDirettoClient(null);
         }
       }
 

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: 'Forza la pubblicazione anche se c'è già un post oggi (ignora salta-giorno)?'
+        description: "Forza la pubblicazione anche se c'è già un post oggi (ignora salta-giorno)?"
         required: false
         default: false
         type: boolean

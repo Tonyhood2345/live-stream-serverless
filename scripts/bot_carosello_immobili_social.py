@@ -621,7 +621,7 @@ def pubblica_post_carosello_facebook(immobile_info, carosello_paths):
         f"{elenco_stanze_txt}\n\n"
         f"📍 Ti aspettiamo per una visita sul posto o in agenzia.\n"
         f"📞 Contattaci subito: 320 166 7156\n"
-        f"📍 Sede: Via Crispi 11, Favara (AG)\n\n"
+        f"📍 Sede: Corso Vittorio Veneto 151, Favara (AG)\n\n"
         f"— Immobiliare Giancani"
     )
 

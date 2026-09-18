@@ -815,27 +815,802 @@ def crea_story_editorial_9_16(media_info, palette=None, output_path=None):
     return output_path
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🎯 6. DISPATCHER GENERATORE UNIFICATO
+# 🏠 7. STILE "ROOM LABEL" — Foto ambiente + barra blu con nome stanza (ref img1)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_story_room_label_9_16(media_info, palette=None, output_path=None):
+    """Foto ambiente a schermo intero con header logo + barra inferiore con nome stanza."""
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_room_label_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    canvas = Image.new("RGBA", (W, H), (20, 20, 30, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    # ── Foto a schermo intero ──
+    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl", "")
+    foto_img = None
+    try:
+        if foto_url.startswith("http"):
+            import io as _io
+            resp = requests.get(foto_url, timeout=12)
+            foto_img = Image.open(_io.BytesIO(resp.content)).convert("RGBA")
+        elif foto_url and os.path.exists(foto_url):
+            foto_img = Image.open(foto_url).convert("RGBA")
+    except Exception:
+        pass
+
+    if foto_img:
+        fw, fh = foto_img.size
+        scale = max(W / fw, H / fh)
+        nw, nh = int(fw * scale), int(fh * scale)
+        foto_img = foto_img.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - W) // 2
+        oy = (nh - H) // 2
+        canvas.paste(foto_img.crop((ox, oy, ox + W, oy + H)), (0, 0))
+
+    # Overlay gradiente leggero top e bottom per leggibilità
+    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ov_draw = ImageDraw.Draw(overlay)
+    for y in range(200):
+        alpha = int(180 * (1 - y / 200))
+        ov_draw.line([(0, y), (W, y)], fill=(0, 0, 0, alpha))
+    for y in range(H - 220, H):
+        alpha = int(200 * ((y - (H - 220)) / 220))
+        ov_draw.line([(0, y), (W, y)], fill=(0, 0, 0, alpha))
+    canvas = Image.alpha_composite(canvas, overlay)
+    draw = ImageDraw.Draw(canvas)
+
+    # ── Header logo bianco su sfondo semitrasparente ──
+    header_h = 160
+    header_rect = Image.new("RGBA", (W, header_h), palette["primary_dark"][:3] + (230,))
+    canvas.alpha_composite(header_rect, (0, 0))
+    logo = get_logo_trasparente_ufficiale(max_w=320, max_h=110)
+    if logo:
+        lw, lh = logo.size
+        lx = (W - lw) // 2
+        ly = (header_h - lh) // 2
+        canvas.alpha_composite(logo, (lx, ly))
+
+    # ── Barra blu inferiore con nome stanza ──
+    barra_h = 160
+    barra_y = H - barra_h
+    barra_rect = Image.new("RGBA", (W, barra_h), palette["primary_dark"][:3] + (250,))
+    canvas.alpha_composite(barra_rect, (0, barra_y))
+    draw = ImageDraw.Draw(canvas)
+
+    # Nome stanza ricavato dal titolo o da testoF colonna F
+    testo_f = str(media_info.get("testoF", "")).strip()
+    titolo = str(media_info.get("titolo", "SOGGIORNO")).strip().upper()
+    # Cerca nome ambiente nel titolo (SOGGIORNO, CUCINA, CAMERA, BAGNO, ecc.)
+    ambienti_noti = ["SOGGIORNO", "CUCINA", "CAMERA", "BAGNO", "INGRESSO", "TERRAZZO",
+                     "GIARDINO", "GARAGE", "CANTINA", "STUDIO", "SALA", "SALOTTO"]
+    nome_stanza = titolo
+    for amb in ambienti_noti:
+        if amb in titolo.upper():
+            nome_stanza = amb
+            break
+
+    font_stanza = get_font(90, bold=True, font_type="sans")
+    bbox = draw.textbbox((0, 0), nome_stanza, font=font_stanza)
+    tx = (W - (bbox[2] - bbox[0])) // 2
+    ty = barra_y + (barra_h - (bbox[3] - bbox[1])) // 2
+    draw.text((tx, ty), nome_stanza, font=font_stanza, fill=(255, 255, 255, 255))
+
+    # Watermark logo leggero al centro
+    wm_logo = get_logo_trasparente_ufficiale(max_w=400, max_h=140, alpha=55)
+    if wm_logo:
+        wl, wh = wm_logo.size
+        canvas.alpha_composite(wm_logo, ((W - wl) // 2, (H - wh) // 2))
+
+    # Brand finale (RULE user_global)
+    font_brand = get_font(36, bold=False, font_type="sans")
+    brand_txt = "— Immobiliare Giancani"
+    bb = draw.textbbox((0, 0), brand_txt, font=font_brand)
+    draw = ImageDraw.Draw(canvas)
+    draw.text(((W - (bb[2]-bb[0])) // 2, H - barra_h - 46), brand_txt,
+              font=font_brand, fill=(255, 255, 255, 180))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=97)
+    print(f"[ROOM_LABEL] Salvato: {output_path}")
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🏡 8. STILE "IDEACASA LAYOUT" — Logo TL, titolo TR, foto centrale, footer split (ref img2)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_story_ideacasa_layout_9_16(media_info, palette=None, output_path=None):
+    """Layout 1:1 adattato a 9:16: logo top-left, titolo bold top-right,
+       foto centrale grande con watermark, footer split RIFERIMENTO | CARATTERISTICHE."""
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_ideacasa_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    canvas = Image.new("RGBA", (W, H), (255, 255, 255, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    titolo = str(media_info.get("titolo", "VILLA CON GIARDINO")).strip().upper()
+    zona = str(media_info.get("zona", "FAVARA (AG)")).strip().upper()
+    prezzo_raw = str(media_info.get("prezzo", "Trattativa Riservata")).strip()
+    if prezzo_raw.isdigit():
+        prezzo_str = f"€ {int(prezzo_raw):,}".replace(",", ".")
+    elif "€" not in prezzo_raw and any(c.isdigit() for c in prezzo_raw):
+        prezzo_str = f"€ {prezzo_raw}"
+    else:
+        prezzo_str = prezzo_raw
+    mq_str = formatta_metri_quadri(media_info.get("mq", "135"))
+    codice_rif = str(media_info.get("codiceRif", media_info.get("tabName", "GIANCANI"))).replace("_", " ").upper()
+    # Estrai caratteristiche dal testoF (Colonna F) - max 6 bullet
+    testo_f = str(media_info.get("testoF", "")).strip()
+    caratteristiche = []
+    if testo_f:
+        lines = [l.strip("•●-– ").strip() for l in re.split(r"[\n|;]|(?<=\w)\. (?=[A-Z])", testo_f) if l.strip()]
+        caratteristiche = lines[:6]
+    if not caratteristiche:
+        caratteristiche = [mq_str, prezzo_str, "Vista panoramica", "Finiture di pregio"]
+
+    HEADER_H = 220  # altezza header
+    PHOTO_H  = 1060  # altezza foto centrale (più grande per 9:16)
+    FOOTER_H = 430  # altezza footer split
+    MARGIN_H = H - HEADER_H - PHOTO_H - FOOTER_H  # margine bianco tra foto e footer
+
+    # ── HEADER ──
+    header_color = palette["primary_dark"]
+    draw.rectangle([(0, 0), (W, HEADER_H)], fill=header_color)
+
+    logo = get_logo_trasparente_ufficiale(max_w=280, max_h=140)
+    if logo:
+        lw, lh = logo.size
+        ly = (HEADER_H - lh) // 2
+        canvas.alpha_composite(logo, (24, ly))
+
+    # Titolo top-right
+    font_tit = get_font(56, bold=True, font_type="sans")
+    title_text = f"{titolo}\n- {zona}"
+    title_x = 330
+    title_w = W - title_x - 24
+    # Wrapping manuale
+    words = title_text.replace("\n", " \n ").split()
+    lines_out = []
+    current = ""
+    for w in words:
+        if w == "\n":
+            lines_out.append(current.strip())
+            current = ""
+        else:
+            test = (current + " " + w).strip()
+            bb = draw.textbbox((0, 0), test, font=font_tit)
+            if bb[2] - bb[0] > title_w and current:
+                lines_out.append(current.strip())
+                current = w
+            else:
+                current = test
+    if current:
+        lines_out.append(current.strip())
+
+    total_th = sum(draw.textbbox((0, 0), l, font=font_tit)[3] - draw.textbbox((0, 0), l, font=font_tit)[1] + 8 for l in lines_out)
+    ty_start = (HEADER_H - total_th) // 2
+    for li, line in enumerate(lines_out):
+        bb = draw.textbbox((0, 0), line, font=font_tit)
+        draw.text((title_x, ty_start), line, font=font_tit, fill=(255, 255, 255, 255))
+        ty_start += (bb[3] - bb[1]) + 8
+
+    # ── PHOTO ──
+    photo_y = HEADER_H
+    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl", "")
+    foto_img = None
+    try:
+        if foto_url.startswith("http"):
+            import io as _io
+            resp = requests.get(foto_url, timeout=12)
+            foto_img = Image.open(_io.BytesIO(resp.content)).convert("RGBA")
+        elif foto_url and os.path.exists(foto_url):
+            foto_img = Image.open(foto_url).convert("RGBA")
+    except Exception:
+        pass
+
+    draw.rectangle([(0, photo_y), (W, photo_y + PHOTO_H)], fill=(200, 200, 210, 255))
+    if foto_img:
+        fw, fh = foto_img.size
+        scale = max(W / fw, PHOTO_H / fh)
+        nw, nh = int(fw * scale), int(fh * scale)
+        foto_img = foto_img.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - W) // 2
+        oy = (nh - PHOTO_H) // 2
+        canvas.paste(foto_img.crop((ox, oy, ox + W, oy + PHOTO_H)).convert("RGB"), (0, photo_y))
+
+    # Watermark logo centro foto
+    wm = get_logo_trasparente_ufficiale(max_w=380, max_h=130, alpha=50)
+    if wm:
+        wl, wh = wm.size
+        canvas.alpha_composite(wm, ((W - wl) // 2, photo_y + (PHOTO_H - wh) // 2))
+
+    # Margine bianco
+    margin_y = photo_y + PHOTO_H
+    draw = ImageDraw.Draw(canvas)
+    draw.rectangle([(0, margin_y), (W, margin_y + MARGIN_H)], fill=(255, 255, 255, 255))
+
+    # ── FOOTER SPLIT ──
+    footer_y = H - FOOTER_H
+    draw.rectangle([(0, footer_y), (W, H)], fill=palette["primary_dark"])
+
+    # Linea diagonale divisoria
+    mid_x = W // 3
+    draw.polygon([(0, footer_y), (mid_x + 60, footer_y), (mid_x - 10, H), (0, H)],
+                 fill=palette["accent"][:3] + (255,))
+
+    # Lato sinistro: RIFERIMENTO
+    font_rif_lbl = get_font(42, bold=True, font_type="sans")
+    font_rif_num = get_font(90, bold=True, font_type="sans")
+    draw.text((30, footer_y + 30), "RIFERIMENTO", font=font_rif_lbl, fill=(255, 255, 255, 255))
+    draw.text((30, footer_y + 90), codice_rif.replace("RIF. ", ""), font=font_rif_num, fill=palette["accent"])
+
+    # Lato destro: CARATTERISTICHE
+    car_x = mid_x + 80
+    font_car_lbl = get_font(44, bold=True, font_type="sans")
+    font_car_li  = get_font(34, bold=False, font_type="sans")
+    draw.text((car_x, footer_y + 22), "CARATTERISTICHE", font=font_car_lbl, fill=(255, 255, 255, 255))
+    half = math.ceil(len(caratteristiche) / 2)
+    left_col  = caratteristiche[:half]
+    right_col = caratteristiche[half:]
+    col2_x = car_x + (W - car_x - 30) // 2
+    for i, car in enumerate(left_col):
+        y_c = footer_y + 88 + i * 55
+        draw.text((car_x, y_c), f"• {car}", font=font_car_li, fill=(255, 255, 255, 255))
+    for i, car in enumerate(right_col):
+        y_c = footer_y + 88 + i * 55
+        draw.text((col2_x, y_c), f"• {car}", font=font_car_li, fill=(255, 255, 255, 255))
+
+    # Brand finale
+    font_brand = get_font(34, bold=True, font_type="sans")
+    brand_txt = "Immobiliare Giancani"
+    bb = draw.textbbox((0, 0), brand_txt, font=font_brand)
+    bx = (W - (bb[2] - bb[0])) // 2
+    draw.text((bx, H - 52), brand_txt, font=font_brand, fill=palette["accent"])
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=97)
+    print(f"[IDEACASA] Salvato: {output_path}")
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🃏 9. STILE "CASAIT CARD" — Card bianca su sfondo scuro, badge icone, bottone CTA (ref img3)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_story_casait_card_9_16(media_info, palette=None, output_path=None):
+    """Card bianca centrata su sfondo scuro, header colorato logo+titolo,
+       foto immobile, badge prezzo+icone, bottone CTA — Immobiliare Giancani."""
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_casait_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    # Sfondo scuro
+    canvas = Image.new("RGBA", (W, H), (30, 30, 40, 255))
+    draw = ImageDraw.Draw(canvas)
+    # Gradiente sfondo sottile
+    for y in range(H):
+        alpha = int(40 * abs(math.sin(math.pi * y / H)))
+        draw.line([(0, y), (W, y)], fill=palette["primary_dark"][:3] + (alpha,))
+
+    # Card bianca arrotondata centrata
+    CARD_MARGIN = 50
+    CARD_W = W - CARD_MARGIN * 2
+    CARD_TOP = 160
+    CARD_BOTTOM = H - 220
+    card_h = CARD_BOTTOM - CARD_TOP
+    card_rect = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    card_draw = ImageDraw.Draw(card_rect)
+    card_draw.rounded_rectangle(
+        [(CARD_MARGIN, CARD_TOP), (W - CARD_MARGIN, CARD_BOTTOM)],
+        radius=40, fill=(255, 255, 255, 255)
+    )
+    canvas.alpha_composite(card_rect)
+    draw = ImageDraw.Draw(canvas)
+
+    # ── Card Header colorato ──
+    CARD_HEADER_H = 140
+    head_rect = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    head_draw = ImageDraw.Draw(head_rect)
+    head_draw.rounded_rectangle(
+        [(CARD_MARGIN, CARD_TOP), (W - CARD_MARGIN, CARD_TOP + CARD_HEADER_H)],
+        radius=40, fill=palette["primary_dark"][:3] + (255,)
+    )
+    # Ripristina angoli bassi header
+    head_draw.rectangle(
+        [(CARD_MARGIN, CARD_TOP + 40), (W - CARD_MARGIN, CARD_TOP + CARD_HEADER_H)],
+        fill=palette["primary_dark"][:3] + (255,)
+    )
+    canvas.alpha_composite(head_rect)
+    draw = ImageDraw.Draw(canvas)
+
+    # Logo nella header card
+    logo = get_logo_trasparente_ufficiale(max_w=260, max_h=100)
+    if logo:
+        lw, lh = logo.size
+        canvas.alpha_composite(logo, (CARD_MARGIN + 20, CARD_TOP + (CARD_HEADER_H - lh) // 2))
+
+    titolo = str(media_info.get("titolo", "Appartamento in Vendita")).strip()
+    zona = str(media_info.get("zona", "Favara")).strip()
+    font_tit_card = get_font(44, bold=True, font_type="sans")
+    max_title_w = CARD_W - 290 - 20
+    words_t = titolo.split()
+    line1, line2 = "", ""
+    for w in words_t:
+        test = (line1 + " " + w).strip()
+        bb = draw.textbbox((0, 0), test, font=font_tit_card)
+        if bb[2] - bb[0] <= max_title_w:
+            line1 = test
+        else:
+            line2 = (line2 + " " + w).strip()
+    tx_card = CARD_MARGIN + 290
+    draw.text((tx_card, CARD_TOP + 18), line1, font=font_tit_card, fill=(255, 255, 255, 255))
+    if line2:
+        draw.text((tx_card, CARD_TOP + 68), line2, font=font_tit_card, fill=palette["accent"])
+    else:
+        draw.text((tx_card, CARD_TOP + 68), zona, font=font_tit_card, fill=palette["accent"])
+
+    # ── Foto nella card ──
+    FOTO_TOP = CARD_TOP + CARD_HEADER_H + 4
+    FOTO_H = 640
+    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl", "")
+    try:
+        if foto_url.startswith("http"):
+            import io as _io
+            resp = requests.get(foto_url, timeout=12)
+            foto_img = Image.open(_io.BytesIO(resp.content)).convert("RGB")
+        elif foto_url and os.path.exists(foto_url):
+            foto_img = Image.open(foto_url).convert("RGB")
+        else:
+            foto_img = None
+    except Exception:
+        foto_img = None
+
+    # Clip foto in area card
+    foto_area_w = CARD_W
+    if foto_img:
+        fw, fh = foto_img.size
+        scale = max(foto_area_w / fw, FOTO_H / fh)
+        nw, nh = int(fw * scale), int(fh * scale)
+        foto_img = foto_img.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - foto_area_w) // 2
+        oy = (nh - FOTO_H) // 2
+        foto_crop = foto_img.crop((ox, oy, ox + foto_area_w, oy + FOTO_H))
+        canvas.paste(foto_crop, (CARD_MARGIN, FOTO_TOP))
+    else:
+        draw.rectangle([(CARD_MARGIN, FOTO_TOP), (W - CARD_MARGIN, FOTO_TOP + FOTO_H)],
+                       fill=(180, 180, 190))
+
+    # ── Banda prezzo in basso sulla foto ──
+    prezzo_raw = str(media_info.get("prezzo", "")).strip()
+    if prezzo_raw.isdigit():
+        prezzo_str = f"€ {int(prezzo_raw):,}".replace(",", ".")
+    elif "€" not in prezzo_raw and any(c.isdigit() for c in prezzo_raw):
+        prezzo_str = f"€ {prezzo_raw}"
+    else:
+        prezzo_str = prezzo_raw if prezzo_raw else "Trattativa Riservata"
+
+    PRICE_BAR_H = 90
+    price_bar_y = FOTO_TOP + FOTO_H - PRICE_BAR_H
+    draw.rectangle([(CARD_MARGIN, price_bar_y), (CARD_MARGIN + 300, FOTO_TOP + FOTO_H)],
+                   fill=palette["primary_dark"][:3] + (230,))
+    font_prezzo = get_font(58, bold=True, font_type="sans")
+    draw.text((CARD_MARGIN + 16, price_bar_y + 14), prezzo_str, font=font_prezzo, fill=(255, 255, 255, 255))
+
+    # Badge icone (locali, bagni, mq) a destra in basso sulla foto
+    mq_str = formatta_metri_quadri(media_info.get("mq", "120"))
+    locali = str(media_info.get("locali", "4"))
+    bagni  = str(media_info.get("bagni", "1"))
+    badges = [(f"{locali}", "▦"), (f"{bagni}", "🛁"), (mq_str.split()[0], "📐")]
+    badge_w, badge_h = 150, 90
+    badges_total_w = len(badges) * (badge_w + 10) - 10
+    badges_x_start = W - CARD_MARGIN - badges_total_w
+    badges_y = FOTO_TOP + FOTO_H - badge_h - 10
+    for i, (val, icon) in enumerate(badges):
+        bx = badges_x_start + i * (badge_w + 10)
+        draw.rounded_rectangle([(bx, badges_y), (bx + badge_w, badges_y + badge_h)],
+                                radius=12, fill=(255, 255, 255, 230))
+        font_badge_lbl = get_font(28, bold=False, font_type="sans")
+        font_badge_val = get_font(38, bold=True, font_type="sans")
+        draw.text((bx + 8, badges_y + 4), icon, font=font_badge_lbl, fill=palette["primary_dark"])
+        draw.text((bx + 8, badges_y + 36), val, font=font_badge_val, fill=palette["primary_dark"])
+
+    # ── Bottone CTA ──
+    CTA_Y = FOTO_TOP + FOTO_H + 40
+    CTA_H = 110
+    CTA_W = CARD_W - 80
+    CTA_X = CARD_MARGIN + 40
+    draw.rounded_rectangle([(CTA_X, CTA_Y), (CTA_X + CTA_W, CTA_Y + CTA_H)],
+                            radius=55, fill=palette["accent"][:3] + (255,))
+    font_cta = get_font(52, bold=True, font_type="sans")
+    cta_txt = "🔗 Scopri di più"
+    bb = draw.textbbox((0, 0), cta_txt, font=font_cta)
+    draw.text(((W - (bb[2] - bb[0])) // 2, CTA_Y + (CTA_H - (bb[3] - bb[1])) // 2),
+              cta_txt, font=font_cta, fill=(255, 255, 255, 255))
+
+    # Brand finale
+    font_brand = get_font(40, bold=True, font_type="sans")
+    brand_txt = "Immobiliare Giancani"
+    bb = draw.textbbox((0, 0), brand_txt, font=font_brand)
+    draw.text(((W - (bb[2] - bb[0])) // 2, CARD_BOTTOM + 30), brand_txt,
+              font=font_brand, fill=(255, 255, 255, 255))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=97)
+    print(f"[CASAIT_CARD] Salvato: {output_path}")
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🏗️ 10. STILE "TECNOCASA MULTI" — Titolo bold, foto grande + 2 mini, badge, CTA (ref img4)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_story_tecnocasa_multi_9_16(media_info, palette=None, output_path=None):
+    """Titolo bold grande in alto, foto principale + 2 mini affiancate,
+       badge icone, prezzo grande, bottone CTA, footer logo + recapiti."""
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_tecnocasa_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    canvas = Image.new("RGBA", (W, H), (255, 255, 255, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    # Estrai dati da Colonna F (testoF) e campi
+    titolo = str(media_info.get("titolo", "IMMOBILE DI PRESTIGIO")).strip().upper()
+    zona = str(media_info.get("zona", "FAVARA - AGRIGENTO")).strip().upper()
+    prezzo_raw = str(media_info.get("prezzo", "")).strip()
+    if prezzo_raw.isdigit():
+        prezzo_str = f"€ {int(prezzo_raw):,}".replace(",", ".")
+    elif "€" not in prezzo_raw and any(c.isdigit() for c in prezzo_raw):
+        prezzo_str = f"€ {prezzo_raw}"
+    else:
+        prezzo_str = prezzo_raw if prezzo_raw else "Trattativa Riservata"
+    mq_str = formatta_metri_quadri(media_info.get("mq", "120"))
+    locali = str(media_info.get("locali", "4"))
+    testo_f = str(media_info.get("testoF", "")).strip()  # Colonna F
+    codice_rif = str(media_info.get("codiceRif", media_info.get("tabName", "RIF. GIANCANI"))).replace("_"," ").upper()
+
+    # ── TITOLO BOLD GRANDE sopra (top 0-480) ──
+    TITLE_AREA_H = 480
+
+    # Sfondo bianco + accent line sinistra
+    draw.rectangle([(0, 0), (W, TITLE_AREA_H)], fill=(255, 255, 255, 255))
+    draw.rectangle([(0, 0), (12, TITLE_AREA_H)], fill=palette["accent"])
+
+    # Titolo in 2-3 righe bold grandi (font ~88 per le prime parole chiave)
+    words_title = titolo.split()
+    font_big = get_font(96, bold=True, font_type="sans")
+    font_med = get_font(64, bold=True, font_type="sans")
+    font_sub = get_font(46, bold=False, font_type="sans")
+
+    # Prima riga: prime 2-3 parole in grande
+    line_big = " ".join(words_title[:2])
+    line_med = " ".join(words_title[2:4]) if len(words_title) > 2 else ""
+    line_sub = zona
+
+    ty = 30
+    draw.text((40, ty), line_big, font=font_big, fill=palette["primary_dark"])
+    ty += draw.textbbox((0, 0), line_big, font=font_big)[3] + 6
+    if line_med:
+        draw.text((40, ty), line_med, font=font_med, fill=palette["accent"])
+        ty += draw.textbbox((0, 0), line_med, font=font_med)[3] + 6
+    # Sottotitolo zona + linea divisoria
+    draw.text((40, ty), line_sub, font=font_sub, fill=(100, 100, 120))
+    ty += draw.textbbox((0, 0), line_sub, font=font_sub)[3] + 10
+    draw.line([(40, ty + 4), (W - 40, ty + 4)], fill=palette["accent"], width=4)
+
+    # Badge caratteristiche sopra foto
+    ty += 22
+    icon_badges = [(f"📐  {mq_str}", "mq"), (f"🛏️  {locali} LOCALI", "locali")]
+    font_badge = get_font(40, bold=False, font_type="sans")
+    for badge_txt, _ in icon_badges:
+        draw.text((40, ty), badge_txt, font=font_badge, fill=palette["primary_dark"])
+        ty += 56
+
+    # ── FOTO PRINCIPALE grande (480 - 1120) ──
+    MAIN_FOTO_TOP = TITLE_AREA_H
+    MAIN_FOTO_H = 640
+    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl", "")
+    foto_img = None
+    try:
+        if foto_url.startswith("http"):
+            import io as _io
+            resp = requests.get(foto_url, timeout=12)
+            foto_img = Image.open(_io.BytesIO(resp.content)).convert("RGB")
+        elif foto_url and os.path.exists(foto_url):
+            foto_img = Image.open(foto_url).convert("RGB")
+    except Exception:
+        pass
+
+    draw.rectangle([(0, MAIN_FOTO_TOP), (W, MAIN_FOTO_TOP + MAIN_FOTO_H)], fill=(190, 190, 200))
+    if foto_img:
+        fw, fh = foto_img.size
+        scale = max(W / fw, MAIN_FOTO_H / fh)
+        nw, nh = int(fw * scale), int(fh * scale)
+        foto_img = foto_img.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - W) // 2
+        oy = (nh - MAIN_FOTO_H) // 2
+        canvas.paste(foto_img.crop((ox, oy, ox + W, oy + MAIN_FOTO_H)), (0, MAIN_FOTO_TOP))
+
+    # ── 2 FOTO MINI affiancate ──
+    MINI_TOP = MAIN_FOTO_TOP + MAIN_FOTO_H + 12
+    MINI_H = 310
+    MINI_W = (W - 36) // 2
+    # Per demo usiamo la stessa foto scalata diversamente
+    for i in range(2):
+        mx = 12 + i * (MINI_W + 12)
+        draw.rounded_rectangle([(mx, MINI_TOP), (mx + MINI_W, MINI_TOP + MINI_H)],
+                                radius=16, fill=(200, 200, 210))
+        if foto_img:
+            try:
+                thumb = foto_img.copy()
+                tw, th = thumb.size
+                scale2 = max(MINI_W / tw, MINI_H / th)
+                nw2, nh2 = int(tw * scale2), int(th * scale2)
+                thumb = thumb.resize((nw2, nh2), Image.LANCZOS)
+                # offset diverso per variare
+                ox2 = (nw2 - MINI_W) // 2
+                oy2 = (nh2 - MINI_H) // 2 + i * 50
+                oy2 = max(0, min(oy2, nh2 - MINI_H))
+                mini_crop = thumb.crop((ox2, oy2, ox2 + MINI_W, oy2 + MINI_H))
+                # mask arrotondata
+                mask = Image.new("L", (MINI_W, MINI_H), 0)
+                ImageDraw.Draw(mask).rounded_rectangle([(0,0),(MINI_W,MINI_H)], radius=16, fill=255)
+                mini_rgba = mini_crop.convert("RGBA")
+                mini_rgba.putalpha(mask)
+                canvas.alpha_composite(mini_rgba, (mx, MINI_TOP))
+            except Exception:
+                pass
+
+    # ── PREZZO GRANDE + Badge icone feature ──
+    PRICE_TOP = MINI_TOP + MINI_H + 24
+    font_price_lbl = get_font(36, bold=False, font_type="sans")
+    font_price_big = get_font(90, bold=True, font_type="sans")
+    draw.text((40, PRICE_TOP), "PREZZO", font=font_price_lbl, fill=(130, 130, 150))
+    draw.text((40, PRICE_TOP + 46), prezzo_str, font=font_price_big, fill=palette["primary_dark"])
+
+    # Feature badges orizzontali
+    testo_f_short = testo_f[:80] if testo_f else "Posizione esclusiva · Vista panoramica · Finiture di pregio"
+    feat_list = [f.strip() for f in re.split(r"[\n|•;]", testo_f_short) if f.strip()][:3]
+    FEAT_TOP = PRICE_TOP + 166
+    feat_bar_h = 68
+    feat_w = (W - 48) // max(len(feat_list), 1)
+    font_feat = get_font(30, bold=False, font_type="sans")
+    for i, feat in enumerate(feat_list):
+        fx = 12 + i * (feat_w + 12)
+        draw.rounded_rectangle([(fx, FEAT_TOP), (fx + feat_w, FEAT_TOP + feat_bar_h)],
+                                radius=34, outline=palette["primary_dark"][:3] + (200,), width=3,
+                                fill=(248, 248, 255))
+        bb = draw.textbbox((0, 0), feat, font=font_feat)
+        tx = fx + (feat_w - (bb[2]-bb[0])) // 2
+        ty_f = FEAT_TOP + (feat_bar_h - (bb[3]-bb[1])) // 2
+        draw.text((tx, ty_f), feat, font=font_feat, fill=palette["primary_dark"])
+
+    # ── BOTTONE CTA ──
+    CTA_TOP = FEAT_TOP + feat_bar_h + 28
+    CTA_H = 120
+    CTA_W = W - 80
+    draw.rounded_rectangle([(40, CTA_TOP), (40 + CTA_W, CTA_TOP + CTA_H)],
+                            radius=60, fill=palette["accent"][:3] + (255,))
+    font_cta = get_font(52, bold=True, font_type="sans")
+    cta_txt = "▶ CHIEDI FOTO E INFORMAZIONI"
+    bb = draw.textbbox((0, 0), cta_txt, font=font_cta)
+    draw.text(((W - (bb[2]-bb[0])) // 2, CTA_TOP + (CTA_H - (bb[3]-bb[1])) // 2),
+              cta_txt, font=font_cta, fill=(255, 255, 255, 255))
+
+    # ── FOOTER logo + recapiti ──
+    FOOTER_TOP = CTA_TOP + CTA_H + 16
+    FOOTER_H = H - FOOTER_TOP
+    if FOOTER_H < 60:
+        FOOTER_H = 60
+    draw.rectangle([(0, FOOTER_TOP), (W, H)], fill=palette["primary_dark"])
+    logo = get_logo_trasparente_ufficiale(max_w=260, max_h=90)
+    if logo:
+        lw, lh = logo.size
+        canvas.alpha_composite(logo, (24, FOOTER_TOP + (FOOTER_H - lh) // 2))
+
+    font_recapiti = get_font(34, bold=False, font_type="sans")
+    recapiti = "📞 0922 123456  |  immobiliaregiancani.it"
+    draw.text((320, FOOTER_TOP + 8), "Immobiliare Giancani", font=get_font(38, bold=True), fill=palette["accent"])
+    draw.text((320, FOOTER_TOP + 52), recapiti, font=font_recapiti, fill=(220, 220, 230))
+    draw.text((W - 300, FOOTER_TOP + 22), codice_rif, font=font_recapiti, fill=(200, 200, 220))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=97)
+    print(f"[TECNOCASA_MULTI] Salvato: {output_path}")
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📡 11. CARD "ANNUNCIO DIRETTA LIVE" — A random ogni 30 minuti (25% prob)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_card_annuncio_diretta_9_16(media_info, orario_diretta=None, palette=None, output_path=None):
+    """Card speciale di annuncio diretta live con foto immobile, orario, invito a partecipare.
+       Usa i colori del giorno — Immobiliare Giancani."""
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"card_annuncio_diretta_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+    if not orario_diretta:
+        now = datetime.datetime.now()
+        # Prossima mezz'ora tonda
+        minutes = now.minute
+        if minutes < 30:
+            orario_diretta = now.replace(minute=30, second=0).strftime("%H:%M")
+        else:
+            orario_diretta = (now + datetime.timedelta(hours=1)).replace(minute=0, second=0).strftime("%H:%M")
+
+    canvas = Image.new("RGBA", (W, H), palette["primary_dark"])
+    draw = ImageDraw.Draw(canvas)
+
+    # Sfondo gradiente dinamico
+    for y in range(H):
+        ratio = y / H
+        r = int(palette["primary_dark"][0] * (1 - ratio * 0.5) + palette["primary_mid"][0] * ratio * 0.5)
+        g = int(palette["primary_dark"][1] * (1 - ratio * 0.5) + palette["primary_mid"][1] * ratio * 0.5)
+        b = int(palette["primary_dark"][2] * (1 - ratio * 0.5) + palette["primary_mid"][2] * ratio * 0.5)
+        draw.line([(0, y), (W, y)], fill=(max(0,min(255,r)), max(0,min(255,g)), max(0,min(255,b)), 255))
+
+    # ── LIVE badge top ──
+    badge_live_w, badge_live_h = 220, 74
+    badge_x = (W - badge_live_w) // 2
+    badge_y = 60
+    draw.rounded_rectangle([(badge_x, badge_y), (badge_x + badge_live_w, badge_y + badge_live_h)],
+                            radius=37, fill=(220, 30, 30, 255))
+    font_live = get_font(50, bold=True, font_type="sans")
+    draw.text((badge_x + 24, badge_y + 10), "● LIVE", font=font_live, fill=(255, 255, 255))
+
+    # Logo Giancani
+    logo = get_logo_trasparente_ufficiale(max_w=400, max_h=130)
+    if logo:
+        lw, lh = logo.size
+        canvas.alpha_composite(logo, ((W - lw) // 2, badge_y + badge_live_h + 30))
+
+    # ── Titolo invito ──
+    font_invito_big = get_font(88, bold=True, font_type="sans")
+    font_invito_med = get_font(58, bold=False, font_type="sans")
+    inv_y = badge_y + badge_live_h + 200
+
+    testo_invito_lines = ["UNISCITI ALLA", "DIRETTA STREAMING!"]
+    for line in testo_invito_lines:
+        bb = draw.textbbox((0, 0), line, font=font_invito_big)
+        draw.text(((W - (bb[2]-bb[0])) // 2, inv_y), line, font=font_invito_big, fill=(255, 255, 255, 255))
+        inv_y += (bb[3]-bb[1]) + 14
+
+    # ── Orario ──
+    font_orario_lbl = get_font(48, bold=False, font_type="sans")
+    font_orario_big = get_font(160, bold=True, font_type="sans")
+    draw.text(((W - draw.textbbox((0,0), "Entriamo LIVE alle:", font=font_orario_lbl)[2]) // 2,
+               inv_y + 20), "Entriamo LIVE alle:", font=font_orario_lbl, fill=(220, 220, 240))
+    inv_y += 80
+    bb_ora = draw.textbbox((0, 0), orario_diretta, font=font_orario_big)
+    draw.text(((W - (bb_ora[2]-bb_ora[0])) // 2, inv_y), orario_diretta,
+              font=font_orario_big, fill=palette["accent"])
+    inv_y += (bb_ora[3]-bb_ora[1]) + 20
+
+    # ── Foto immobile circolare (o rettangolare arrotondata) ──
+    FOTO_TOP = inv_y + 20
+    FOTO_SIDE = 600
+    FOTO_X = (W - FOTO_SIDE) // 2
+
+    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl", "")
+    foto_img = None
+    try:
+        if foto_url.startswith("http"):
+            import io as _io
+            resp = requests.get(foto_url, timeout=12)
+            foto_img = Image.open(_io.BytesIO(resp.content)).convert("RGB")
+        elif foto_url and os.path.exists(foto_url):
+            foto_img = Image.open(foto_url).convert("RGB")
+    except Exception:
+        pass
+
+    # Frame colorato intorno alla foto
+    frame_pad = 14
+    draw.rounded_rectangle(
+        [(FOTO_X - frame_pad, FOTO_TOP - frame_pad),
+         (FOTO_X + FOTO_SIDE + frame_pad, FOTO_TOP + FOTO_SIDE + frame_pad)],
+        radius=40, fill=palette["accent"][:3] + (255,)
+    )
+
+    if foto_img:
+        fw, fh = foto_img.size
+        scale = max(FOTO_SIDE / fw, FOTO_SIDE / fh)
+        nw, nh = int(fw * scale), int(fh * scale)
+        foto_img = foto_img.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - FOTO_SIDE) // 2
+        oy = (nh - FOTO_SIDE) // 2
+        foto_crop = foto_img.crop((ox, oy, ox + FOTO_SIDE, oy + FOTO_SIDE))
+        # Mask arrotondata
+        mask = Image.new("L", (FOTO_SIDE, FOTO_SIDE), 0)
+        ImageDraw.Draw(mask).rounded_rectangle([(0,0),(FOTO_SIDE,FOTO_SIDE)], radius=28, fill=255)
+        foto_rgba = foto_crop.convert("RGBA")
+        foto_rgba.putalpha(mask)
+        canvas.alpha_composite(foto_rgba, (FOTO_X, FOTO_TOP))
+
+    # Titolo immobile sotto foto
+    titolo = str(media_info.get("titolo", "Immobile Esclusivo")).strip()
+    testo_f = str(media_info.get("testoF", "")).strip()  # Colonna F
+    font_tit_im = get_font(48, bold=True, font_type="sans")
+    bb_tit = draw.textbbox((0, 0), titolo, font=font_tit_im)
+    tit_y = FOTO_TOP + FOTO_SIDE + 24
+    draw.text(((W - (bb_tit[2]-bb_tit[0])) // 2, tit_y), titolo, font=font_tit_im, fill=(255, 255, 255, 255))
+
+    # Snippet dal testo F (Colonna F) — max 80 caratteri
+    snippet = testo_f[:80].strip() + ("…" if len(testo_f) > 80 else "") if testo_f else ""
+    if snippet:
+        font_snip = get_font(34, bold=False, font_type="sans")
+        bb_snip = draw.textbbox((0, 0), snippet, font=font_snip)
+        draw.text(((W - (bb_snip[2]-bb_snip[0])) // 2, tit_y + 66), snippet,
+                  font=font_snip, fill=(210, 210, 230))
+
+    # ── Brand finale prominente ──
+    font_brand = get_font(46, bold=True, font_type="sans")
+    brand_txt = "— Immobiliare Giancani —"
+    bb_br = draw.textbbox((0, 0), brand_txt, font=font_brand)
+    draw.text(((W - (bb_br[2]-bb_br[0])) // 2, H - 80), brand_txt,
+              font=font_brand, fill=palette["accent"])
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=97)
+    print(f"[ANNUNCIO_DIRETTA] Salvato: {output_path}")
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎯 6. DISPATCHER GENERATORE UNIFICATO (8 stili + card diretta)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def crea_story_9_16(media_info, style="auto", palette=None, output_path=None, day_of_week=None):
     if palette is None:
         palette = get_palette_del_giorno(day_of_week)
 
-    stili_disponibili = ["marketing_banner", "split_screen", "luxury_glass", "editorial"]
+    stili_disponibili = [
+        "marketing_banner",
+        "split_screen",
+        "luxury_glass",
+        "editorial",
+        "room_label",
+        "ideacasa_layout",
+        "casait_card",
+        "tecnocasa_multi",
+    ]
 
     if not style or style == "auto":
         slot_30m = int(time.time() / 1800)
         style = stili_disponibili[slot_30m % len(stili_disponibili)]
 
     style = style.lower().strip()
-    if style == "marketing_banner" or style == "marketing" or style == "banner":
+
+    if style in ("marketing_banner", "marketing", "banner"):
         return crea_story_marketing_banner_9_16(media_info, palette=palette, output_path=output_path)
-    elif style == "split_screen" or style == "split":
+    elif style in ("split_screen", "split"):
         return crea_story_splitscreen_9_16(media_info, palette=palette, output_path=output_path)
-    elif style == "luxury_glass" or style == "luxury" or style == "glass":
+    elif style in ("luxury_glass", "luxury", "glass"):
         return crea_story_luxury_glass_9_16(media_info, palette=palette, output_path=output_path)
-    elif style == "editorial" or style == "minimal":
+    elif style in ("editorial", "minimal"):
         return crea_story_editorial_9_16(media_info, palette=palette, output_path=output_path)
+    elif style in ("room_label", "room", "ambiente"):
+        return crea_story_room_label_9_16(media_info, palette=palette, output_path=output_path)
+    elif style in ("ideacasa_layout", "ideacasa", "idea_casa"):
+        return crea_story_ideacasa_layout_9_16(media_info, palette=palette, output_path=output_path)
+    elif style in ("casait_card", "casait", "card"):
+        return crea_story_casait_card_9_16(media_info, palette=palette, output_path=output_path)
+    elif style in ("tecnocasa_multi", "tecnocasa", "multi"):
+        return crea_story_tecnocasa_multi_9_16(media_info, palette=palette, output_path=output_path)
+    elif style in ("annuncio_diretta", "diretta", "live_card"):
+        return crea_card_annuncio_diretta_9_16(media_info, palette=palette, output_path=output_path)
     else:
         return crea_story_marketing_banner_9_16(media_info, palette=palette, output_path=output_path)

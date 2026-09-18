@@ -964,17 +964,31 @@ def crea_story_ideacasa_layout_9_16(media_info, palette=None, output_path=None):
     header_color = palette["primary_dark"]
     draw.rectangle([(0, 0), (W, HEADER_H)], fill=header_color)
 
-    logo = get_logo_trasparente_ufficiale(max_w=280, max_h=140)
+    # Logo Giancani all'interno di un box bianco ad alto contrasto (come ref img IdeaCasa)
+    logo = get_logo_trasparente_ufficiale(max_w=280, max_h=130)
     if logo:
         lw, lh = logo.size
-        ly = (HEADER_H - lh) // 2
-        canvas.alpha_composite(logo, (24, ly))
+        pad_x, pad_y = 18, 12
+        card_w = lw + pad_x * 2
+        card_h = lh + pad_y * 2
+        card_x = 24
+        card_y = (HEADER_H - card_h) // 2
+        # Card bianca con angoli arrotondati ed ombra
+        draw.rounded_rectangle([(card_x + 3, card_y + 3), (card_x + card_w + 3, card_y + card_h + 3)],
+                                radius=18, fill=(0, 0, 0, 60))
+        draw.rounded_rectangle([(card_x, card_y), (card_x + card_w, card_y + card_h)],
+                                radius=18, fill=(255, 255, 255, 255),
+                                outline=palette["accent"][:3] + (220,), width=2)
+        canvas.alpha_composite(logo, (card_x + pad_x, card_y + pad_y))
+        title_x = card_x + card_w + 24
+    else:
+        title_x = 40
+    title_w = W - title_x - 24
 
     # Titolo top-right — font 46 per stare nel HEADER_H senza sforare
     font_tit = get_font(46, bold=True, font_type="sans")
     title_text = f"{titolo}\n- {zona}"
-    title_x = 330
-    title_w = W - title_x - 24
+
     # Wrapping manuale
     words = title_text.replace("\n", " \n ").split()
     lines_out = []
@@ -1677,12 +1691,22 @@ def crea_card_annuncio_diretta_9_16(media_info, orario_diretta=None, palette=Non
                   (lv_cx + 14, CY + badge_live_h//2 + 14)], fill=(255, 80, 80, 255))
     CY += badge_live_h + 22
 
-    # Logo Giancani
+    # Logo Giancani in container bianco ad alto contrasto per massima visibilità
     logo = get_logo_trasparente_ufficiale(max_w=380, max_h=120)
     if logo:
         lw, lh = logo.size
-        canvas.alpha_composite(logo, ((W - lw) // 2, CY))
-        CY += lh + 28
+        pad_x, pad_y = 28, 14
+        card_w = lw + pad_x * 2
+        card_h = lh + pad_y * 2
+        card_x = (W - card_w) // 2
+        # Card bianca con angoli arrotondati ed ombra
+        draw.rounded_rectangle([(card_x + 4, CY + 4), (card_x + card_w + 4, CY + card_h + 4)],
+                                radius=24, fill=(0, 0, 0, 50))
+        draw.rounded_rectangle([(card_x, CY), (card_x + card_w, CY + card_h)],
+                                radius=24, fill=(255, 255, 255, 255),
+                                outline=palette["accent"][:3] + (220,), width=3)
+        canvas.alpha_composite(logo, (card_x + pad_x, CY + pad_y))
+        CY += card_h + 28
     else:
         CY += 20
 

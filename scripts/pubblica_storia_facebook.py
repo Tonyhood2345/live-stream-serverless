@@ -2068,7 +2068,7 @@ def esegui_ciclo_live(style="auto"):
 # ═════════════════════════════════════════════════════════════════════════════
 # GESTIONE MODALITÀ OFFLINE (OGNI ORA)
 # ═════════════════════════════════════════════════════════════════════════════
-def esegui_ciclo_offline():
+def esegui_ciclo_offline(style="auto"):
     """
     Esegue la pubblicazione di una storia ogni ora quando NON si è in diretta live.
     Verifica che non vi sia una diretta in corso, quindi estrae da Post_YouTube o fogli immobili.
@@ -2310,7 +2310,7 @@ def main():
         else:
             esegui_ciclo_live(style=getattr(args, 'style', 'auto'))
     elif args.mode == "offline":
-        esegui_ciclo_offline()
+        esegui_ciclo_offline(style=getattr(args, 'style', 'auto'))
     elif args.mode == "nota":
         fascia_scelta = None
         if getattr(args, 'fascia', 'auto') != 'auto':

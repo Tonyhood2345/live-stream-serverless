@@ -480,6 +480,27 @@ def genera_slide_storia_1920(stanza_data, immobile_info, index, total, logo_img)
     canvas = Image.new('RGBA', (W, H), (8, 11, 19, 255))
 
     foto = scarica_immagine(stanza_data['foto_url'])
+
+    # Integrazione Motore Grafico Unificato 9:16 (4 Stili, 7 Palette Giornaliere, Logo Trasparente HD)
+    try:
+        import motore_grafica_storie as mgs
+        media_info = {
+            'titolo': immobile_info.get('titolo', 'Immobile Selezionato'),
+            'zona': stanza_data.get('stanza_nome', 'Favara (AG)'),
+            'prezzo': stanza_data.get('prezzo', immobile_info.get('prezzo', 'Trattativa Riservata')),
+            'mq': stanza_data.get('mq', immobile_info.get('mq', '120 metri quadri')),
+            'codice_rif': f"STZ-{index}DI{total}",
+            'testoF': stanza_data.get('testo_col_f', ''),
+            'fotoImage': foto
+        }
+        out_unified = os.path.join(OUTPUT_DIR, f"storia_slide_{index}.jpg")
+        res = mgs.crea_story_9_16(media_info, style="auto", output_path=out_unified)
+        if res and os.path.exists(res):
+            print(f"✅ Slide Storia 9:16 creata con Motore Grafico Unificato: {res}")
+            return res
+    except Exception as e_mgs:
+        print(f"Avviso fallback grafica storia carosello: {e_mgs}")
+
     if foto:
         fw, fh = foto.size
         scale = W / fw

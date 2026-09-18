@@ -68,8 +68,8 @@ APPS_SCRIPT_URL = os.environ.get(
     "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
 )
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "7969192465:AAHlUu7Jq1K1e9y3qgV-N66mD3E0rQ1_zQo")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "-1002345678901")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g3dY9qnIIVc_hWzDdOuHm-MS6M")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")
 
 def get_font(size, bold=False, font_type="sans"):
     """Carica font scalato compatibile con Windows e Linux (GitHub Actions)"""

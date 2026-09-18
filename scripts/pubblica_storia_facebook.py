@@ -1612,16 +1612,16 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
     testo_f = media_info.get('testoF', 'Immobile esclusivo selezionato ad Agrigento e Favara.')
     is_live = media_info.get('isLive', False)
 
-    # Selezione Stile Grafico (4 grafiche professionali alternate ogni 30 minuti con palette del giorno)
+    # Selezione Stile Grafico (9 grafiche professionali alternate ogni 30 minuti con palette del giorno/settimana)
     styles = [
-        "marketing_banner", "split_screen", "luxury_glass", "editorial",
+        "capellupo_sidebar", "marketing_banner", "split_screen", "luxury_glass", "editorial",
         "room_label", "ideacasa_layout", "casait_card", "tecnocasa_multi",
     ]
     if not style or style == "auto":
         chosen_style = styles[(int(time.time() / 1800)) % len(styles)]
     else:
-        chosen_style = style if style in styles else "marketing_banner"
-    print(f"🎨 Stile grafico selezionato: {chosen_style.upper()} (rotazione ogni 30 min + palette del giorno)")
+        chosen_style = style if style in styles else "capellupo_sidebar"
+    print(f"🎨 Stile grafico selezionato: {chosen_style.upper()} (rotazione ogni 30 min + palette del giorno/settimana)")
 
     # ── ANNUNCIO DIRETTA LIVE a random (25% delle pubblicazioni ogni 30 min) ──
     import random as _rand_live
@@ -1651,7 +1651,10 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
     # Genera e salva anche il volantino promozionale 1:1 per feed e archivio
     flyer_1x1_path = os.path.join(SCRATCH_DIR, f"flyer_giancani_1x1_{uuid.uuid4().hex[:6]}.png")
     try:
-        if chosen_style == "luxury_glass":
+        import motore_grafica_storie as mgs
+        if chosen_style == "capellupo_sidebar":
+            mgs.crea_flyer_capellupo_sidebar_1_1(media_info, output_path=flyer_1x1_path)
+        elif chosen_style == "luxury_glass":
             crea_grafica_luxury_glass(media_info, flyer_1x1_path, size=(1080, 1080))
         elif chosen_style == "editorial":
             crea_grafica_editorial(media_info, flyer_1x1_path, size=(1080, 1080))

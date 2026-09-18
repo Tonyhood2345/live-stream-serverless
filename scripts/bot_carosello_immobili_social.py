@@ -56,11 +56,11 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 HISTORY_FILE = os.path.join(PROJECT_DIR, "immobili_pubblicati_history.json")
 
 # Credenziali Social
-FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "234931856561526")
-FB_PAGE_TOKEN = os.environ.get(
-    "FB_PAGE_TOKEN",
-    "EAAZAH7q8wRZAEBSaZAm9Q9JGa8ZC7gwAsRJ1n4bPZAIY5ws8VXZAnugJgtZCOvP7HyEd7IEfWeCD5HfmP0ENQh86J3PT7pDFnOt5nPJdpzYyUM6p6AtZBXnXufThdh9ZAczfsE84obRZCOD3UWslSWpxJ058WGrQfXxJYsXtVZBh1ey7j2zuzme2JcEoya10KdL8TfJOpvNHqD8EsionnLI"
-)
+FB_PAGE_ID = (os.environ.get("FB_PAGE_ID") or "234931856561526").strip()
+FB_PAGE_TOKEN = (
+    os.environ.get("FB_PAGE_TOKEN")
+    or "EAAZAH7q8wRZAEBSrhdzTmfl8ZCzdKNEjlxs2DiLoOPinfdZABC7FdxCTmgfnA3A0bMrp2hWMBcEfWr2jIeygQX4eaUvUY9odfl0zKSQi6xY4RddUFrQ2MNL6GichP3oKloZCjRdI6cZCoflKHDmWtXqE7FWM2e9HzOYKCkgn0GVfo9Mdn3wajoshjmZAlPQ5q5iCc3lSyURtp4m8t18"
+).strip()
 IG_ACCOUNT_ID = os.environ.get("IG_ACCOUNT_ID", "17841400301393511")
 
 APPS_SCRIPT_URL = (

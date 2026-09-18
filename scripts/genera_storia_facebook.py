@@ -400,15 +400,21 @@ def genera_voce_invito_conduttori(personaggio="daria", output_voice_path=None):
 
 def crea_audio_mix_storia(personaggio="daria", output_mixed_m4a=None):
     """
-    Combina la musica allegra di sottofondo con la voce del personaggio
+    Combina la musica royalty-free a rotazione anti-ripetizione (> 10 storie) con la voce del personaggio
     effettuando il ducking automatico (voce limpida a 1.2x, musica a 0.22x)
     """
     if not output_mixed_m4a:
         output_mixed_m4a = os.path.join(SCRATCH_DIR, "story_voice_cheerful_audio.m4a")
 
     voice_path = genera_voce_invito_conduttori(personaggio)
-    music_path = genera_audio_musica_allegra()
 
+    try:
+        import gestore_musica_storie as gms
+        return gms.crea_audio_mix_storia_con_voce(voice_path, output_mixed_path=output_mixed_m4a, durata_secondi=15.0)
+    except Exception as e_gms:
+        print(f"Avviso fallback gestore musica in genera_storia_fb: {e_gms}")
+
+    music_path = genera_audio_musica_allegra()
     ffmpeg_bin = find_ffmpeg()
 
     if voice_path and os.path.exists(voice_path):
@@ -425,7 +431,6 @@ def crea_audio_mix_storia(personaggio="daria", output_mixed_m4a=None):
             output_mixed_m4a
         ]
     else:
-        # Solo musica allegra se la voce non è disponibile
         cmd = [
             ffmpeg_bin, "-y",
             "-i", music_path,
@@ -477,7 +482,26 @@ def genera_grafica_storia_facebook(prop_info, output_path=None):
     if not prop_im or not is_image_valid_and_not_black(prop_im):
         raise ValueError("BLOCCO CATEGORICO: Nessuna foto valida dell'immobile in diretta disponibile. Creazione storia annullata per evitare card vuote. — Immobiliare Giancani")
 
-    # SFONDO SFUMATO (BLURRED BACKGROUND)
+    # Integrazione Motore Grafico Unificato (4 Stili 9:16, 7 Palette Giornaliere, Logo Trasparente HD)
+    try:
+        import motore_grafica_storie as mgs
+        media_info = {
+            'titolo': prop_info.get('titolo', 'Immobile di Prestigio'),
+            'zona': prop_info.get('zona', 'Agrigento e Favara'),
+            'prezzo': prop_info.get('prezzo', 'Trattativa Riservata'),
+            'mq': prop_info.get('mq', '120'),
+            'codice_rif': prop_info.get('codice', prop_info.get('id', 'RIF-GIANCANI')),
+            'testoF': prop_info.get('testoF') or prop_info.get('descrizione', ''),
+            'fotoImage': prop_im
+        }
+        res = mgs.crea_story_9_16(media_info, style="auto", output_path=output_path)
+        if res and os.path.exists(res):
+            print(f"✅ Storia 9:16 generata con Motore Grafico Unificato: {res}")
+            return res
+    except Exception as e_mgs:
+        print(f"Avviso fallback grafica: {e_mgs}")
+
+    # SFONDO SFUMATO (BLURRED BACKGROUND - FALLBACK)
     bg_ratio = max(W / prop_im.width, H / prop_im.height)
     bg_w, bg_h = int(prop_im.width * bg_ratio), int(prop_im.height * bg_ratio)
     bg_resized = prop_im.resize((bg_w, bg_h), Image.LANCZOS)

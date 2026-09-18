@@ -553,15 +553,20 @@ def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_
 
     voice_path = genera_voce_tts(testo_voce, voice_id=voice_id)
     
-    # Selezione musica royalty-free per Facebook in base alla fascia oraria
+    # Selezione colonna sonora royalty-free con regola anti-ripetizione (> 10 storie)
     music_path = None
-    if fascia_info and fascia_info.get("musica_file"):
-        cand_music = os.path.join(ASSETS_DIR, fascia_info["musica_file"])
-        if os.path.exists(cand_music) and os.path.getsize(cand_music) > 10000:
-            music_path = cand_music
-            print(f"[OK] Canzone royalty-free Facebook selezionata ({fascia_info['nome']}): {fascia_info['musica_titolo']}")
-    if not music_path:
-        music_path = genera_audio_musica_allegra()
+    try:
+        import gestore_musica_storie as gms
+        music_path = gms.ottieni_colonna_sonora_storia(durata_secondi=15.0)
+    except Exception as e_gms:
+        print(f"Avviso fallback gestore musica: {e_gms}")
+        if fascia_info and fascia_info.get("musica_file"):
+            cand_music = os.path.join(ASSETS_DIR, fascia_info["musica_file"])
+            if os.path.exists(cand_music) and os.path.getsize(cand_music) > 10000:
+                music_path = cand_music
+                print(f"[OK] Canzone royalty-free Facebook selezionata ({fascia_info['nome']}): {fascia_info['musica_titolo']}")
+        if not music_path:
+            music_path = genera_audio_musica_allegra()
     ffmpeg_bin = find_ffmpeg()
 
     if voice_path and os.path.exists(voice_path):
@@ -1608,25 +1613,38 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
     testo_f = media_info.get('testoF', 'Immobile esclusivo selezionato ad Agrigento e Favara.')
     is_live = media_info.get('isLive', False)
 
-    # Selezione Stile Grafico (diverse grafiche alternate ogni 30 minuti)
-    styles = ["split_screen", "luxury_glass", "editorial"]
+    # Selezione Stile Grafico (4 grafiche professionali alternate ogni 30 minuti con palette del giorno)
+    styles = ["marketing_banner", "split_screen", "luxury_glass", "editorial"]
     if not style or style == "auto":
         chosen_style = styles[(int(time.time() / 1800)) % len(styles)]
     else:
-        chosen_style = style if style in styles else "split_screen"
-    print(f"🎨 Stile grafico selezionato: {chosen_style.upper()} (rotazione ogni 30 min)")
+        chosen_style = style if style in styles else "marketing_banner"
+    print(f"🎨 Stile grafico selezionato: {chosen_style.upper()} (rotazione ogni 30 min + palette del giorno)")
 
-    # 1. Genera e salva sempre il volantino promozionale 1:1 per feed e archivio
+    # 1. Genera overlay video 9:16 tramite il Motore Grafico Unificato
+    try:
+        import motore_grafica_storie as mgs
+        overlay_png_path = mgs.crea_story_9_16(media_info, style=chosen_style)
+    except Exception as e_mgs:
+        print(f"Avviso fallback motore grafico: {e_mgs}")
+        if chosen_style == "luxury_glass":
+            overlay_png_path = crea_story_luxury_glass_9_16(media_info)
+        elif chosen_style == "editorial":
+            overlay_png_path = crea_story_editorial_9_16(media_info)
+        else:
+            overlay_png_path = crea_story_splitscreen_9_16(media_info)
+
+    # Genera e salva anche il volantino promozionale 1:1 per feed e archivio
     flyer_1x1_path = os.path.join(SCRATCH_DIR, f"flyer_giancani_1x1_{uuid.uuid4().hex[:6]}.png")
-    if chosen_style == "split_screen":
-        crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
-        overlay_png_path = crea_story_splitscreen_9_16(media_info)
-    elif chosen_style == "luxury_glass":
-        crea_grafica_luxury_glass(media_info, flyer_1x1_path, size=(1080, 1080))
-        overlay_png_path = crea_story_luxury_glass_9_16(media_info)
-    else:
-        crea_grafica_editorial(media_info, flyer_1x1_path, size=(1080, 1080))
-        overlay_png_path = crea_story_editorial_9_16(media_info)
+    try:
+        if chosen_style == "luxury_glass":
+            crea_grafica_luxury_glass(media_info, flyer_1x1_path, size=(1080, 1080))
+        elif chosen_style == "editorial":
+            crea_grafica_editorial(media_info, flyer_1x1_path, size=(1080, 1080))
+        else:
+            crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
+    except Exception as e_fl:
+        print(f"Avviso generazione flyer 1:1: {e_fl}")
 
     # 2. Determina fascia oraria se offline
     fascia_info = determina_fascia_oraria() if not is_live else None

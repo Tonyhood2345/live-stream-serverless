@@ -398,19 +398,21 @@ def genera_slide_carosello_1080(stanza_data, immobile_info, index, total, logo_i
 
     draw = ImageDraw.Draw(canvas)
 
-    # Logo Ufficiale Trasparente in Alto a Destra
+    # Logo Ufficiale in Card Bianca in Alto a Destra (Massima Leggibilità & Contrasto)
     if logo_img:
         lw = 320
         lh = int((lw * logo_img.height) / logo_img.width)
         logo_res = logo_img.resize((lw, lh), Image.Resampling.LANCZOS)
-        lx = W - lw - 25
-        ly = 22
+        pad_x, pad_y = 14, 8
+        card_w, card_h = lw + pad_x * 2, lh + pad_y * 2
+        lx = W - card_w - 25
+        ly = 20
 
-        shadow_box = Image.new('RGBA', (lw + 20, lh + 20), (0, 0, 0, 0))
-        shadow_draw = ImageDraw.Draw(shadow_box)
-        shadow_draw.rounded_rectangle([2, 2, lw + 18, lh + 18], radius=14, fill=(0, 0, 0, 110))
-        canvas.paste(shadow_box, (lx - 10, ly - 10), shadow_box)
-        canvas.paste(logo_res, (lx, ly), logo_res)
+        white_card = Image.new('RGBA', (card_w, card_h), (0, 0, 0, 0))
+        draw_wc = ImageDraw.Draw(white_card)
+        draw_wc.rounded_rectangle([0, 0, card_w - 1, card_h - 1], radius=14, fill=(255, 255, 255, 250), outline=(212, 168, 83, 220), width=2)
+        canvas.paste(white_card, (lx, ly), white_card)
+        canvas.paste(logo_res, (lx + pad_x, ly + pad_y), logo_res)
 
     # Badge Stanza
     st_nome = stanza_data['stanza_nome'].upper()
@@ -645,38 +647,78 @@ def pubblica_post_carosello_facebook(immobile_info, carosello_paths):
         print(f"❌ Errore pubblicazione post carosello feed: {e}")
         return {"success": False, "error": str(e), "piattaforma": "Facebook Post Carosello"}
 
-def pubblica_storie_facebook(immobile_info, storia_paths):
-    """Pubblica le immagini come Storie sulla Pagina Facebook"""
-    print(f"\n📘 [FACEBOOK] Pubblicazione {len(storia_paths)} Storie...")
+import subprocess
+
+def converti_slide_in_video_storia(img_path, output_mp4, duration=6):
+    """Converte un'immagine verticale 9:16 in un breve video storia MP4 con audio silenzioso"""
+    cmd = [
+        "ffmpeg", "-y",
+        "-loop", "1",
+        "-i", img_path,
+        "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+        "-c:v", "libx264",
+        "-tune", "stillimage",
+        "-t", str(duration),
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-shortest",
+        output_mp4
+    ]
+    try:
+        proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=40)
+        if proc.returncode == 0 and os.path.exists(output_mp4) and os.path.getsize(output_mp4) > 1000:
+            return output_mp4
+    except Exception as e:
+        print(f"  ⚠️ Errore ffmpeg slide {img_path}: {e}")
+    return None
+
+def carica_video_storia_fb(page_id, page_token, video_path):
+    """Carica un video MP4 su Facebook Stories via Meta Graph API Resumable"""
+    file_size = os.path.getsize(video_path)
     ctx = ssl._create_unverified_context()
+    url_start = f"https://graph.facebook.com/v19.0/{page_id}/video_stories"
+    params_start = f"upload_phase=start&access_token={urllib.parse.quote(page_token)}".encode('utf-8')
+    req_start = urllib.request.Request(url_start, data=params_start, method='POST')
+    with urllib.request.urlopen(req_start, context=ctx) as r_start:
+        s_data = json.loads(r_start.read().decode('utf-8'))
+        video_id = s_data.get('video_id')
+        upload_url = s_data.get('upload_url')
+        if not video_id or not upload_url:
+            raise Exception("No video_id from Meta API")
+
+    with open(video_path, 'rb') as f:
+        video_bytes = f.read()
+
+    req_up = urllib.request.Request(upload_url, data=video_bytes, method='POST')
+    req_up.add_header('Authorization', f'OAuth {page_token}')
+    req_up.add_header('offset', '0')
+    req_up.add_header('file_size', str(file_size))
+    req_up.add_header('Content-Type', 'application/octet-stream')
+    with urllib.request.urlopen(req_up, context=ctx) as r_up:
+        pass
+
+    url_fin = f"https://graph.facebook.com/v19.0/{page_id}/video_stories"
+    params_fin = f"upload_phase=finish&video_id={video_id}&video_state=PUBLISHED&access_token={urllib.parse.quote(page_token)}".encode('utf-8')
+    req_fin = urllib.request.Request(url_fin, data=params_fin, method='POST')
+    with urllib.request.urlopen(req_fin, context=ctx) as r_fin:
+        fin_data = json.loads(r_fin.read().decode('utf-8'))
+        return {"success": True, "story_id": fin_data.get('post_id') or video_id}
+
+def pubblica_storie_facebook(immobile_info, storia_paths):
+    """Pubblica tutte le immagini delle stanze come Storie ufficiali sulla Pagina Facebook"""
+    print(f"\n📘 [FACEBOOK] Pubblicazione di tutte le {len(storia_paths)} Storie ambienti...")
     risultati = []
 
-    for i, spath in enumerate(storia_paths[:2], start=1):
+    for i, spath in enumerate(storia_paths, start=1):
         try:
-            boundary = f"----WebKitFormBoundaryStory{int(time.time()*1000)}"
-            with open(spath, 'rb') as f:
-                img_bytes = f.read()
-
-            body = bytearray()
-            body.extend(f"--{boundary}\r\n".encode('utf-8'))
-            body.extend(f'Content-Disposition: form-data; name="published"\r\n\r\ntrue\r\n'.encode('utf-8'))
-            body.extend(f"--{boundary}\r\n".encode('utf-8'))
-            body.extend(f'Content-Disposition: form-data; name="source"; filename="story_{i}.jpg"\r\n'.encode('utf-8'))
-            body.extend(b'Content-Type: image/jpeg\r\n\r\n')
-            body.extend(img_bytes)
-            body.extend(b"\r\n")
-            body.extend(f"--{boundary}--\r\n".encode('utf-8'))
-
-            url_photo = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/photos?access_token={urllib.parse.quote(FB_PAGE_TOKEN)}"
-            req = urllib.request.Request(url_photo, data=body, headers={
-                'Content-Type': f'multipart/form-data; boundary={boundary}',
-                'User-Agent': 'Mozilla/5.0'
-            })
-
-            with urllib.request.urlopen(req, timeout=30, context=ctx) as r:
-                res = json.loads(r.read().decode('utf-8'))
-                print(f"  [OK] Storia Facebook {i} pubblicata! ID: {res.get('id')}")
+            mp4_out = os.path.join(OUTPUT_DIR, f"temp_story_{i}.mp4")
+            vpath = converti_slide_in_video_storia(spath, mp4_out, duration=6)
+            if vpath and os.path.exists(vpath):
+                res = carica_video_storia_fb(FB_PAGE_ID, FB_PAGE_TOKEN, vpath)
+                print(f"  🌟 [OK] Storia Facebook {i}/{len(storia_paths)} pubblicata! (ID: {res.get('story_id')})")
                 risultati.append(res)
+            else:
+                print(f"  ⚠️ Conversione video per storia {i} non riuscita.")
         except Exception as e:
             print(f"  ❌ Errore storia Facebook {i}: {e}")
 

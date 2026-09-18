@@ -1614,12 +1614,27 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
     is_live = media_info.get('isLive', False)
 
     # Selezione Stile Grafico (4 grafiche professionali alternate ogni 30 minuti con palette del giorno)
-    styles = ["marketing_banner", "split_screen", "luxury_glass", "editorial"]
+    styles = [
+        "marketing_banner", "split_screen", "luxury_glass", "editorial",
+        "room_label", "ideacasa_layout", "casait_card", "tecnocasa_multi",
+    ]
     if not style or style == "auto":
         chosen_style = styles[(int(time.time() / 1800)) % len(styles)]
     else:
         chosen_style = style if style in styles else "marketing_banner"
     print(f"🎨 Stile grafico selezionato: {chosen_style.upper()} (rotazione ogni 30 min + palette del giorno)")
+
+    # ── ANNUNCIO DIRETTA LIVE a random (25% delle pubblicazioni ogni 30 min) ──
+    import random as _rand_live
+    if _rand_live.random() < 0.25:
+        print("📡 [RANDOM LIVE] Pubblicazione card annuncio diretta live!")
+        try:
+            import motore_grafica_storie as mgs
+            annuncio_path = mgs.crea_card_annuncio_diretta_9_16(media_info)
+            return annuncio_path  # Usa la card al posto del video normale
+        except Exception as e_ann:
+            print(f"⚠️  Fallback annuncio diretta: {e_ann}")
+
 
     # 1. Genera overlay video 9:16 tramite il Motore Grafico Unificato
     try:

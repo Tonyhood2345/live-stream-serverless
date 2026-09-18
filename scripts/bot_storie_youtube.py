@@ -198,7 +198,15 @@ def check_video_has_audio(video_path):
         return True
 
 def genera_audio_allegra_fallback(output_audio_path=None):
-    """Restituisce una traccia classica orchestrale e orecchiabile 100% royalty-free (Vivaldi o Mozart)"""
+    """Restituisce una traccia musicale royalty-free con regola anti-ripetizione (> 10 storie)"""
+    try:
+        import gestore_musica_storie as gms
+        traccia_audio = gms.ottieni_colonna_sonora_storia(output_audio_path, durata_secondi=15.0)
+        if traccia_audio and os.path.exists(traccia_audio):
+            return traccia_audio
+    except Exception as e_gms:
+        print(f"Avviso fallback gestore musica in bot_storie_youtube: {e_gms}")
+
     candidates = [
         os.path.join(ASSETS_DIR, "classica_vivaldi_primavera_short.mp3"),
         os.path.join(ASSETS_DIR, "classica_mozart_nachtmusik_short.mp3"),

@@ -97,10 +97,10 @@ if not GH_TOKEN:
         GH_TOKEN = "ghp_LCowv5wCbuz" + "dvc7uzUAFDlL1N94PjT460mJ9"
 GH_REPO = os.environ.get("GH_REPO", "Tonyhood2345/live-stream-serverless")
 
-APPS_SCRIPT_URL = os.environ.get(
-    "APPS_SCRIPT_URL",
-    "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
-)
+APPS_SCRIPT_URL = (
+    os.environ.get("APPS_SCRIPT_URL")
+    or "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
+).strip()
 REMOTE_LOGO_URL = "https://lh3.googleusercontent.com/d/1BoZ_9QyYPRKjZFP__iPr7mmi0aGV0G3P"
 
 ctx = ssl._create_unverified_context()
@@ -1734,37 +1734,15 @@ def pubblica_storia_video_su_facebook(page_id, page_token, video_path):
 
 def pubblica_storia_instagram(ig_user_id, page_token, video_path):
     """
-    Pubblica la video storia su Instagram (@giancani_immobiliare).
-    Verifica prima la compatibilità diretta Graph API e attiva il Meta Business Bridge
-    tramite la Pagina Facebook collegata (ID 234931856561526).
+    Pubblicazione Instagram disabilitata su richiesta dell'utente.
     """
-    print(f"\n📸 Pubblicazione Video Storia su Instagram (@giancani_immobiliare, ID: {ig_user_id})...")
-    try:
-        url_ig = f"https://graph.facebook.com/v19.0/{ig_user_id}/media?upload_type=resumable&media_type=STORIES&access_token={urllib.parse.quote(page_token)}"
-        req_ig = urllib.request.Request(url_ig, method='POST')
-        with urllib.request.urlopen(req_ig, context=ctx) as resp_ig:
-            res_data = json.loads(resp_ig.read().decode('utf-8'))
-            creation_id = res_data.get('id')
-            if creation_id:
-                url_pub = f"https://graph.facebook.com/v19.0/{ig_user_id}/media_publish?creation_id={creation_id}&access_token={urllib.parse.quote(page_token)}"
-                req_pub = urllib.request.Request(url_pub, method='POST')
-                with urllib.request.urlopen(req_pub, context=ctx) as r_pub:
-                    p_res = json.loads(r_pub.read().decode('utf-8'))
-                    return {
-                        "nome": "Instagram Stories (@giancani_immobiliare)",
-                        "success": True,
-                        "story_id": p_res.get('id') or creation_id,
-                        "metodo": "Graph API Diretto"
-                    }
-    except Exception:
-        pass
-
-    print("ℹ️ Connessione Instagram attiva via Meta Business Cross-Posting Bridge (Pagina FB -> IG @giancani_immobiliare)")
+    print("ℹ️ Pubblicazione su Instagram DISABILITATA su richiesta dell'utente (solo Facebook attivo).")
     return {
         "nome": "Instagram Stories (@giancani_immobiliare)",
         "success": True,
-        "story_id": f"IG-BRIDGE-{ig_user_id}",
-        "metodo": "Meta Business Cross-Posting Bridge"
+        "skipped": True,
+        "story_id": "DISABLED",
+        "metodo": "Disabilitato su richiesta utente"
     }
 
 def pubblica_short_youtube(video_path, item_data):
@@ -2239,14 +2217,7 @@ def esegui_ciclo_offline(style="auto"):
             print(f"❌ Errore upload su {target['nome']}: {ePub}")
             risultati.append({"nome": target['nome'], "success": False, "error": str(ePub)})
 
-    # Pubblica su Instagram Stories (@giancani_immobiliare)
-    try:
-        res_ig = pubblica_storia_instagram(IG_ACCOUNT_ID, PAGES[0]['token'], video_path)
-        print(f"[OK] Instagram Stories: {res_ig.get('story_id')} ({res_ig.get('metodo')})")
-        risultati.append(res_ig)
-    except Exception as eIg:
-        print(f"❌ Errore Instagram Stories: {eIg}")
-        risultati.append({"nome": "Instagram Stories (@giancani_immobiliare)", "success": False, "error": str(eIg)})
+    # Nota: Pubblicazione Instagram esclusa su richiesta utente (solo Facebook)
 
     # Pubblica su YouTube Shorts (@immobiliaregiancani761)
     try:

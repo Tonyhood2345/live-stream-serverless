@@ -22,6 +22,8 @@ on:
 jobs:
   pubblica-storia-oraria:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 20
 
     steps:

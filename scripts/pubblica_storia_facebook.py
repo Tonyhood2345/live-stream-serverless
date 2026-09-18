@@ -74,13 +74,13 @@ PAGES = [
     {
         "nome": "Immobiliare Giancani (Pagina Ufficiale)",
         "id": os.environ.get("FB_PAGE_ID", "234931856561526"),
-        "token": os.environ.get("FB_PAGE_TOKEN", "EAAZAH7q8wRZAEBSaZAm9Q9JGa8ZC7gwAsRJ1n4bPZAIY5ws8VXZAnugJgtZCOvP7HyEd7IEfWeCD5HfmP0ENQh86J3PT7pDFnOt5nPJdpzYyUM6p6AtZBXnXufThdh9ZAczfsE84obRZCOD3UWslSWpxJ058WGrQfXxJYsXtVZBh1ey7j2zuzme2JcEoya10KdL8TfJOpvNHqD8EsionnLI"),
+        "token": (os.environ.get("FB_PAGE_TOKEN") or "").strip() or "EAAZAH7q8wRZAEBSaZAm9Q9JGa8ZC7gwAsRJ1n4bPZAIY5ws8VXZAnugJgtZCOvP7HyEd7IEfWeCD5HfmP0ENQh86J3PT7pDFnOt5nPJdpzYyUM6p6AtZBXnXufThdh9ZAczfsE84obRZCOD3UWslSWpxJ058WGrQfXxJYsXtVZBh1ey7j2zuzme2JcEoya10KdL8TfJOpvNHqD8EsionnLI"),
         "is_antonio": False
     },
     {
         "nome": "Antonio Giancani (Profilo Personale)",
         "id": os.environ.get("FB_ANTONIO_ID", "108297671444008"),
-        "token": os.environ.get("FB_ANTONIO_TOKEN", "EAAZAH7q8wRZAEBSQbsAIPVhCwMvrhECfhs5UNWL8ZBIOrUbCXqWCQtsyntumIOAvDCRUcg2FsmJBNtiXOEOO2TROFJE9CBXrZBT4GPrZAZCjB73WZALCECi7Ik9ZCae5y01ZB5ZAV7VH7qHyNdeZCWZCG9xViT0gZCYwnV7MCSuQKS5ZA1ZCdw5nom0IH8uub3ZAwVsIGhNSDdkJWZCgCIzs1b8ia"),
+        "token": (os.environ.get("FB_ANTONIO_TOKEN") or "").strip() or "EAAZAH7q8wRZAEBSQbsAIPVhCwMvrhECfhs5UNWL8ZBIOrUbCXqWCQtsyntumIOAvDCRUcg2FsmJBNtiXOEOO2TROFJE9CBXrZBT4GPrZAZCjB73WZALCECi7Ik9ZCae5y01ZB5ZAV7VH7qHyNdeZCWZCG9xViT0gZCYwnV7MCSuQKS5ZA1ZCdw5nom0IH8uub3ZAwVsIGhNSDdkJWZCgCIzs1b8ia"),
         "is_antonio": True
     }
 ]
@@ -111,6 +111,8 @@ CACHE_IMMOBILI_DIR = os.path.join(ASSETS_DIR, "immobili_cache")
 os.makedirs(SCRATCH_DIR, exist_ok=True)
 os.makedirs(ASSETS_DIR, exist_ok=True)
 os.makedirs(CACHE_IMMOBILI_DIR, exist_ok=True)
+os.makedirs(os.path.join(os.path.dirname(BASE_DIR), "audio_generati_mp3"), exist_ok=True)
+os.makedirs(os.path.join(BASE_DIR, "audio_generati_mp3"), exist_ok=True)
 
 FRASI_MOTIVAZIONALI = [
     ("“La casa è dove nascono i tuoi sogni e dove inizia il tuo futuro.”", "Il momento perfetto per realizzare i tuoi progetti immobiliari è adesso! — Immobiliare Giancani"),

@@ -2262,7 +2262,346 @@ def crea_flyer_capellupo_sidebar_1_1(media_info, palette=None, output_path=None)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🎯 6. DISPATCHER GENERATORE UNIFICATO (9 stili + card diretta)
+# 🎀 13. STILE "GABETTI DIAGONAL RIBBON" — Nastro diagonale inclinato & sezione claim (ref img)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_story_gabetti_diagonal_9_16(media_info, palette=None, output_path=None):
+    """
+    Stile Gabetti Diagonal Ribbon 9:16 (Storia Facebook).
+    - Foto grande in alto con logo protetto in alto a sinistra
+    - Nastro diagonale inclinato con testo bold d'impatto
+    - Sezione inferiore chiara con location, claim Colonna F e CTA valutazione
+    - Footer elegante con recapiti agenzia — Immobiliare Giancani
+    """
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_gabetti_{uuid.uuid4().hex[:6]}.png")
+    if palette is None:
+        palette = get_palette_del_giorno()
+
+    ribbon_color = palette.get("accent", (158, 26, 52))[:3]
+    split_y = 1060
+    ribbon_h = 160
+    angle_deg = -10
+    font_ribbon_size = 62
+    font_loc_size = 28
+    font_head_size = 38
+    font_badge_size = 32
+    font_cta_size = 24
+
+    # 1. Carica foto immobile
+    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl") or media_info.get("foto_url", "")
+    foto_img = None
+    if isinstance(foto_url, Image.Image):
+        foto_img = foto_url.convert("RGB")
+    elif str(foto_url).startswith("http"):
+        try:
+            r = requests.get(foto_url, timeout=12, verify=False)
+            foto_img = Image.open(io.BytesIO(r.content)).convert("RGB")
+        except Exception:
+            pass
+    elif foto_url and os.path.exists(str(foto_url)):
+        try:
+            foto_img = Image.open(str(foto_url)).convert("RGB")
+        except Exception:
+            pass
+
+    if foto_img:
+        fw, fh = foto_img.size
+        scale = max(W / fw, H / fh)
+        nw, nh = int(fw * scale), int(fh * scale)
+        f_res = foto_img.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - W) // 2
+        oy = (nh - H) // 2
+        canvas = f_res.crop((ox, oy, ox + W, oy + H)).convert("RGBA")
+    else:
+        canvas = Image.new("RGBA", (W, H), (230, 235, 245, 255))
+
+    # 2. Taglio diagonale inferiore
+    rad = math.radians(angle_deg)
+    tan_a = math.tan(rad)
+    y_left = split_y
+    y_right = int(split_y + W * tan_a)
+    
+    bottom_bg = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_bot = ImageDraw.Draw(bottom_bg)
+    poly_bot = [(0, y_left), (W, y_right), (W, H), (0, H)]
+    draw_bot.polygon(poly_bot, fill=(248, 248, 246, 255))
+    canvas = Image.alpha_composite(canvas, bottom_bg)
+
+    # 3. Nastro Diagonale Ruotato
+    rw = int(W * 1.5)
+    rh = ribbon_h
+    ribbon_layer = Image.new("RGBA", (rw, rh), ribbon_color + (255,))
+    draw_rib = ImageDraw.Draw(ribbon_layer)
+
+    titolo = str(media_info.get("titolo", "OPEN HOUSE")).strip().upper()
+    prezzo_raw = str(media_info.get("prezzo", "")).strip()
+    ribasso = media_info.get("ribassato") or "ribassat" in str(media_info.get("testoF", "")).lower()
+
+    if media_info.get("nastro_r1") and media_info.get("nastro_r2"):
+        r1_txt = str(media_info.get("nastro_r1")).upper()
+        r2_txt = str(media_info.get("nastro_r2")).upper()
+    elif ribasso:
+        r1_txt = "PREZZO RIBASSATO"
+        r2_txt = f"VENDITA ESCLUSIVA € {prezzo_raw}" if prezzo_raw else "VENDITA ESCLUSIVA"
+    elif "OPEN HOUSE" in titolo:
+        r1_txt = "OPEN HOUSE"
+        r2_txt = "VENDUTO IN TEMPO RECORD"
+    else:
+        r1_txt = "NUOVA OPPORTUNITÀ"
+        r2_txt = f"ESCLUSIVA GIANCANI € {prezzo_raw}" if prezzo_raw else "ESCLUSIVA GIANCANI"
+
+    f_rib = get_font(font_ribbon_size, bold=True, font_type="sans")
+    bb_r1 = draw_rib.textbbox((0, 0), r1_txt, font=f_rib)
+    bb_r2 = draw_rib.textbbox((0, 0), r2_txt, font=f_rib)
+    h_r1 = bb_r1[3] - bb_r1[1]
+    h_r2 = bb_r2[3] - bb_r2[1]
+    tot_h = h_r1 + h_r2 + 6
+    start_y = (rh - tot_h) // 2
+
+    draw_rib.text(((rw - (bb_r1[2]-bb_r1[0])) // 2, start_y), r1_txt, font=f_rib, fill=(255, 255, 255, 255))
+    draw_rib.text(((rw - (bb_r2[2]-bb_r2[0])) // 2, start_y + h_r1 + 6), r2_txt, font=f_rib, fill=(255, 255, 255, 255))
+
+    rot_ribbon = ribbon_layer.rotate(-angle_deg, expand=True, resample=Image.BICUBIC)
+    rot_w, rot_h = rot_ribbon.size
+    cx = W // 2
+    cy_rib = int(split_y + (W / 2) * tan_a)
+    rx = cx - (rot_w // 2)
+    ry = cy_rib - (rot_h // 2)
+
+    shadow_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    shadow_mask = rot_ribbon.split()[3]
+    shadow_img = Image.new("RGBA", (rot_w, rot_h), (0, 0, 0, 80))
+    shadow_img.putalpha(shadow_mask)
+    shadow_layer.paste(shadow_img, (rx + 4, ry + 6), shadow_img)
+    canvas = Image.alpha_composite(canvas, shadow_layer)
+    canvas.alpha_composite(rot_ribbon, (rx, ry))
+
+    # 4. Logo Ufficiale
+    draw = ImageDraw.Draw(canvas)
+    logo = get_logo_trasparente_ufficiale(max_w=280, max_h=80)
+    if logo:
+        lw, lh = logo.size
+        draw.rounded_rectangle([(36, 46), (36 + lw + 24, 46 + lh + 16)], radius=14, fill=(255, 255, 255, 240))
+        canvas.alpha_composite(logo, (48, 54))
+    else:
+        draw.rounded_rectangle([(36, 46), (340, 110)], radius=14, fill=(255, 255, 255, 240))
+        f_b = get_font(26, bold=True)
+        draw.text((50, 64), "IMMOBILIARE GIANCANI", font=f_b, fill=ribbon_color)
+
+    draw = ImageDraw.Draw(canvas)
+
+    # 5. Sezione Inferiore
+    pad_left = 50
+    curr_y = y_left + 110
+
+    zona = str(media_info.get("zona", "Favara (AG)")).strip()
+    loc_txt = f"{zona}: {titolo.title()}" if zona and zona.lower() not in titolo.lower() else titolo.title()
+    f_loc = get_font(font_loc_size, bold=True, font_type="sans")
+    draw.text((pad_left, curr_y), loc_txt[:48], font=f_loc, fill=(90, 95, 105, 255))
+    curr_y += draw.textbbox((0, 0), loc_txt, font=f_loc)[3] + 16
+
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if not testo_f:
+        mq_str = formatta_metri_quadri(media_info.get("mq", "120"))
+        testo_f = f"Quando la strategia è corretta, si ottiene il massimo realizzo economico. Soluzione di {mq_str} di pregio."
+    
+    f_head = get_font(font_head_size, bold=True, font_type="sans")
+    head_lines = _wrap_text_lines(draw, testo_f, f_head, W - pad_left * 2)
+    for hl in head_lines[:3]:
+        draw.text((pad_left, curr_y), hl, font=f_head, fill=(24, 28, 36, 255))
+        bb_h = draw.textbbox((0, 0), hl, font=f_head)
+        curr_y += (bb_h[3] - bb_h[1]) + 10
+
+    curr_y += 12
+    badge_claim = str(media_info.get("claim", "+10% Il nostro metodo funziona!"))
+    f_badge = get_font(font_badge_size, bold=True, font_type="sans")
+    draw.text((pad_left, curr_y), badge_claim, font=f_badge, fill=ribbon_color)
+    curr_y += draw.textbbox((0, 0), badge_claim, font=f_badge)[3] + 14
+
+    # Footer per Storie 9:16
+    foot_h = 100
+    foot_y = H - foot_h - 40
+    foot_w = W - 80
+    foot_x = 40
+    draw.rounded_rectangle([(foot_x, foot_y), (foot_x + foot_w, foot_y + foot_h)],
+                           radius=30, fill=(15, 23, 42, 235), outline=(255, 255, 255, 180), width=2)
+    f_b1 = get_font(30, bold=True)
+    f_b2 = get_font(24, bold=False)
+    t1 = "IMMOBILIARE GIANCANI"
+    t2 = "Corso Vittorio Veneto 151, Favara (AG) • Tel. 320 166 7156"
+    bb_t1 = draw.textbbox((0, 0), t1, font=f_b1)
+    bb_t2 = draw.textbbox((0, 0), t2, font=f_b2)
+    draw.text(((W - (bb_t1[2]-bb_t1[0])) // 2, foot_y + 14), t1, font=f_b1, fill=(255, 255, 255, 255))
+    draw.text(((W - (bb_t2[2]-bb_t2[0])) // 2, foot_y + 54), t2, font=f_b2, fill=(212, 168, 83, 255))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=97)
+    print(f"[GABETTI_DIAGONAL_9_16] Salvato: {output_path}")
+    return output_path
+
+def crea_flyer_gabetti_diagonal_1_1(media_info, palette=None, output_path=None):
+    """
+    Stile Gabetti Diagonal Ribbon 1:1 (Post Feed / Volantino).
+    """
+    W, H = 1080, 1080
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"flyer_gabetti_{uuid.uuid4().hex[:6]}.png")
+    if palette is None:
+        palette = get_palette_del_giorno()
+
+    ribbon_color = palette.get("accent", (158, 26, 52))[:3]
+    split_y = 570
+    ribbon_h = 130
+    angle_deg = -10
+    font_ribbon_size = 54
+    font_loc_size = 24
+    font_head_size = 32
+    font_badge_size = 28
+    font_cta_size = 21
+
+    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl") or media_info.get("foto_url", "")
+    foto_img = None
+    if isinstance(foto_url, Image.Image):
+        foto_img = foto_url.convert("RGB")
+    elif str(foto_url).startswith("http"):
+        try:
+            r = requests.get(foto_url, timeout=12, verify=False)
+            foto_img = Image.open(io.BytesIO(r.content)).convert("RGB")
+        except Exception:
+            pass
+    elif foto_url and os.path.exists(str(foto_url)):
+        try:
+            foto_img = Image.open(str(foto_url)).convert("RGB")
+        except Exception:
+            pass
+
+    if foto_img:
+        fw, fh = foto_img.size
+        scale = max(W / fw, H / fh)
+        nw, nh = int(fw * scale), int(fh * scale)
+        f_res = foto_img.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - W) // 2
+        oy = (nh - H) // 2
+        canvas = f_res.crop((ox, oy, ox + W, oy + H)).convert("RGBA")
+    else:
+        canvas = Image.new("RGBA", (W, H), (230, 235, 245, 255))
+
+    rad = math.radians(angle_deg)
+    tan_a = math.tan(rad)
+    y_left = split_y
+    y_right = int(split_y + W * tan_a)
+    
+    bottom_bg = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_bot = ImageDraw.Draw(bottom_bg)
+    poly_bot = [(0, y_left), (W, y_right), (W, H), (0, H)]
+    draw_bot.polygon(poly_bot, fill=(248, 248, 246, 255))
+    canvas = Image.alpha_composite(canvas, bottom_bg)
+
+    rw = int(W * 1.5)
+    rh = ribbon_h
+    ribbon_layer = Image.new("RGBA", (rw, rh), ribbon_color + (255,))
+    draw_rib = ImageDraw.Draw(ribbon_layer)
+
+    titolo = str(media_info.get("titolo", "OPEN HOUSE")).strip().upper()
+    prezzo_raw = str(media_info.get("prezzo", "")).strip()
+    ribasso = media_info.get("ribassato") or "ribassat" in str(media_info.get("testoF", "")).lower()
+
+    if media_info.get("nastro_r1") and media_info.get("nastro_r2"):
+        r1_txt = str(media_info.get("nastro_r1")).upper()
+        r2_txt = str(media_info.get("nastro_r2")).upper()
+    elif ribasso:
+        r1_txt = "PREZZO RIBASSATO"
+        r2_txt = f"VENDITA ESCLUSIVA € {prezzo_raw}" if prezzo_raw else "VENDITA ESCLUSIVA"
+    elif "OPEN HOUSE" in titolo:
+        r1_txt = "OPEN HOUSE"
+        r2_txt = "VENDUTO IN TEMPO RECORD"
+    else:
+        r1_txt = "NUOVA OPPORTUNITÀ"
+        r2_txt = f"ESCLUSIVA GIANCANI € {prezzo_raw}" if prezzo_raw else "ESCLUSIVA GIANCANI"
+
+    f_rib = get_font(font_ribbon_size, bold=True, font_type="sans")
+    bb_r1 = draw_rib.textbbox((0, 0), r1_txt, font=f_rib)
+    bb_r2 = draw_rib.textbbox((0, 0), r2_txt, font=f_rib)
+    h_r1 = bb_r1[3] - bb_r1[1]
+    h_r2 = bb_r2[3] - bb_r2[1]
+    tot_h = h_r1 + h_r2 + 6
+    start_y = (rh - tot_h) // 2
+
+    draw_rib.text(((rw - (bb_r1[2]-bb_r1[0])) // 2, start_y), r1_txt, font=f_rib, fill=(255, 255, 255, 255))
+    draw_rib.text(((rw - (bb_r2[2]-bb_r2[0])) // 2, start_y + h_r1 + 6), r2_txt, font=f_rib, fill=(255, 255, 255, 255))
+
+    rot_ribbon = ribbon_layer.rotate(-angle_deg, expand=True, resample=Image.BICUBIC)
+    rot_w, rot_h = rot_ribbon.size
+    cx = W // 2
+    cy_rib = int(split_y + (W / 2) * tan_a)
+    rx = cx - (rot_w // 2)
+    ry = cy_rib - (rot_h // 2)
+
+    shadow_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    shadow_mask = rot_ribbon.split()[3]
+    shadow_img = Image.new("RGBA", (rot_w, rot_h), (0, 0, 0, 80))
+    shadow_img.putalpha(shadow_mask)
+    shadow_layer.paste(shadow_img, (rx + 4, ry + 6), shadow_img)
+    canvas = Image.alpha_composite(canvas, shadow_layer)
+    canvas.alpha_composite(rot_ribbon, (rx, ry))
+
+    draw = ImageDraw.Draw(canvas)
+    logo = get_logo_trasparente_ufficiale(max_w=280, max_h=80)
+    if logo:
+        lw, lh = logo.size
+        draw.rounded_rectangle([(30, 30), (30 + lw + 24, 30 + lh + 16)], radius=12, fill=(255, 255, 255, 235))
+        canvas.alpha_composite(logo, (42, 38))
+    else:
+        draw.rounded_rectangle([(30, 30), (320, 85)], radius=12, fill=(255, 255, 255, 235))
+        f_b = get_font(24, bold=True)
+        draw.text((44, 45), "IMMOBILIARE GIANCANI", font=f_b, fill=ribbon_color)
+
+    draw = ImageDraw.Draw(canvas)
+    pad_left = 50
+    curr_y = y_left + 75
+
+    zona = str(media_info.get("zona", "Favara (AG)")).strip()
+    loc_txt = f"{zona}: {titolo.title()}" if zona and zona.lower() not in titolo.lower() else titolo.title()
+    f_loc = get_font(font_loc_size, bold=True, font_type="sans")
+    draw.text((pad_left, curr_y), loc_txt[:45], font=f_loc, fill=(90, 95, 105, 255))
+    curr_y += draw.textbbox((0, 0), loc_txt, font=f_loc)[3] + 12
+
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if not testo_f:
+        testo_f = "Quando la strategia è corretta, si ottiene il massimo realizzo economico per il cliente."
+    
+    f_head = get_font(font_head_size, bold=True, font_type="sans")
+    head_lines = _wrap_text_lines(draw, testo_f, f_head, W - pad_left * 2)
+    for hl in head_lines[:3]:
+        draw.text((pad_left, curr_y), hl, font=f_head, fill=(24, 28, 36, 255))
+        bb_h = draw.textbbox((0, 0), hl, font=f_head)
+        curr_y += (bb_h[3] - bb_h[1]) + 8
+
+    curr_y += 8
+    badge_claim = str(media_info.get("claim", "+10% Il nostro metodo funziona!"))
+    f_badge = get_font(font_badge_size, bold=True, font_type="sans")
+    draw.text((pad_left, curr_y), badge_claim, font=f_badge, fill=ribbon_color)
+    curr_y += draw.textbbox((0, 0), badge_claim, font=f_badge)[3] + 10
+
+    f_cta = get_font(font_cta_size, bold=False, font_type="sans")
+    cta_txt = "Vuoi sapere quanto vale la tua? Valutazione gratuita in 24h"
+    draw.text((pad_left, curr_y), cta_txt, font=f_cta, fill=(80, 85, 95, 255))
+    curr_y += draw.textbbox((0, 0), cta_txt, font=f_cta)[3] + 8
+
+    f_sign = get_font(font_cta_size, bold=True, font_type="sans")
+    sign_txt = "Immobiliare Giancani • Corso Vittorio Veneto 151, Favara • Tel. 320 166 7156"
+    draw.text((pad_left, curr_y), sign_txt, font=f_sign, fill=ribbon_color)
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=97)
+    print(f"[GABETTI_DIAGONAL_1_1] Salvato: {output_path}")
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎯 6. DISPATCHER GENERATORE UNIFICATO (10 stili + card diretta)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def crea_story_9_16(media_info, style="auto", palette=None, output_path=None, day_of_week=None):
@@ -2270,6 +2609,7 @@ def crea_story_9_16(media_info, style="auto", palette=None, output_path=None, da
         palette = get_palette_del_giorno(day_of_week)
 
     stili_disponibili = [
+        "gabetti_diagonal",
         "capellupo_sidebar",
         "marketing_banner",
         "split_screen",
@@ -2287,7 +2627,9 @@ def crea_story_9_16(media_info, style="auto", palette=None, output_path=None, da
 
     style = style.lower().strip()
 
-    if style in ("capellupo_sidebar", "capellupo", "sidebar_card", "scheda_laterale"):
+    if style in ("gabetti_diagonal", "gabetti", "diagonal_ribbon", "nastro_diagonale"):
+        return crea_story_gabetti_diagonal_9_16(media_info, palette=palette, output_path=output_path)
+    elif style in ("capellupo_sidebar", "capellupo", "sidebar_card", "scheda_laterale"):
         return crea_story_capellupo_sidebar_9_16(media_info, palette=palette, output_path=output_path)
     elif style in ("marketing_banner", "marketing", "banner"):
         return crea_story_marketing_banner_9_16(media_info, palette=palette, output_path=output_path)
@@ -2308,5 +2650,6 @@ def crea_story_9_16(media_info, style="auto", palette=None, output_path=None, da
     elif style in ("annuncio_diretta", "diretta", "live_card"):
         return crea_card_annuncio_diretta_9_16(media_info, palette=palette, output_path=output_path)
     else:
-        return crea_story_capellupo_sidebar_9_16(media_info, palette=palette, output_path=output_path)
+        return crea_story_gabetti_diagonal_9_16(media_info, palette=palette, output_path=output_path)
+
 

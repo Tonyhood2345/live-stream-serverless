@@ -2283,11 +2283,15 @@ def esegui_ciclo_offline():
 def main():
     parser = argparse.ArgumentParser(description="Gestore Storie Facebook Immobiliare Giancani")
     parser.add_argument("--mode", choices=["live", "offline", "nota"], default="live", help="Modalità operativa: live (durante la diretta), offline (ogni ora), o nota (pubblica nota facebook del giorno)")
+    parser.add_argument("--offline", action="store_true", help="Scorciatoia diretta per eseguire in modalità offline (storie orarie)")
     parser.add_argument("--fascia", choices=["mattina", "pomeriggio", "sera", "notte", "auto"], default="auto", help="Forza la fascia oraria per saluto ed emoticon")
     parser.add_argument("--loop", action="store_true", help="Esegue in ciclo continuo (per la diretta live ogni 30 minuti (1800s))")
-    parser.add_argument("--style", choices=["auto", "split_screen", "luxury_glass", "editorial"], default="auto", help="Stile grafico per la storia (default: auto con rotazione ogni 30 min)")
+    parser.add_argument("--style", default="auto", help="Stile grafico per la storia (default: auto)")
     parser.add_argument("--interval", type=int, default=1800, help="Intervallo in secondi per la modalità loop (default: 1800s = 30 minuti)")
     args = parser.parse_args()
+
+    if args.offline:
+        args.mode = "offline"
 
     if args.mode == "live":
         if args.loop:

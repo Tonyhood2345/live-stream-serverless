@@ -1747,177 +1747,382 @@ def crea_story_tecnocasa_multi_9_16(media_info, palette=None, output_path=None):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📡 11. CARD "ANNUNCIO DIRETTA LIVE" — A random ogni 30 minuti (25% prob)
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📡 11. CARD "ANNUNCIO DIRETTA LIVE" — Nastro Diagonale con Orario & Dati Immobile
+# ═══════════════════════════════════════════════════════════════════════════════
+
 def crea_card_annuncio_diretta_9_16(media_info, orario_diretta=None, palette=None, output_path=None):
-    """Card speciale di annuncio diretta live con foto immobile, orario, invito a partecipare.
-       Usa i colori del giorno — Immobiliare Giancani."""
+    """
+    Card speciale di annuncio diretta live con modello Nastro Diagonale (9:16 Storie):
+    - Foto immobile a schermo pieno con logo e badge DIRETTA
+    - Nastro Diagonale Rosso: OPEN HOUSE IN DIRETTA / OGGI ALLE ORE {orario_diretta}
+    - Sezione inferiore: location, titolo, testo Colonna F, prezzo, invito alla diretta e branding Giancani.
+    """
     W, H = 1080, 1920
     if not output_path:
         output_path = os.path.join(SCRATCH_DIR, f"card_annuncio_diretta_{uuid.uuid4().hex[:6]}.png")
     if not palette:
         palette = get_palette_del_giorno()
+
+    split_y = 1020
+    ribbon_h = 175
+    angle_deg = -10
+    ribbon_color = (168, 24, 48)  # Rosso cremisi vivo per la diretta
+
     if not orario_diretta:
-        now = datetime.datetime.now()
-        # Prossima mezz'ora tonda
-        minutes = now.minute
-        if minutes < 30:
-            orario_diretta = now.replace(minute=30, second=0).strftime("%H:%M")
-        else:
-            orario_diretta = (now + datetime.timedelta(hours=1)).replace(minute=0, second=0).strftime("%H:%M")
+        orario_diretta = media_info.get("orario_diretta") or media_info.get("orario")
+        if not orario_diretta:
+            now = datetime.datetime.now()
+            if now.minute < 30:
+                orario_diretta = now.replace(minute=30, second=0).strftime("%H:%M")
+            else:
+                orario_diretta = (now + datetime.timedelta(hours=1)).replace(minute=0, second=0).strftime("%H:%M")
 
-    canvas = Image.new("RGBA", (W, H), palette["primary_dark"])
-    draw = ImageDraw.Draw(canvas)
-
-    # Sfondo gradiente dinamico
-    for y in range(H):
-        ratio = y / H
-        r = int(palette["primary_dark"][0] * (1 - ratio * 0.5) + palette["primary_mid"][0] * ratio * 0.5)
-        g = int(palette["primary_dark"][1] * (1 - ratio * 0.5) + palette["primary_mid"][1] * ratio * 0.5)
-        b = int(palette["primary_dark"][2] * (1 - ratio * 0.5) + palette["primary_mid"][2] * ratio * 0.5)
-        draw.line([(0, y), (W, y)], fill=(max(0,min(255,r)), max(0,min(255,g)), max(0,min(255,b)), 255))
-
-    # ── LIVE badge top ──
-    badge_live_w, badge_live_h = 240, 74
-    badge_x = (W - badge_live_w) // 2
-    CY = 60  # cursore verticale corrente
-
-    draw.rounded_rectangle([(badge_x, CY), (badge_x + badge_live_w, CY + badge_live_h)],
-                            radius=37, fill=(220, 30, 30, 255))
-    font_live = get_font(50, bold=True, font_type="sans")
-    dot_txt = "  LIVE"
-    bb_live = draw.textbbox((0, 0), dot_txt, font=font_live)
-    draw.text(((W - (bb_live[2]-bb_live[0])) // 2, CY + (badge_live_h - (bb_live[3]-bb_live[1])) // 2),
-              dot_txt, font=font_live, fill=(255, 255, 255))
-    # Pallino rosso scuro a sinistra del testo live
-    lv_cx = (W - (bb_live[2]-bb_live[0])) // 2 - 26
-    draw.ellipse([(lv_cx - 14, CY + badge_live_h//2 - 14),
-                  (lv_cx + 14, CY + badge_live_h//2 + 14)], fill=(255, 80, 80, 255))
-    CY += badge_live_h + 22
-
-    # Logo Giancani in container bianco ad alto contrasto per massima visibilità
-    logo = get_logo_trasparente_ufficiale(max_w=380, max_h=120)
-    if logo:
-        lw, lh = logo.size
-        pad_x, pad_y = 28, 14
-        card_w = lw + pad_x * 2
-        card_h = lh + pad_y * 2
-        card_x = (W - card_w) // 2
-        # Card bianca con angoli arrotondati ed ombra
-        draw.rounded_rectangle([(card_x + 4, CY + 4), (card_x + card_w + 4, CY + card_h + 4)],
-                                radius=24, fill=(0, 0, 0, 50))
-        draw.rounded_rectangle([(card_x, CY), (card_x + card_w, CY + card_h)],
-                                radius=24, fill=(255, 255, 255, 255),
-                                outline=palette["accent"][:3] + (220,), width=3)
-        canvas.alpha_composite(logo, (card_x + pad_x, CY + pad_y))
-        CY += card_h + 28
-    else:
-        CY += 20
-
-    # ── Titolo invito ──
-    font_invito_big = get_font(80, bold=True, font_type="sans")
-    testo_invito_lines = ["UNISCITI ALLA", "DIRETTA STREAMING!"]
-    for line in testo_invito_lines:
-        bb = draw.textbbox((0, 0), line, font=font_invito_big)
-        line_w = bb[2] - bb[0]
-        line_h = bb[3] - bb[1]
-        draw.text(((W - line_w) // 2, CY), line, font=font_invito_big, fill=(255, 255, 255, 255))
-        CY += line_h + 12
-
-    CY += 20
-
-    # ── "Entriamo LIVE alle:" ──
-    font_orario_lbl = get_font(42, bold=False, font_type="sans")
-    lbl_txt = "Entriamo LIVE alle:"
-    bb_lbl = draw.textbbox((0, 0), lbl_txt, font=font_orario_lbl)
-    draw.text(((W - (bb_lbl[2]-bb_lbl[0])) // 2, CY), lbl_txt,
-              font=font_orario_lbl, fill=(200, 210, 240))
-    CY += (bb_lbl[3] - bb_lbl[1]) + 10
-
-    # ── Orario grande (font 110 con padding abbondante) ──
-    font_orario_big = get_font(110, bold=True, font_type="sans")
-    bb_ora = draw.textbbox((0, 0), orario_diretta, font=font_orario_big)
-    ora_x = (W - (bb_ora[2]-bb_ora[0])) // 2
-    draw.text((ora_x, CY), orario_diretta, font=font_orario_big, fill=palette["accent"])
-    CY += (bb_ora[3] - bb_ora[1]) + 85
-
-    # ── Foto immobile rettangolare arrotondata (450px) ──
-    FOTO_SIDE = 450
-    FOTO_X = (W - FOTO_SIDE) // 2
-    FOTO_TOP = CY
-
-    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl", "")
+    # 1. Carica foto immobile
+    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl") or media_info.get("foto_url", "")
     foto_img = None
-    try:
-        if foto_url.startswith("http"):
-            import io as _io
-            resp = requests.get(foto_url, timeout=12, verify=False)
-            foto_img = Image.open(_io.BytesIO(resp.content)).convert("RGB")
-        elif foto_url and os.path.exists(foto_url):
-            foto_img = Image.open(foto_url).convert("RGB")
-    except Exception:
-        pass
-
-    # Frame colorato intorno alla foto
-    frame_pad = 10
-    draw.rounded_rectangle(
-        [(FOTO_X - frame_pad, FOTO_TOP - frame_pad),
-         (FOTO_X + FOTO_SIDE + frame_pad, FOTO_TOP + FOTO_SIDE + frame_pad)],
-        radius=32, fill=palette["accent"][:3] + (255,)
-    )
+    if isinstance(foto_url, Image.Image):
+        foto_img = foto_url.convert("RGB")
+    elif str(foto_url).startswith("http"):
+        try:
+            r = requests.get(foto_url, timeout=12, verify=False)
+            foto_img = Image.open(io.BytesIO(r.content)).convert("RGB")
+        except Exception:
+            pass
+    elif foto_url and os.path.exists(str(foto_url)):
+        try:
+            foto_img = Image.open(str(foto_url)).convert("RGB")
+        except Exception:
+            pass
 
     if foto_img:
         fw, fh = foto_img.size
-        scale = max(FOTO_SIDE / fw, FOTO_SIDE / fh)
+        scale = max(W / fw, H / fh)
         nw, nh = int(fw * scale), int(fh * scale)
-        foto_img = foto_img.resize((nw, nh), Image.LANCZOS)
-        ox = (nw - FOTO_SIDE) // 2
-        oy = (nh - FOTO_SIDE) // 2
-        foto_crop = foto_img.crop((ox, oy, ox + FOTO_SIDE, oy + FOTO_SIDE))
-        # Mask arrotondata
-        mask = Image.new("L", (FOTO_SIDE, FOTO_SIDE), 0)
-        ImageDraw.Draw(mask).rounded_rectangle([(0,0),(FOTO_SIDE,FOTO_SIDE)], radius=24, fill=255)
-        foto_rgba = foto_crop.convert("RGBA")
-        foto_rgba.putalpha(mask)
-        canvas.alpha_composite(foto_rgba, (FOTO_X, FOTO_TOP))
+        f_res = foto_img.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - W) // 2
+        oy = (nh - H) // 2
+        canvas = f_res.crop((ox, oy, ox + W, oy + H)).convert("RGBA")
     else:
-        # Placeholder grigio
-        draw.rounded_rectangle([(FOTO_X, FOTO_TOP), (FOTO_X+FOTO_SIDE, FOTO_TOP+FOTO_SIDE)],
-                                radius=24, fill=(80, 80, 100, 255))
+        canvas = Image.new("RGBA", (W, H), (230, 235, 245, 255))
+
+    # 2. Taglio diagonale inferiore
+    rad = math.radians(angle_deg)
+    tan_a = math.tan(rad)
+    y_left = split_y
+    y_right = int(split_y + W * tan_a)
+    
+    bottom_bg = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_bot = ImageDraw.Draw(bottom_bg)
+    poly_bot = [(0, y_left), (W, y_right), (W, H), (0, H)]
+    draw_bot.polygon(poly_bot, fill=(250, 250, 248, 255))
+    canvas = Image.alpha_composite(canvas, bottom_bg)
+
+    # 3. Nastro Diagonale Inclinato
+    rw = int(W * 1.5)
+    rh = ribbon_h
+    ribbon_layer = Image.new("RGBA", (rw, rh), ribbon_color + (255,))
+    draw_rib = ImageDraw.Draw(ribbon_layer)
+
+    r1_txt = "OPEN HOUSE IN DIRETTA"
+    r2_txt = f"OGGI ALLE ORE {orario_diretta}".upper()
+
+    f_r1 = get_font(58, bold=True, font_type="sans")
+    f_r2 = get_font(64, bold=True, font_type="sans")
+
+    bb_r1 = draw_rib.textbbox((0, 0), r1_txt, font=f_r1)
+    bb_r2 = draw_rib.textbbox((0, 0), r2_txt, font=f_r2)
+
+    h_r1 = bb_r1[3] - bb_r1[1]
+    h_r2 = bb_r2[3] - bb_r2[1]
+    tot_h = h_r1 + h_r2 + 8
+    start_y = (rh - tot_h) // 2
+
+    draw_rib.text(((rw - (bb_r1[2]-bb_r1[0])) // 2, start_y), r1_txt, font=f_r1, fill=(255, 255, 255, 255))
+    draw_rib.text(((rw - (bb_r2[2]-bb_r2[0])) // 2, start_y + h_r1 + 8), r2_txt, font=f_r2, fill=(255, 240, 130, 255))
+
+    rot_ribbon = ribbon_layer.rotate(-angle_deg, expand=True, resample=Image.BICUBIC)
+    rot_w, rot_h = rot_ribbon.size
+    cx = W // 2
+    cy_rib = int(split_y + (W / 2) * tan_a)
+    rx = cx - (rot_w // 2)
+    ry = cy_rib - (rot_h // 2)
+
+    shadow_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    shadow_mask = rot_ribbon.split()[3]
+    shadow_img = Image.new("RGBA", (rot_w, rot_h), (0, 0, 0, 85))
+    shadow_img.putalpha(shadow_mask)
+    shadow_layer.paste(shadow_img, (rx + 5, ry + 7), shadow_img)
+    canvas = Image.alpha_composite(canvas, shadow_layer)
+    canvas.alpha_composite(rot_ribbon, (rx, ry))
+
+    # 4. Header: Logo a sinistra + Badge LIVE a destra
+    draw = ImageDraw.Draw(canvas)
+    logo = get_logo_trasparente_ufficiale(max_w=280, max_h=80)
+    if logo:
+        lw, lh = logo.size
+        draw.rounded_rectangle([(36, 44), (36 + lw + 24, 44 + lh + 16)], radius=14, fill=(255, 255, 255, 240))
+        canvas.alpha_composite(logo, (48, 52))
+    else:
+        draw.rounded_rectangle([(36, 44), (340, 108)], radius=14, fill=(255, 255, 255, 240))
+        f_b = get_font(26, bold=True)
+        draw.text((50, 62), "IMMOBILIARE GIANCANI", font=f_b, fill=ribbon_color)
 
     draw = ImageDraw.Draw(canvas)
-    CY = FOTO_TOP + FOTO_SIDE + frame_pad + 22
 
-    # Titolo immobile sotto foto
-    titolo = str(media_info.get("titolo", "Immobile Esclusivo")).strip()
-    testo_f = str(media_info.get("testoF", "")).strip()  # Colonna F
-    font_tit_im = get_font(44, bold=True, font_type="sans")
-    # Tronca se largo
-    tit_short = titolo[:34] + ("…" if len(titolo) > 34 else "")
-    bb_tit = draw.textbbox((0, 0), tit_short, font=font_tit_im)
-    draw.text(((W - (bb_tit[2]-bb_tit[0])) // 2, CY), tit_short,
-              font=font_tit_im, fill=(255, 255, 255, 255))
-    CY += (bb_tit[3] - bb_tit[1]) + 10
+    badge_w, badge_h = 200, 60
+    bx = W - badge_w - 36
+    by = 44
+    draw.rounded_rectangle([(bx, by), (bx + badge_w, by + badge_h)], radius=badge_h // 2, fill=(220, 30, 30, 245))
+    f_live_tag = get_font(28, bold=True)
+    live_txt = "● DIRETTA"
+    bb_lt = draw.textbbox((0, 0), live_txt, font=f_live_tag)
+    draw.text((bx + (badge_w - (bb_lt[2]-bb_lt[0])) // 2, by + (badge_h - (bb_lt[3]-bb_lt[1])) // 2 - 1),
+              live_txt, font=f_live_tag, fill=(255, 255, 255, 255))
 
-    # Snippet Colonna F — max 60 caratteri
-    if testo_f:
-        snippet = testo_f[:60].strip() + ("…" if len(testo_f) > 60 else "")
-        font_snip = get_font(32, bold=False, font_type="sans")
-        bb_snip = draw.textbbox((0, 0), snippet, font=font_snip)
-        draw.text(((W - (bb_snip[2]-bb_snip[0])) // 2, CY), snippet,
-                  font=font_snip, fill=(180, 195, 225))
-        CY += (bb_snip[3] - bb_snip[1]) + 14
+    # 5. Sezione Inferiore con Dati Immobile da Colonna F
+    pad_left = 50
+    curr_y = y_left + 120
 
-    # ── Brand finale prominente ──
-    font_brand = get_font(44, bold=True, font_type="sans")
-    brand_txt = "— Immobiliare Giancani —"
-    bb_br = draw.textbbox((0, 0), brand_txt, font=font_brand)
-    # Posiziona a fine canvas con margine minimo 20px
-    brand_y = max(CY + 10, H - (bb_br[3] - bb_br[1]) - 28)
-    draw.text(((W - (bb_br[2]-bb_br[0])) // 2, brand_y), brand_txt,
-              font=font_brand, fill=palette["accent"])
+    zona = str(media_info.get("zona", "Favara (AG)")).strip().upper()
+    titolo = str(media_info.get("titolo", "VILLA CON GIARDINO")).strip().upper()
+    loc_txt = f"{zona} • {titolo}"
+    f_loc = get_font(30, bold=True, font_type="sans")
+    draw.text((pad_left, curr_y), loc_txt[:48], font=f_loc, fill=(100, 105, 120, 255))
+    curr_y += draw.textbbox((0, 0), loc_txt, font=f_loc)[3] + 14
+
+    f_tit = get_font(42, bold=True, font_type="sans")
+    tit_lines = _wrap_text_lines(draw, titolo, f_tit, W - pad_left * 2)
+    for tl in tit_lines[:2]:
+        draw.text((pad_left, curr_y), tl, font=f_tit, fill=(20, 25, 35, 255))
+        bb_tl = draw.textbbox((0, 0), tl, font=f_tit)
+        curr_y += (bb_tl[3] - bb_tl[1]) + 8
+
+    curr_y += 6
+
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if not testo_f:
+        mq_str = formatta_metri_quadri(media_info.get("mq", "150"))
+        prezzo_str = str(media_info.get("prezzo", "Trattativa Riservata"))
+        testo_f = f"Splendida soluzione di {mq_str} con ampi spazi e finiture di pregio. Prezzo: € {prezzo_str}."
+
+    testo_f_clean = re.sub(r'[\r\n]+', ' ', testo_f)
+    f_desc = get_font(28, bold=False, font_type="sans")
+    desc_lines = _wrap_text_lines(draw, testo_f_clean, f_desc, W - pad_left * 2)
+    for dl in desc_lines[:4]:
+        draw.text((pad_left, curr_y), dl, font=f_desc, fill=(45, 52, 65, 255))
+        bb_dl = draw.textbbox((0, 0), dl, font=f_desc)
+        curr_y += (bb_dl[3] - bb_dl[1]) + 6
+
+    curr_y += 12
+
+    prezzo_val = str(media_info.get("prezzo", "")).strip()
+    if prezzo_val:
+        p_txt = f"PREZZO: € {prezzo_val}".upper()
+        f_pr = get_font(32, bold=True, font_type="sans")
+        draw.text((pad_left, curr_y), p_txt, font=f_pr, fill=ribbon_color)
+        curr_y += draw.textbbox((0, 0), p_txt, font=f_pr)[3] + 12
+
+    cta_direct = "Tour virtuale in diretta: collegati per fare domande in tempo reale!"
+    f_cta_d = get_font(26, bold=True, font_type="sans")
+    draw.text((pad_left, curr_y), cta_direct, font=f_cta_d, fill=(15, 23, 42, 255))
+    curr_y += draw.textbbox((0, 0), cta_direct, font=f_cta_d)[3] + 16
+
+    foot_h = 100
+    foot_y = H - foot_h - 40
+    foot_w = W - 80
+    foot_x = 40
+    draw.rounded_rectangle([(foot_x, foot_y), (foot_x + foot_w, foot_y + foot_h)],
+                           radius=30, fill=(15, 23, 42, 240), outline=(255, 255, 255, 180), width=2)
+    f_b1 = get_font(30, bold=True)
+    f_b2 = get_font(24, bold=False)
+    t1 = "IMMOBILIARE GIANCANI"
+    t2 = "Corso Vittorio Veneto 151, Favara (AG) • Tel. 320 166 7156"
+    bb_t1 = draw.textbbox((0, 0), t1, font=f_b1)
+    bb_t2 = draw.textbbox((0, 0), t2, font=f_b2)
+    draw.text(((W - (bb_t1[2]-bb_t1[0])) // 2, foot_y + 14), t1, font=f_b1, fill=(255, 255, 255, 255))
+    draw.text(((W - (bb_t2[2]-bb_t2[0])) // 2, foot_y + 54), t2, font=f_b2, fill=(212, 168, 83, 255))
 
     canvas = canvas.convert("RGB")
     canvas.save(output_path, "PNG", quality=97)
-    print(f"[ANNUNCIO_DIRETTA] Salvato: {output_path}")
+    print(f"[ANNUNCIO_DIRETTA_9_16] Salvato: {output_path}")
+    return output_path
+
+def crea_card_annuncio_diretta_1_1(media_info, orario_diretta=None, palette=None, output_path=None):
+    """
+    Card speciale di annuncio diretta live con modello Nastro Diagonale (1:1 Post Feed).
+    """
+    W, H = 1080, 1080
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"card_annuncio_diretta_1x1_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    split_y = 540
+    ribbon_h = 140
+    angle_deg = -10
+    ribbon_color = (168, 24, 48)
+
+    if not orario_diretta:
+        orario_diretta = media_info.get("orario_diretta") or media_info.get("orario")
+        if not orario_diretta:
+            now = datetime.datetime.now()
+            if now.minute < 30:
+                orario_diretta = now.replace(minute=30, second=0).strftime("%H:%M")
+            else:
+                orario_diretta = (now + datetime.timedelta(hours=1)).replace(minute=0, second=0).strftime("%H:%M")
+
+    foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl") or media_info.get("foto_url", "")
+    foto_img = None
+    if isinstance(foto_url, Image.Image):
+        foto_img = foto_url.convert("RGB")
+    elif str(foto_url).startswith("http"):
+        try:
+            r = requests.get(foto_url, timeout=12, verify=False)
+            foto_img = Image.open(io.BytesIO(r.content)).convert("RGB")
+        except Exception:
+            pass
+    elif foto_url and os.path.exists(str(foto_url)):
+        try:
+            foto_img = Image.open(str(foto_url)).convert("RGB")
+        except Exception:
+            pass
+
+    if foto_img:
+        fw, fh = foto_img.size
+        scale = max(W / fw, H / fh)
+        nw, nh = int(fw * scale), int(fh * scale)
+        f_res = foto_img.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - W) // 2
+        oy = (nh - H) // 2
+        canvas = f_res.crop((ox, oy, ox + W, oy + H)).convert("RGBA")
+    else:
+        canvas = Image.new("RGBA", (W, H), (230, 235, 245, 255))
+
+    rad = math.radians(angle_deg)
+    tan_a = math.tan(rad)
+    y_left = split_y
+    y_right = int(split_y + W * tan_a)
+    
+    bottom_bg = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_bot = ImageDraw.Draw(bottom_bg)
+    poly_bot = [(0, y_left), (W, y_right), (W, H), (0, H)]
+    draw_bot.polygon(poly_bot, fill=(250, 250, 248, 255))
+    canvas = Image.alpha_composite(canvas, bottom_bg)
+
+    rw = int(W * 1.5)
+    rh = ribbon_h
+    ribbon_layer = Image.new("RGBA", (rw, rh), ribbon_color + (255,))
+    draw_rib = ImageDraw.Draw(ribbon_layer)
+
+    r1_txt = "OPEN HOUSE IN DIRETTA"
+    r2_txt = f"OGGI ALLE ORE {orario_diretta}".upper()
+
+    f_r1 = get_font(46, bold=True, font_type="sans")
+    f_r2 = get_font(52, bold=True, font_type="sans")
+
+    bb_r1 = draw_rib.textbbox((0, 0), r1_txt, font=f_r1)
+    bb_r2 = draw_rib.textbbox((0, 0), r2_txt, font=f_r2)
+
+    h_r1 = bb_r1[3] - bb_r1[1]
+    h_r2 = bb_r2[3] - bb_r2[1]
+    tot_h = h_r1 + h_r2 + 8
+    start_y = (rh - tot_h) // 2
+
+    draw_rib.text(((rw - (bb_r1[2]-bb_r1[0])) // 2, start_y), r1_txt, font=f_r1, fill=(255, 255, 255, 255))
+    draw_rib.text(((rw - (bb_r2[2]-bb_r2[0])) // 2, start_y + h_r1 + 8), r2_txt, font=f_r2, fill=(255, 240, 130, 255))
+
+    rot_ribbon = ribbon_layer.rotate(-angle_deg, expand=True, resample=Image.BICUBIC)
+    rot_w, rot_h = rot_ribbon.size
+    cx = W // 2
+    cy_rib = int(split_y + (W / 2) * tan_a)
+    rx = cx - (rot_w // 2)
+    ry = cy_rib - (rot_h // 2)
+
+    shadow_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    shadow_mask = rot_ribbon.split()[3]
+    shadow_img = Image.new("RGBA", (rot_w, rot_h), (0, 0, 0, 85))
+    shadow_img.putalpha(shadow_mask)
+    shadow_layer.paste(shadow_img, (rx + 5, ry + 7), shadow_img)
+    canvas = Image.alpha_composite(canvas, shadow_layer)
+    canvas.alpha_composite(rot_ribbon, (rx, ry))
+
+    draw = ImageDraw.Draw(canvas)
+    logo = get_logo_trasparente_ufficiale(max_w=280, max_h=80)
+    if logo:
+        lw, lh = logo.size
+        draw.rounded_rectangle([(30, 30), (30 + lw + 24, 30 + lh + 16)], radius=12, fill=(255, 255, 255, 240))
+        canvas.alpha_composite(logo, (42, 38))
+    else:
+        draw.rounded_rectangle([(30, 30), (320, 85)], radius=12, fill=(255, 255, 255, 240))
+        f_b = get_font(24, bold=True)
+        draw.text((44, 45), "IMMOBILIARE GIANCANI", font=f_b, fill=ribbon_color)
+
+    draw = ImageDraw.Draw(canvas)
+    badge_w, badge_h = 170, 50
+    bx = W - badge_w - 30
+    by = 30
+    draw.rounded_rectangle([(bx, by), (bx + badge_w, by + badge_h)], radius=badge_h // 2, fill=(220, 30, 30, 245))
+    f_live_tag = get_font(24, bold=True)
+    live_txt = "● DIRETTA"
+    bb_lt = draw.textbbox((0, 0), live_txt, font=f_live_tag)
+    draw.text((bx + (badge_w - (bb_lt[2]-bb_lt[0])) // 2, by + (badge_h - (bb_lt[3]-bb_lt[1])) // 2 - 1),
+              live_txt, font=f_live_tag, fill=(255, 255, 255, 255))
+
+    pad_left = 50
+    curr_y = y_left + 85
+
+    zona = str(media_info.get("zona", "Favara (AG)")).strip().upper()
+    titolo = str(media_info.get("titolo", "VILLA CON GIARDINO")).strip().upper()
+    loc_txt = f"{zona} • {titolo}"
+    f_loc = get_font(24, bold=True, font_type="sans")
+    draw.text((pad_left, curr_y), loc_txt[:45], font=f_loc, fill=(100, 105, 120, 255))
+    curr_y += draw.textbbox((0, 0), loc_txt, font=f_loc)[3] + 12
+
+    f_tit = get_font(34, bold=True, font_type="sans")
+    tit_lines = _wrap_text_lines(draw, titolo, f_tit, W - pad_left * 2)
+    for tl in tit_lines[:2]:
+        draw.text((pad_left, curr_y), tl, font=f_tit, fill=(20, 25, 35, 255))
+        bb_tl = draw.textbbox((0, 0), tl, font=f_tit)
+        curr_y += (bb_tl[3] - bb_tl[1]) + 8
+
+    curr_y += 6
+
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if not testo_f:
+        mq_str = formatta_metri_quadri(media_info.get("mq", "150"))
+        prezzo_str = str(media_info.get("prezzo", "Trattativa Riservata"))
+        testo_f = f"Splendida soluzione di {mq_str} con ampi spazi e finiture di pregio. Prezzo: € {prezzo_str}."
+
+    testo_f_clean = re.sub(r'[\r\n]+', ' ', testo_f)
+    f_desc = get_font(22, bold=False, font_type="sans")
+    desc_lines = _wrap_text_lines(draw, testo_f_clean, f_desc, W - pad_left * 2)
+    for dl in desc_lines[:2]:
+        draw.text((pad_left, curr_y), dl, font=f_desc, fill=(45, 52, 65, 255))
+        bb_dl = draw.textbbox((0, 0), dl, font=f_desc)
+        curr_y += (bb_dl[3] - bb_dl[1]) + 6
+
+    curr_y += 10
+
+    prezzo_val = str(media_info.get("prezzo", "")).strip()
+    if prezzo_val:
+        p_txt = f"PREZZO: € {prezzo_val}".upper()
+        f_pr = get_font(26, bold=True, font_type="sans")
+        draw.text((pad_left, curr_y), p_txt, font=f_pr, fill=ribbon_color)
+        curr_y += draw.textbbox((0, 0), p_txt, font=f_pr)[3] + 10
+
+    cta_direct = "Tour virtuale in diretta: collegati per fare domande in tempo reale!"
+    f_cta_d = get_font(20, bold=True, font_type="sans")
+    draw.text((pad_left, curr_y), cta_direct, font=f_cta_d, fill=(15, 23, 42, 255))
+    curr_y += draw.textbbox((0, 0), cta_direct, font=f_cta_d)[3] + 10
+
+    f_sign = get_font(20, bold=True, font_type="sans")
+    sign_txt = "Immobiliare Giancani • Corso Vittorio Veneto 151, Favara • Tel. 320 166 7156"
+    draw.text((pad_left, curr_y), sign_txt, font=f_sign, fill=ribbon_color)
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=97)
+    print(f"[ANNUNCIO_DIRETTA_1_1] Salvato: {output_path}")
     return output_path
 
 

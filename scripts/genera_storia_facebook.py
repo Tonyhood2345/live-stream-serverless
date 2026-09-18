@@ -345,7 +345,6 @@ def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True):
     le primissime parole pronunciate (nei primi 1.5 secondi) trasmettono
     un pensiero positivo immediato e terminano con 'con Immobiliare Giancani!'.
     """
-    p_nome = "DarIA" if str(personaggio).lower() == "daria" else "DarIO"
     testo_f_clean = (testo_f or "").strip()
     if testo_f_clean:
         testo_f_clean = re.sub(r'\s*—?\s*Immobiliare Giancani\s*$', '', testo_f_clean, flags=re.IGNORECASE).strip()
@@ -354,20 +353,21 @@ def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True):
 
     if is_live:
         followups = [
-            f"Sono {p_nome} e siamo in diretta streaming proprio adesso per mostrarvi questa straordinaria opportunità. {testo_f_clean} Entrate subito a trovarci e scriveteci in chat quale stanza volete visitare! Vi aspettiamo con Immobiliare Giancani!",
-            f"Da {p_nome} e da tutto il nostro team, siamo collegati dal vivo in questo istante con le migliori occasioni del mercato. {testo_f_clean} Raggiungeteci nella diretta streaming per farci tutte le vostre domande dal vivo! Vi aspettiamo con Immobiliare Giancani!",
-            f"Sono {p_nome} e abbiamo preparato per voi una sorpresa esclusiva in streaming! {testo_f_clean} Entrate subito nella nostra diretta per esplorare tutti gli ambienti insieme a noi! Vi aspettiamo con Immobiliare Giancani!",
-            f"Da {p_nome} un invito speciale: siamo in onda adesso in diretta streaming! {testo_f_clean} Scriveteci nei commenti quale stanza desiderate visitare e vi porteremo subito all'interno! Vi aspettiamo con Immobiliare Giancani!",
-            f"Sono {p_nome}: in questo momento siamo in onda dal vivo per farvi scoprire questa gemma immobiliare! {testo_f_clean} Entrate e commentate in diretta, vi aspettiamo con Immobiliare Giancani!",
-            f"Vi do il benvenuto da parte di {p_nome}: le porte delle nostre migliori residenze sono aperte adesso in streaming! {testo_f_clean} Collegatevi subito per interagire in tempo reale! Vi aspettiamo con Immobiliare Giancani!"
+            f"Salve dall'agenzia Immobiliare Giancani! Siamo in diretta streaming proprio adesso per mostrarvi questa straordinaria opportunità. {testo_f_clean} Entrate subito a trovarci e scriveteci in chat quale stanza volete visitare! Vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! Da tutto il nostro team siamo collegati dal vivo in questo istante con le migliori occasioni del mercato. {testo_f_clean} Raggiungeteci nella diretta streaming per farci tutte le vostre domande dal vivo! Vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! Abbiamo preparato per voi una presentazione esclusiva in streaming! {testo_f_clean} Entrate subito nella nostra diretta per esplorare tutti gli ambienti insieme a noi! Vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! Un invito speciale per voi: siamo in onda adesso in diretta streaming! {testo_f_clean} Scriveteci nei commenti quale stanza desiderate visitare e vi porteremo subito all'interno! Vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! In questo momento siamo in onda dal vivo per farvi scoprire questa gemma immobiliare! {testo_f_clean} Entrate e commentate in diretta, vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! Le porte delle nostre migliori residenze sono aperte adesso in streaming! {testo_f_clean} Collegatevi subito per interagire in tempo reale! Vi aspettiamo con Immobiliare Giancani!"
         ]
     else:
         followups = [
-            f"Sono {p_nome} e oggi vi presentiamo una proprietà davvero unica, selezionata per voi. {testo_f_clean} Contattateci subito per prenotare una visita esclusiva. — Immobiliare Giancani",
-            f"Vi do il benvenuto da parte di {p_nome}: lasciatevi conquistare da questa straordinaria dimora. {testo_f_clean} Per fissare un appuntamento chiamateci senza impegno. — Immobiliare Giancani",
-            f"Sono {p_nome}: il massimo del comfort per la vostra famiglia vi aspetta in questa casa speciale. {testo_f_clean} Chiamateci subito per scoprire ogni dettaglio di persona. — Immobiliare Giancani",
-            f"La casa perfetta esiste ed è curata da {p_nome} e dal nostro team. {testo_f_clean} Siamo pronti ad accompagnarvi nella vostra visita privata. — Immobiliare Giancani"
+            f"Salve dall'agenzia Immobiliare Giancani! Oggi vi presentiamo una proprietà davvero unica, selezionata per voi. {testo_f_clean} Contattateci subito per prenotare una visita esclusiva. — Immobiliare Giancani",
+            f"Salve dall'agenzia Immobiliare Giancani! Lasciatevi conquistare da questa straordinaria dimora. {testo_f_clean} Per fissare un appuntamento chiamateci senza impegno. — Immobiliare Giancani",
+            f"Salve dall'agenzia Immobiliare Giancani! Il massimo del comfort per la vostra famiglia vi aspetta in questa casa speciale. {testo_f_clean} Chiamateci subito per scoprire ogni dettaglio di persona. — Immobiliare Giancani",
+            f"La casa perfetta esiste ed è curata dal team di Immobiliare Giancani. {testo_f_clean} Siamo pronti ad accompagnarvi nella vostra visita privata. — Immobiliare Giancani"
         ]
+
 
     return f"{frase_positiva} {random.choice(followups)}"
 

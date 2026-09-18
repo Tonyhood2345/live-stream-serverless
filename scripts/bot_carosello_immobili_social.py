@@ -63,10 +63,10 @@ FB_PAGE_TOKEN = os.environ.get(
 )
 IG_ACCOUNT_ID = os.environ.get("IG_ACCOUNT_ID", "17841400301393511")
 
-APPS_SCRIPT_URL = os.environ.get(
-    "APPS_SCRIPT_URL",
-    "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
-)
+APPS_SCRIPT_URL = (
+    os.environ.get("APPS_SCRIPT_URL")
+    or "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
+).strip()
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g3dY9qnIIVc_hWzDdOuHm-MS6M")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")

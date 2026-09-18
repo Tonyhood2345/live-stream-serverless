@@ -2,8 +2,9 @@ name: Storie YouTube Quotidiane (07:00 & 19:00)
 
 on:
   schedule:
-    # Esegue alle 07:00 e 19:00 ora italiana (CEST UTC+2 -> 05:00 e 17:00 UTC)
-    - cron: '0 5,17 * * *'
+    # Esegue alle 07:00 e alle 19:00 ora italiana (Europe/Rome)
+    # Copre sia orario estivo CEST (UTC+2 -> 05:00 e 17:00 UTC) sia invernale CET (UTC+1 -> 06:00 e 18:00 UTC)
+    - cron: '0 5,6,17,18 * * *'
   workflow_dispatch:
     inputs:
       target:
@@ -46,7 +47,25 @@ jobs:
         run: |
           pip install --no-cache-dir pillow numpy yt-dlp requests
 
+      - name: Verifica Finestra Oraria (07:00 & 19:00 Europe/Rome)
+        id: time_check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run_now=true" >> $GITHUB_OUTPUT
+          else
+            HOUR_ROME=$(TZ="Europe/Rome" date +"%H")
+            H=$((10#$HOUR_ROME))
+            if [ "$H" -eq 7 ] || [ "$H" -eq 19 ]; then
+              echo "run_now=true" >> $GITHUB_OUTPUT
+              echo "Orario Europe/Rome valido: $HOUR_ROME:00. Procedo con la storia YouTube."
+            else
+              echo "run_now=false" >> $GITHUB_OUTPUT
+              echo "Orario Europe/Rome non attivo: $HOUR_ROME:00 (attivo alle 07:00 e 19:00)."
+            fi
+          fi
+
       - name: Esegui Pubblicazione Storia YouTube
+        if: steps.time_check.outputs.run_now == 'true'
         run: |
           TARGET_MODE="${{ github.event.inputs.target }}"
           if [ -z "$TARGET_MODE" ]; then TARGET_MODE="auto"; fi

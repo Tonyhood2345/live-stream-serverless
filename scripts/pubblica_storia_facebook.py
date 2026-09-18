@@ -429,7 +429,7 @@ def determina_fascia_oraria(ora=None):
             "saluto": "Buongiorno 🌅☀️☕",
             "badge": "🌅 BUONGIORNO • IMMOBILIARE GIANCANI",
             "frase_flash": "Buongiorno! Inizia una giornata di luce e nuove opportunità con Immobiliare Giancani! 🌅☀️",
-            "intro_voce": "Buongiorno da DarIA! Iniziamo questa splendida giornata insieme per scoprire questa magnifica proprietà.",
+            "intro_voce": "Salve dall'agenzia Immobiliare Giancani! Iniziamo questa splendida giornata insieme per scoprire questa magnifica proprietà.",
             "emoticon": "🌅☀️☕",
             "musica_file": "classica_vivaldi_primavera.mp3",
             "musica_titolo": "Vivaldi - La Primavera (Royalty-Free Facebook)",
@@ -449,7 +449,7 @@ def determina_fascia_oraria(ora=None):
             "saluto": "Buon pomeriggio ☕🌤️🏡",
             "badge": "☕ BUON POMERIGGIO • IMMOBILIARE GIANCANI",
             "frase_flash": "Buon pomeriggio! È il momento perfetto per scegliere la tua casa con Immobiliare Giancani! ☕🏡",
-            "intro_voce": "Buon pomeriggio da DarIA! Nel cuore di questa giornata vi presentiamo un immobile davvero eccezionale.",
+            "intro_voce": "Salve dall'agenzia Immobiliare Giancani! Nel cuore di questa giornata vi presentiamo un immobile davvero eccezionale.",
             "emoticon": "☕🌤️🏡",
             "musica_file": "cheerful_music.wav",
             "musica_titolo": "Cheerful Acoustic Lounge 124 BPM (Royalty-Free Facebook)",
@@ -468,7 +468,7 @@ def determina_fascia_oraria(ora=None):
             "saluto": "Buona sera 🌆🍷✨",
             "badge": "🌆 BUONA SERA • IMMOBILIARE GIANCANI",
             "frase_flash": "Buona sera! Il piacere e il calore di tornare a casa con Immobiliare Giancani! 🌆✨",
-            "intro_voce": "Buona sera da DarIA! Al calar della sera, lasciatevi conquistare dal calore di questa splendida residenza.",
+            "intro_voce": "Salve dall'agenzia Immobiliare Giancani! Al calar della sera, lasciatevi conquistare dal calore di questa splendida residenza.",
             "emoticon": "🌆🍷✨",
             "musica_file": "luxury_ambient_music.wav",
             "musica_titolo": "Luxury Sunset Ambient (Royalty-Free Facebook)",
@@ -487,7 +487,7 @@ def determina_fascia_oraria(ora=None):
             "saluto": "Buonanotte 🌙⭐️💤",
             "badge": "🌙 BUONANOTTE • IMMOBILIARE GIANCANI",
             "frase_flash": "Buonanotte e sogni d'oro! La casa perfetta ti aspetta con Immobiliare Giancani! 🌙⭐️",
-            "intro_voce": "Buonanotte e sogni d'oro da DarIA! Prima di addormentarvi, vi auguriamo pensieri sereni e sogni grandiosi.",
+            "intro_voce": "Salve dall'agenzia Immobiliare Giancani! Prima di addormentarvi, vi auguriamo pensieri sereni e sogni grandiosi.",
             "emoticon": "🌙⭐️💤",
             "musica_file": "classica_mozart_nachtmusik.mp3",
             "musica_titolo": "Mozart - Serenata Notturna (Royalty-Free Facebook)",
@@ -507,7 +507,6 @@ def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True, 
     le primissime parole pronunciate (nei primi 1.5 secondi) trasmettono
     un pensiero positivo immediato e terminano con 'con Immobiliare Giancani!'.
     """
-    p_nome = "DarIA" if str(personaggio).lower() == "daria" else "DarIO"
     testo_f_clean = (testo_f or "").strip()
     if testo_f_clean:
         testo_f_clean = re.sub(r'\s*—?\s*Immobiliare Giancani\s*$', '', testo_f_clean, flags=re.IGNORECASE).strip()
@@ -517,26 +516,26 @@ def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True, 
 
     if is_live:
         followups = [
-            f"Sono {p_nome}: siamo collegati dal vivo in diretta streaming proprio in questo istante! {testo_f_clean} Entrate subito a guardare la diretta per scoprire tutti gli ambienti e chattare con noi in tempo reale! Vi aspettiamo con Immobiliare Giancani!",
-            f"Da {p_nome} e da tutto il nostro team, un invito imperdibile: siamo in onda adesso in diretta streaming! {testo_f_clean} Cliccate subito ed entrate nella diretta per farci tutte le vostre domande dal vivo! Vi aspettiamo con Immobiliare Giancani!",
-            f"La diretta streaming è accesa adesso! Sono {p_nome} e abbiamo preparato per voi una presentazione esclusiva. {testo_f_clean} Entrate subito a guardare la diretta per vedere ogni dettaglio prima di tutti! Vi aspettiamo con Immobiliare Giancani!",
-            f"Da {p_nome} un caloroso invito: siamo in onda dal vivo in diretta streaming! {testo_f_clean} Scriveteci nei commenti quale stanza desiderate visitare e vi porteremo subito all'interno! Entrate in diretta con Immobiliare Giancani!",
-            f"Sono {p_nome}: in questo momento siamo in onda dal vivo per farvi scoprire questa gemma immobiliare! {testo_f_clean} Entrate subito a guardare la nostra diretta streaming, vi aspettiamo con Immobiliare Giancani!",
-            f"Vi do il benvenuto da parte di {p_nome}: le porte delle nostre migliori residenze sono aperte adesso in streaming! {testo_f_clean} Collegatevi subito alla diretta per interagire con noi in tempo reale! Vi aspettiamo con Immobiliare Giancani!",
-            f"Se state cercando la vostra prossima casa, non perdetevi la diretta streaming attiva proprio ora con {p_nome}! {testo_f_clean} Entrate subito a vedere la diretta dal vivo per scoprire tutte le stanze e il prezzo! Vi aspettiamo con Immobiliare Giancani!"
+            f"Salve dall'agenzia Immobiliare Giancani! Siamo collegati dal vivo in diretta streaming proprio in questo istante. {testo_f_clean} Entrate subito a guardare la diretta per scoprire tutti gli ambienti e chattare con noi in tempo reale! Vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! Da tutto il nostro team un invito imperdibile: siamo in onda adesso in diretta streaming. {testo_f_clean} Cliccate subito ed entrate nella diretta per farci tutte le vostre domande dal vivo! Vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! La diretta streaming è accesa adesso e abbiamo preparato per voi una presentazione esclusiva. {testo_f_clean} Entrate subito a guardare la diretta per vedere ogni dettaglio prima di tutti! Vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! Un caloroso invito per voi: siamo in onda dal vivo in diretta streaming. {testo_f_clean} Scriveteci nei commenti quale stanza desiderate visitare e vi porteremo subito all'interno! Entrate in diretta con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! In questo momento siamo in onda dal vivo per farvi scoprire questa gemma immobiliare. {testo_f_clean} Entrate subito a guardare la nostra diretta streaming, vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! Le porte delle nostre migliori residenze sono aperte adesso in streaming. {testo_f_clean} Collegatevi subito alla diretta per interagire con noi in tempo reale! Vi aspettiamo con Immobiliare Giancani!",
+            f"Salve dall'agenzia Immobiliare Giancani! Se state cercando la vostra prossima casa, non perdetevi la diretta streaming attiva proprio ora. {testo_f_clean} Entrate subito a vedere la diretta dal vivo per scoprire tutte le stanze e il prezzo! Vi aspettiamo con Immobiliare Giancani!"
         ]
+        return random.choice(followups)
     else:
         if not fascia_info:
             fascia_info = determina_fascia_oraria()
-        saluto_momento = fascia_info.get("intro_voce", f"Da {p_nome} un caloroso saluto!")
+        saluto_momento = fascia_info.get("intro_voce", "Salve dall'agenzia Immobiliare Giancani!")
         followups = [
-            f"{saluto_momento} {testo_f_clean} Contattateci subito per prenotare una visita esclusiva. — Immobiliare Giancani",
-            f"Vi do il benvenuto da parte di {p_nome}: {saluto_momento} {testo_f_clean} Per fissare un appuntamento chiamateci senza impegno. — Immobiliare Giancani",
-            f"Sono {p_nome}: {saluto_momento} {testo_f_clean} Chiamateci subito per scoprire ogni dettaglio di persona. — Immobiliare Giancani",
-            f"{saluto_momento} La casa perfetta è curata con dedizione da {p_nome} e dal nostro team. {testo_f_clean} Siamo pronti ad accompagnarvi nella vostra visita privata. — Immobiliare Giancani"
+            f"{saluto_momento} {testo_f_clean} Contattateci subito per prenotare una visita esclusiva. {frase_positiva} — Immobiliare Giancani",
+            f"{saluto_momento} {testo_f_clean} Per fissare un appuntamento e visitarla insieme, chiamateci senza impegno. {frase_positiva} — Immobiliare Giancani",
+            f"{saluto_momento} {testo_f_clean} Chiamateci subito per scoprire ogni dettaglio di persona. {frase_positiva} — Immobiliare Giancani",
+            f"{saluto_momento} La casa perfetta vi aspetta, curata con dedizione dal nostro team. {testo_f_clean} Siamo pronti ad accompagnarvi nella vostra visita privata. {frase_positiva} — Immobiliare Giancani"
         ]
-
-    return f"{frase_positiva} {random.choice(followups)}"
+        return random.choice(followups)
 
 def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_positiva=None, fascia_info=None):
     """Combina la voce narrante (DarIA o DarIO) con la musica allegra e auto-ducking"""

@@ -239,12 +239,19 @@ def carica_immobile_e_stanze(target_sheet=None):
     url_sheets = f"{APPS_SCRIPT_URL}?action=debug_all_sheets"
     req = urllib.request.Request(url_sheets, headers={"User-Agent": "Mozilla/5.0"})
     all_sheets = []
-    try:
-        with urllib.request.urlopen(req, timeout=20, context=ctx) as r:
-            data = json.loads(r.read().decode('utf-8'))
-            all_sheets = data.get('sheets', [])
-    except Exception as e:
-        print(f"❌ Errore recupero fogli: {e}")
+    for tent in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=45, context=ctx) as r:
+                data = json.loads(r.read().decode('utf-8'))
+                all_sheets = data.get('sheets', [])
+                if all_sheets:
+                    break
+        except Exception as e:
+            print(f"⚠️ Tentativo {tent+1}/3 recupero fogli: {e}")
+            time.sleep(2)
+
+    if not all_sheets:
+        print("❌ Impossibile recuperare l'elenco fogli dal catalogo.")
         return None
 
     fogli_immobili = []
@@ -278,13 +285,16 @@ def carica_immobile_e_stanze(target_sheet=None):
     url_imm = f"{APPS_SCRIPT_URL}?action=get_sheet&name={urllib.parse.quote(scelto)}"
     req_imm = urllib.request.Request(url_imm, headers={"User-Agent": "Mozilla/5.0"})
     rows = []
-    try:
-        with urllib.request.urlopen(req_imm, timeout=20, context=ctx) as r:
-            d = json.loads(r.read().decode('utf-8'))
-            rows = d.get('rows', [])
-    except Exception as e:
-        print(f"❌ Errore recupero righe per {scelto}: {e}")
-        return None
+    for tent in range(3):
+        try:
+            with urllib.request.urlopen(req_imm, timeout=45, context=ctx) as r:
+                d = json.loads(r.read().decode('utf-8'))
+                rows = d.get('rows', [])
+                if rows:
+                    break
+        except Exception as e:
+            print(f"⚠️ Tentativo {tent+1}/3 recupero righe {scelto}: {e}")
+            time.sleep(2)
 
     if len(rows) < 2:
         print(f"❌ Foglio {scelto} non ha abbastanza righe.")

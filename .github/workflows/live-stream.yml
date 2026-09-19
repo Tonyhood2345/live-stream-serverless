@@ -1,10 +1,14 @@
 name: Serverless Multistream Live
 on:
+  schedule:
+    # ⏰ Avvio automatico quotidiano serale: 17:00 UTC = 19:00 CEST (orario estivo italiano)
+    - cron: '0 17 * * *'
   workflow_dispatch:
     inputs:
       video_url:
         description: 'URL del video o della Web App'
-        required: true
+        required: false
+        default: 'https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?view=screen'
       fb_key:
         description: 'Facebook RTMP URL completo'
         required: false
@@ -190,8 +194,12 @@ jobs:
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
           SCALE_FACTOR="${{ github.event.inputs.scale_factor }}"
-          if [ -z "$SCALE_FACTOR" ]; then SCALE_FACTOR="1.5"; fi
-          echo "Avvio Chrome con Scala $SCALE_FACTOR e Anti-Banner su: ${{ github.event.inputs.video_url }}"
+          if [ -z "$SCALE_FACTOR" ]; then SCALE_FACTOR="1.0"; fi
+          VIDEO_URL="${{ github.event.inputs.video_url }}"
+          if [ -z "$VIDEO_URL" ]; then
+            VIDEO_URL="https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?view=screen"
+          fi
+          echo "Avvio Chrome con Scala $SCALE_FACTOR e Anti-Banner su: $VIDEO_URL"
           google-chrome \
             --kiosk \
             --window-position=0,0 \
@@ -219,7 +227,7 @@ jobs:
             --autoplay-policy=no-user-gesture-required \
             --alsa-output-device=pulse \
             --user-data-dir=/tmp/chrome_clean_profile \
-            "${{ github.event.inputs.video_url }}" &
+            "$VIDEO_URL" &
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
           echo "Verifica sink inputs PulseAudio (Chrome Audio Output):"

@@ -43,6 +43,12 @@ ssl.create_default_context = unverified_create_default_context
 import os
 import io
 import sys
+
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+for _p in [_this_dir, os.path.join(_this_dir, "scripts"), os.path.dirname(_this_dir)]:
+    if _p not in sys.path and os.path.exists(_p):
+        sys.path.insert(0, _p)
+
 import time
 import json
 import uuid
@@ -1618,35 +1624,43 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
     testo_f = media_info.get('testoF', 'Immobile esclusivo selezionato ad Agrigento e Favara.')
     is_live = media_info.get('isLive', False)
 
-    # Selezione Stile Grafico (10 grafiche professionali alternate ogni 30 minuti con palette del giorno/settimana)
-    styles = [
-        "gabetti_diagonal", "capellupo_sidebar", "marketing_banner", "split_screen", "luxury_glass", "editorial",
-        "room_label", "ideacasa_layout", "casait_card", "tecnocasa_multi",
-    ]
-    if not style or style == "auto":
-        chosen_style = styles[(int(time.time() / 1800)) % len(styles)]
-    else:
-        chosen_style = style if style in styles else "gabetti_diagonal"
-    print(f"🎨 Stile grafico selezionato: {chosen_style.upper()} (rotazione ogni 30 min + palette del giorno/settimana)")
-
-    # ── ANNUNCIO DIRETTA LIVE a random (25% delle pubblicazioni ogni 30 min) ──
-    import random as _rand_live
-    if _rand_live.random() < 0.25:
-        print("📡 [RANDOM LIVE] Pubblicazione card annuncio diretta live!")
-        try:
-            import motore_grafica_storie as mgs
-            annuncio_path = mgs.crea_card_annuncio_diretta_9_16(media_info)
-            return annuncio_path  # Usa la card al posto del video normale
-        except Exception as e_ann:
-            print(f"⚠️  Fallback annuncio diretta: {e_ann}")
-
-
-    # 1. Genera overlay video 9:16 tramite il Motore Grafico Unificato
+    # Caricamento del Motore Grafico Unificato e del Tema Giornaliero
+    mgs = None
+    palette_giorno = None
     try:
         import motore_grafica_storie as mgs
-        overlay_png_path = mgs.crea_story_9_16(media_info, style=chosen_style)
-    except Exception as e_mgs:
-        print(f"Avviso fallback motore grafico: {e_mgs}")
+        palette_giorno = mgs.get_palette_del_giorno()
+        print(f"🗓️ TEMA GIORNALIERO ATTIVO ({palette_giorno.get('giorno')}): {palette_giorno.get('nome')} [ID: {palette_giorno.get('id')}]")
+    except Exception as eImportMgs:
+        print(f"Avviso importazione motore_grafica_storie: {eImportMgs}")
+
+    # 10 stili professionali contestualizzati al tema del giorno
+    styles = [
+        "gabetti_diagonal", "capellupo_sidebar", "marketing_banner", "split_screen",
+        "luxury_glass", "editorial", "room_label", "ideacasa_layout", "casait_card", "tecnocasa_multi"
+    ]
+    if not style or style == "auto":
+        # Rotazione oraria degli stili (ogni mezz'ora o ora uno stile differente)
+        slot_stile = int(time.time() / 1800)
+        chosen_style = styles[slot_stile % len(styles)]
+    else:
+        chosen_style = style.strip().lower()
+        if chosen_style not in styles:
+            chosen_style = "gabetti_diagonal"
+    
+    giorno_label = palette_giorno.get('giorno', 'Oggi') if palette_giorno else 'Standard'
+    palette_nome = palette_giorno.get('nome', 'Default') if palette_giorno else 'Default'
+    print(f"🎨 Stile Grafico selezionato: {chosen_style.upper()} | Tema del Giorno ({giorno_label}): {palette_nome}")
+
+    # 1. Genera overlay video 9:16 tramite il Motore Grafico Unificato con la palette del giorno
+    overlay_png_path = None
+    if mgs:
+        try:
+            overlay_png_path = mgs.crea_story_9_16(media_info, style=chosen_style, palette=palette_giorno)
+        except Exception as eMgsGen:
+            print(f"Avviso render 9:16 mgs ({chosen_style}): {eMgsGen}")
+
+    if not overlay_png_path or not os.path.exists(overlay_png_path):
         if chosen_style == "luxury_glass":
             overlay_png_path = crea_story_luxury_glass_9_16(media_info)
         elif chosen_style == "editorial":
@@ -1654,22 +1668,25 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
         else:
             overlay_png_path = crea_story_splitscreen_9_16(media_info)
 
-    # Genera e salva anche il volantino promozionale 1:1 per feed e archivio
+    # Genera e salva anche il volantino promozionale 1:1 coordinato con il tema del giorno
     flyer_1x1_path = os.path.join(SCRATCH_DIR, f"flyer_giancani_1x1_{uuid.uuid4().hex[:6]}.png")
-    try:
-        import motore_grafica_storie as mgs
-        if chosen_style == "gabetti_diagonal":
-            mgs.crea_flyer_gabetti_diagonal_1_1(media_info, output_path=flyer_1x1_path)
-        elif chosen_style == "capellupo_sidebar":
-            mgs.crea_flyer_capellupo_sidebar_1_1(media_info, output_path=flyer_1x1_path)
-        elif chosen_style == "luxury_glass":
-            crea_grafica_luxury_glass(media_info, flyer_1x1_path, size=(1080, 1080))
-        elif chosen_style == "editorial":
-            crea_grafica_editorial(media_info, flyer_1x1_path, size=(1080, 1080))
-        else:
+    if mgs:
+        try:
+            if chosen_style == "gabetti_diagonal":
+                mgs.crea_flyer_gabetti_diagonal_1_1(media_info, palette=palette_giorno, output_path=flyer_1x1_path)
+            elif chosen_style == "capellupo_sidebar":
+                mgs.crea_flyer_capellupo_sidebar_1_1(media_info, palette=palette_giorno, output_path=flyer_1x1_path)
+            elif chosen_style == "luxury_glass":
+                crea_grafica_luxury_glass(media_info, flyer_1x1_path, size=(1080, 1080))
+            elif chosen_style == "editorial":
+                crea_grafica_editorial(media_info, flyer_1x1_path, size=(1080, 1080))
+            else:
+                crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
+        except Exception as e_fl:
+            print(f"Avviso generazione flyer 1:1: {e_fl}")
             crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
-    except Exception as e_fl:
-        print(f"Avviso generazione flyer 1:1: {e_fl}")
+    else:
+        crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
 
     # 2. Determina fascia oraria se offline
     fascia_info = determina_fascia_oraria() if not is_live else None

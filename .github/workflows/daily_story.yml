@@ -1,0 +1,73 @@
+name: 🐱 Gatto Narratore di Grandi Classici (Video Verticali 9:16)
+
+on:
+  # Esecuzione automatica giornaliera alle 18:00 (ora italiana)
+  # Nota: GitHub Actions opera in UTC.
+  # Con ora legale (CEST, UTC+2): 16:00 UTC = 18:00 Roma.
+  # Con ora solare (CET, UTC+1): 17:00 UTC = 18:00 Roma.
+  schedule:
+    - cron: '0 16 * * *'
+
+  # Trigger manuale per test immediato dalla dashboard di GitHub
+  workflow_dispatch:
+    inputs:
+      story_id:
+        description: 'ID specifico della storia (es. 1 per Il Piccolo Principe, lascia vuoto per casuale)'
+        required: false
+        default: ''
+      voice:
+        description: 'Voce Edge-TTS (it-IT-DiegoNeural o it-IT-ElsaNeural)'
+        required: false
+        default: 'it-IT-DiegoNeural'
+        type: choice
+        options:
+          - it-IT-DiegoNeural
+          - it-IT-ElsaNeural
+
+jobs:
+  genera_e_pubblica_video:
+    runs-on: ubuntu-latest
+    name: 🎬 Genera Video Verticale e Invia su Telegram
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configura Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 🎞️ Installa FFmpeg di sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: 📦 Installa dipendenze Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🚀 Esecuzione Pipeline Gatto Narratore
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          CMD="python main.py"
+          if [ -n "${{ github.event.inputs.story_id }}" ]; then
+            CMD="$CMD --id ${{ github.event.inputs.story_id }}"
+          fi
+          if [ -n "${{ github.event.inputs.voice }}" ]; then
+            CMD="$CMD --voice ${{ github.event.inputs.voice }}"
+          fi
+          echo "Esecuzione comando: $CMD"
+          $CMD
+
+      - name: 💾 Archivia Video Generato come Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-reels-generato
+          path: video_storie_output/*.mp4
+          retention-days: 7

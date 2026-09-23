@@ -97,34 +97,40 @@ jobs:
           IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
           APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_FORCE_STYLE: ${{ github.event.inputs.force_style }}
+          INPUT_IMMOBILE: ${{ github.event.inputs.immobile }}
+          INPUT_STANZA: ${{ github.event.inputs.stanza }}
+          INPUT_CUSTOM_TEXT: ${{ github.event.inputs.custom_text }}
+          INPUT_CUSTOM_IMAGE: ${{ github.event.inputs.custom_image }}
+          INPUT_CUSTOM_TITLE: ${{ github.event.inputs.custom_title }}
         run: |
-          STYLE_ARG=""
-          if [ -n "${{ github.event.inputs.force_style }}" ] && [ "${{ github.event.inputs.force_style }}" != "auto" ]; then
-            STYLE_ARG="--style ${{ github.event.inputs.force_style }}"
-          fi
           EXTRA_ARGS=""
-          if [ -n "${{ github.event.inputs.immobile }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --immobile "${{ github.event.inputs.immobile }}""
+          if [ -n "$INPUT_FORCE_STYLE" ] && [ "$INPUT_FORCE_STYLE" != "auto" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --style \"$INPUT_FORCE_STYLE\""
           fi
-          if [ -n "${{ github.event.inputs.stanza }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --stanza "${{ github.event.inputs.stanza }}""
+          if [ -n "$INPUT_IMMOBILE" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --immobile \"$INPUT_IMMOBILE\""
           fi
-          if [ -n "${{ github.event.inputs.custom_text }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --custom_text "${{ github.event.inputs.custom_text }}""
+          if [ -n "$INPUT_STANZA" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --stanza \"$INPUT_STANZA\""
           fi
-          if [ -n "${{ github.event.inputs.custom_image }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --custom_image "${{ github.event.inputs.custom_image }}""
+          if [ -n "$INPUT_CUSTOM_TEXT" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --custom_text \"$INPUT_CUSTOM_TEXT\""
           fi
-          if [ -n "${{ github.event.inputs.custom_title }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --custom_title "${{ github.event.inputs.custom_title }}""
+          if [ -n "$INPUT_CUSTOM_IMAGE" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --custom_image \"$INPUT_CUSTOM_IMAGE\""
           fi
-          python scripts/pubblica_storia_facebook.py --offline $STYLE_ARG $EXTRA_ARGS
+          if [ -n "$INPUT_CUSTOM_TITLE" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --custom_title \"$INPUT_CUSTOM_TITLE\""
+          fi
+          python scripts/pubblica_storia_facebook.py --offline $EXTRA_ARGS
 
       - name: Salva Storico e Stato
         if: always()
         run: |
           git config --global user.name "Giancani Storie Bot"
           git config --global user.email "bot@immobiliaregiancani.it"
-          git add storico_musica_storie.json immobili_pubblicati_history.json assets/cronologia_storie_offline.json output_storie/ || true
+          git add -A *.json scripts/*.json assets/ scripts/assets/ || true
           git commit -m "Auto-update: storico rotazione musica e storie [skip ci]" || echo "Nessun aggiornamento storico da committare"
+          git pull --rebase origin main || true
           git push origin main || echo "Push non necessario o completato"

@@ -415,6 +415,112 @@ def formatta_metri_quadri(mq_raw):
     num = digits.group(0) if digits else "120"
     return f"{num} metri quadri"
 
+def draw_fitted_text(draw, text, box, max_font_size=28, min_font_size=14, font_type="sans",
+                     fill=(30, 41, 59, 255), bold=False, line_spacing=6, align="left"):
+    """
+    Disegna il testo all'interno di un box prefissato (x, y, w, h).
+    Scala automaticamente la dimensione del font verso il basso in modo che l'intero testo
+    resti RIGOROSAMENTE all'interno dello spazio prefissato, senza mai sbordare.
+    Se a dimensione minima il testo supera ancora l'altezza massima, tronca le ultime parole
+    dell'ultima riga visibile inserendo '...' per preservare la geometria del layout.
+    """
+    x, y, w, h = box
+    text_clean = re.sub(r'[\r\n\t]+', ' ', str(text or '')).strip()
+    text_clean = re.sub(r'\s{2,}', ' ', text_clean)
+    words = text_clean.split()
+    if not words or w <= 0 or h <= 0:
+        return y
+
+    best_lines = []
+    best_font = None
+    best_line_h = 0
+
+    # Ricerca font_size ideale decrescente
+    for sz in range(int(max_font_size), int(min_font_size) - 1, -1):
+        f = get_font(sz, bold=bold, font_type=font_type)
+        lines = []
+        curr = ""
+        fits_horiz = True
+
+        for word in words:
+            candidate = f"{curr} {word}".strip()
+            bb = draw.textbbox((0, 0), candidate, font=f)
+            line_w = bb[2] - bb[0]
+            if line_w <= w:
+                curr = candidate
+            else:
+                if curr:
+                    lines.append(curr)
+                word_bb = draw.textbbox((0, 0), word, font=f)
+                if (word_bb[2] - word_bb[0]) > w:
+                    fits_horiz = False
+                    break
+                curr = word
+
+        if curr:
+            lines.append(curr)
+
+        if not fits_horiz:
+            continue
+
+        test_bb = draw.textbbox((0, 0), "Ag", font=f)
+        single_h = test_bb[3] - test_bb[1]
+        tot_h = len(lines) * single_h + max(0, len(lines) - 1) * line_spacing
+
+        if tot_h <= h:
+            best_lines = lines
+            best_font = f
+            best_line_h = single_h
+            break
+
+    # Se anche a min_font_size supera l'altezza disponibile:
+    if not best_lines:
+        best_font = get_font(min_font_size, bold=bold, font_type=font_type)
+        test_bb = draw.textbbox((0, 0), "Ag", font=best_font)
+        best_line_h = test_bb[3] - test_bb[1]
+        max_possible_lines = max(1, int((h + line_spacing) / (best_line_h + line_spacing)))
+
+        lines = []
+        curr = ""
+        for word in words:
+            candidate = f"{curr} {word}".strip()
+            bb = draw.textbbox((0, 0), candidate, font=best_font)
+            if (bb[2] - bb[0]) <= w:
+                curr = candidate
+            else:
+                if curr:
+                    lines.append(curr)
+                curr = word
+        if curr:
+            lines.append(curr)
+
+        best_lines = lines[:max_possible_lines]
+        if len(lines) > max_possible_lines and best_lines:
+            last = best_lines[-1]
+            while last and (draw.textbbox((0, 0), last + "...", font=best_font)[2] - draw.textbbox((0, 0), last + "...", font=best_font)[0]) > w:
+                parts = last.rsplit(' ', 1)
+                if len(parts) > 1:
+                    last = parts[0]
+                else:
+                    last = last[:-1]
+            best_lines[-1] = last.rstrip(',.; ') + "..."
+
+    curr_y = y
+    for line in best_lines:
+        bb = draw.textbbox((0, 0), line, font=best_font)
+        line_w = bb[2] - bb[0]
+        if align == "center":
+            draw_x = x + (w - line_w) // 2
+        elif align == "right":
+            draw_x = x + w - line_w
+        else:
+            draw_x = x
+        draw.text((draw_x, curr_y), line, font=best_font, fill=fill)
+        curr_y += best_line_h + line_spacing
+
+    return curr_y
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🏛️ 4. STILE 1: MARKETING BANNER (9:16 - 1080x1920) [NUOVO LAYOUT RICHIESTO]
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -478,12 +584,10 @@ def crea_story_marketing_banner_9_16(media_info, palette=None, output_path=None)
         draw.text((logo_box_x + 20, logo_box_y + 60), "IMMOBILIARE\nGIANCANI", font=font_logo_fb, fill=(15, 23, 42, 255))
 
     text_area_x = logo_box_x + logo_box_w + 30
-    font_titolo = get_font(32, bold=True, font_type="sans")
     font_localita = get_font(22, bold=True, font_type="sans")
     font_sub = get_font(16, bold=False, font_type="sans")
 
-    tit_clean = titolo if len(titolo) <= 32 else titolo[:30] + "..."
-    draw.text((text_area_x, 48), tit_clean, font=font_titolo, fill=palette["text_primary"])
+    draw_fitted_text(draw, titolo, (text_area_x, 42, W - text_area_x - 30, 44), max_font_size=32, min_font_size=18, bold=True, fill=palette["text_primary"])
     draw.text((text_area_x, 92), f"📍 {zona}", font=font_localita, fill=palette["accent"])
     draw.text((text_area_x, 134), "ESCLUSIVA RESIDENZIALE • IMMOBILIARE GIANCANI", font=font_sub, fill=palette["text_secondary"])
 
@@ -626,31 +730,23 @@ def crea_story_marketing_banner_9_16(media_info, palette=None, output_path=None)
         draw.text((rif_x + 22, iry), ir, font=font_rif_sub, fill=palette["text_secondary"])
         iry += 36
 
-    # Box Caratteristiche
+    # Box Caratteristiche & Descrizione Colonna F
     caratt_x = rif_x + rif_w + 30
     caratt_y = diag_start_y + 20
     caratt_w = W - caratt_x - 45
+    avail_desc_h = footer_end_y - caratt_y - 85
 
     font_caratt_title = get_font(24, bold=True, font_type="sans")
-    draw.text((caratt_x, caratt_y + 15), "CARATTERISTICHE PRINCIPALI", font=font_caratt_title, fill=palette["accent"])
+    draw.text((caratt_x, caratt_y + 15), "DESCRIZIONE IMMOBILE", font=font_caratt_title, fill=palette["accent"])
     draw.line([(caratt_x, caratt_y + 54), (caratt_x + caratt_w, caratt_y + 54)], fill=palette["accent"], width=2)
 
-    amenities = [
-        "• Ampio ingresso accogliente & living",
-        "• Soggiorno spazioso e luminoso",
-        "• Cucina abitabile rifinita nei dettagli",
-        "• 2 Bagni moderni con sanitari di pregio",
-        "• Camere da letto ampie e confortevoli",
-        "• Balconi vivibili con vista panoramica",
-        "• Climatizzazione autonoma & infissi termici",
-        "• Zona tranquilla e ben servita da tutti i servizi"
-    ]
+    testo_f = str(media_info.get('testoF') or '').strip()
+    if not testo_f:
+        testo_f = f"Soluzione esclusiva di {mq_str} rifinita nei minimi dettagli, con ampi spazi luminosi e massima privacy ad Agrigento e Favara. — Immobiliare Giancani"
+    elif "immobiliare giancani" not in testo_f.lower():
+        testo_f += " — Immobiliare Giancani"
 
-    font_amenity = get_font(19, bold=False, font_type="sans")
-    amy = caratt_y + 75
-    for am in amenities:
-        draw.text((caratt_x, amy), am, font=font_amenity, fill=(255, 255, 255, 255))
-        amy += 44
+    draw_fitted_text(draw, testo_f, (caratt_x, caratt_y + 68, caratt_w, avail_desc_h), max_font_size=20, min_font_size=13, line_spacing=5, fill=(255, 255, 255, 255))
 
     # ── 4. BOTTOM SECTION: CTA BUTTON & WHITE CONTACT BAR (1750 - 1920 px) ──
     btn_w = 780
@@ -749,10 +845,7 @@ def crea_story_splitscreen_9_16(media_info, palette=None, output_path=None):
     mq = formatta_metri_quadri(media_info.get('mq', '135'))
 
     font_tit = get_font(30, bold=True, font_type="sans")
-    font_zn = get_font(21, bold=True, font_type="sans")
-    font_desc = get_font(21, bold=False, font_type="sans")
-
-    draw.text((box_x + 35, info_y), titolo[:34], font=font_tit, fill=palette["primary_dark"][:3])
+    draw_fitted_text(draw, titolo, (box_x + 35, info_y, box_w - 70, 42), max_font_size=30, min_font_size=18, bold=True, fill=palette["primary_dark"][:3])
     draw.text((box_x + 35, info_y + 45), f"📍 {zona}", font=font_zn, fill=palette["primary_mid"][:3])
 
     p_box_w = 260
@@ -763,11 +856,11 @@ def crea_story_splitscreen_9_16(media_info, palette=None, output_path=None):
     draw.text((box_x + 35 + p_box_w + 35, info_y + 104), f"📐 {mq}", font=get_font(20, bold=True, font_type="sans"), fill=palette["primary_dark"][:3])
 
     testo_f = str(media_info.get('testoF', 'Immobile di alto profilo con finiture di pregio, ampi spazi luminosi e vista aperta. — Immobiliare Giancani'))
-    lines = [testo_f[i:i+48] for i in range(0, min(len(testo_f), 240), 48)]
-    dy = info_y + 175
-    for l in lines[:4]:
-        draw.text((box_x + 35, dy), l, font=font_desc, fill=(50, 60, 75, 255))
-        dy += 34
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f += " — Immobiliare Giancani"
+
+    desc_avail_h = (box_y + box_h) - (info_y + 165) - 25
+    draw_fitted_text(draw, testo_f, (box_x + 35, info_y + 165, box_w - 70, desc_avail_h), max_font_size=22, min_font_size=13, line_spacing=5, fill=(50, 60, 75, 255))
 
     btn_w = 800
     btn_h = 70
@@ -831,20 +924,20 @@ def crea_story_luxury_glass_9_16(media_info, palette=None, output_path=None):
     mq = formatta_metri_quadri(media_info.get('mq', '140'))
 
     dy = card_y + foto_inner_h + 35
-    draw.text((card_x + 35, dy), titolo[:32], font=get_font(32, bold=True, font_type="sans"), fill=(255, 255, 255, 255))
+    draw_fitted_text(draw, titolo, (card_x + 35, dy, card_w - 70, 42), max_font_size=32, min_font_size=18, bold=True, fill=(255, 255, 255, 255))
     draw.text((card_x + 35, dy + 48), f"💎 {prezzo} • 📐 {mq}", font=get_font(24, bold=True, font_type="sans"), fill=palette["accent"])
 
     testo_f = str(media_info.get('testoF', 'Un connubio perfetto tra design contemporaneo, comfort e posizione strategica ad Agrigento e Favara. — Immobiliare Giancani'))
-    lines = [testo_f[i:i+46] for i in range(0, min(len(testo_f), 240), 46)]
-    ty = dy + 105
-    for l in lines[:4]:
-        draw.text((card_x + 35, ty), l, font=get_font(20, bold=False, font_type="sans"), fill=(225, 230, 240, 255))
-        ty += 34
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f += " — Immobiliare Giancani"
 
     btn_w = 700
     btn_h = 68
     btn_x = (W - btn_w) // 2
     btn_y = card_y + card_h - 110
+
+    avail_desc_h = max(60, btn_y - (dy + 95) - 15)
+    draw_fitted_text(draw, testo_f, (card_x + 35, dy + 95, card_w - 70, avail_desc_h), max_font_size=22, min_font_size=13, line_spacing=5, fill=(225, 230, 240, 255))
     draw.rounded_rectangle([btn_x, btn_y, btn_x + btn_w, btn_y + btn_h], radius=34, fill=palette["accent"])
     draw.text(((W - 320) // 2, btn_y + 18), "PRENOTA UNA VISITA >", font=get_font(24, bold=True, font_type="sans"), fill=(15, 20, 30, 255))
 
@@ -873,7 +966,8 @@ def crea_story_editorial_9_16(media_info, palette=None, output_path=None):
         canvas.paste(logo_im, (W - 60 - logo_im.size[0], 95), mask=logo_im.split()[3])
 
     titolo = str(media_info.get('titolo', 'Dimora Storica Favara')).upper()
-    draw.text((60, 105), titolo[:28], font=get_font(38, bold=True, font_type="serif"), fill=palette["primary_dark"][:3])
+    logo_space = (logo_im.size[0] + 30) if logo_im else 0
+    draw_fitted_text(draw, titolo, (60, 95, W - 120 - logo_space, 50), max_font_size=36, min_font_size=18, bold=True, font_type="serif", fill=palette["primary_dark"][:3])
 
     foto_im = media_info.get('fotoImage')
     if not foto_im:
@@ -900,11 +994,11 @@ def crea_story_editorial_9_16(media_info, palette=None, output_path=None):
     draw.line([(60, sy + 80), (W - 60, sy + 80)], fill=(200, 200, 200, 255), width=1)
 
     testo_f = str(media_info.get('testoF', 'Spazi generosi pensati per vivere ogni momento in serenità e bellezza. Finiture ricercate e contesto signorile. — Immobiliare Giancani'))
-    lines = [testo_f[i:i+46] for i in range(0, min(len(testo_f), 240), 46)]
-    dy = sy + 105
-    for l in lines[:5]:
-        draw.text((60, dy), l, font=get_font(21, bold=False, font_type="sans"), fill=(60, 65, 75, 255))
-        dy += 35
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f += " — Immobiliare Giancani"
+
+    avail_desc_h = max(60, (H - 240) - (sy + 95) - 20)
+    draw_fitted_text(draw, testo_f, (60, sy + 95, W - 120, avail_desc_h), max_font_size=22, min_font_size=13, line_spacing=5, fill=(60, 65, 75, 255))
 
     draw.rounded_rectangle([60, H - 240, W - 60, H - 170], radius=12, fill=palette["primary_dark"])
     draw.text(((W - 360) // 2, H - 222), "RICHIEDI SCHEDA COMPLETA >", font=get_font(22, bold=True, font_type="sans"), fill=(255, 255, 255, 255))
@@ -995,11 +1089,7 @@ def crea_story_room_label_9_16(media_info, palette=None, output_path=None):
             nome_stanza = amb
             break
 
-    font_stanza = get_font(90, bold=True, font_type="sans")
-    bbox = draw.textbbox((0, 0), nome_stanza, font=font_stanza)
-    tx = (W - (bbox[2] - bbox[0])) // 2
-    ty = barra_y + (barra_h - (bbox[3] - bbox[1])) // 2
-    draw.text((tx, ty), nome_stanza, font=font_stanza, fill=(255, 255, 255, 255))
+    draw_fitted_text(draw, nome_stanza, (30, barra_y + 15, W - 60, barra_h - 30), max_font_size=80, min_font_size=28, bold=True, align="center", fill=(255, 255, 255, 255))
 
     # Watermark logo leggero al centro
     wm_logo = get_logo_trasparente_ufficiale(max_w=400, max_h=140, alpha=55)
@@ -1087,35 +1177,8 @@ def crea_story_ideacasa_layout_9_16(media_info, palette=None, output_path=None):
         title_x = 40
     title_w = W - title_x - 24
 
-    # Titolo top-right — font 46 per stare nel HEADER_H senza sforare
-    font_tit = get_font(46, bold=True, font_type="sans")
-    title_text = f"{titolo}\n- {zona}"
-
-    # Wrapping manuale
-    words = title_text.replace("\n", " \n ").split()
-    lines_out = []
-    current = ""
-    for w in words:
-        if w == "\n":
-            lines_out.append(current.strip())
-            current = ""
-        else:
-            test = (current + " " + w).strip()
-            bb = draw.textbbox((0, 0), test, font=font_tit)
-            if bb[2] - bb[0] > title_w and current:
-                lines_out.append(current.strip())
-                current = w
-            else:
-                current = test
-    if current:
-        lines_out.append(current.strip())
-
-    total_th = sum(draw.textbbox((0, 0), l, font=font_tit)[3] - draw.textbbox((0, 0), l, font=font_tit)[1] + 8 for l in lines_out)
-    ty_start = (HEADER_H - total_th) // 2
-    for li, line in enumerate(lines_out):
-        bb = draw.textbbox((0, 0), line, font=font_tit)
-        draw.text((title_x, ty_start), line, font=font_tit, fill=(255, 255, 255, 255))
-        ty_start += (bb[3] - bb[1]) + 8
+    title_text = f"{titolo} — {zona}" if zona and zona not in titolo else titolo
+    draw_fitted_text(draw, title_text, (title_x, 20, title_w, HEADER_H - 40), max_font_size=42, min_font_size=18, bold=True, line_spacing=6, fill=(255, 255, 255, 255))
 
     # ── PHOTO ──
     photo_y = HEADER_H
@@ -1259,23 +1322,11 @@ def crea_story_casait_card_9_16(media_info, palette=None, output_path=None):
 
     titolo = str(media_info.get("titolo", "Appartamento in Vendita")).strip()
     zona = str(media_info.get("zona", "Favara")).strip()
-    font_tit_card = get_font(44, bold=True, font_type="sans")
-    max_title_w = CARD_W - 290 - 20
-    words_t = titolo.split()
-    line1, line2 = "", ""
-    for w in words_t:
-        test = (line1 + " " + w).strip()
-        bb = draw.textbbox((0, 0), test, font=font_tit_card)
-        if bb[2] - bb[0] <= max_title_w:
-            line1 = test
-        else:
-            line2 = (line2 + " " + w).strip()
     tx_card = CARD_MARGIN + 290
-    draw.text((tx_card, CARD_TOP + 18), line1, font=font_tit_card, fill=(255, 255, 255, 255))
-    if line2:
-        draw.text((tx_card, CARD_TOP + 68), line2, font=font_tit_card, fill=palette["accent"])
-    else:
-        draw.text((tx_card, CARD_TOP + 68), zona, font=font_tit_card, fill=palette["accent"])
+    max_title_w = CARD_W - 290 - 20
+    title_full = f"{titolo} — {zona}" if zona and zona not in titolo else titolo
+    draw_fitted_text(draw, title_full, (tx_card, CARD_TOP + 14, max_title_w, CARD_HEADER_H - 28),
+                     max_font_size=38, min_font_size=16, bold=True, line_spacing=4, fill=(255, 255, 255, 255))
 
     # ── Foto nella card ──
     FOTO_TOP = CARD_TOP + CARD_HEADER_H + 4
@@ -1767,16 +1818,15 @@ def crea_card_annuncio_diretta_9_16(media_info, orario_diretta=None, palette=Non
     split_y = 1020
     ribbon_h = 175
     angle_deg = -10
-    ribbon_color = (168, 24, 48)  # Rosso cremisi vivo per la diretta
+    # Colore coordinato alla palette del giorno del Bot Carosello
+    ribbon_color = palette.get("primary_mid", (168, 24, 48))[:3] if palette else (168, 24, 48)
+    ribbon_accent = palette.get("accent", (255, 240, 130))[:3] if palette else (255, 240, 130)
 
     if not orario_diretta:
         orario_diretta = media_info.get("orario_diretta") or media_info.get("orario")
         if not orario_diretta:
-            now = datetime.datetime.now()
-            if now.minute < 30:
-                orario_diretta = now.replace(minute=30, second=0).strftime("%H:%M")
-            else:
-                orario_diretta = (now + datetime.timedelta(hours=1)).replace(minute=0, second=0).strftime("%H:%M")
+            # Di default l'annuncio mattutino/pomeridiano punta alla diretta serale delle 19:00
+            orario_diretta = "19:00"
 
     # 1. Carica foto immobile
     foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl") or media_info.get("foto_url", "")
@@ -1961,16 +2011,13 @@ def crea_card_annuncio_diretta_1_1(media_info, orario_diretta=None, palette=None
     split_y = 540
     ribbon_h = 140
     angle_deg = -10
-    ribbon_color = (168, 24, 48)
+    ribbon_color = palette.get("primary_mid", (168, 24, 48))[:3] if palette else (168, 24, 48)
+    ribbon_accent = palette.get("accent", (255, 240, 130))[:3] if palette else (255, 240, 130)
 
     if not orario_diretta:
         orario_diretta = media_info.get("orario_diretta") or media_info.get("orario")
         if not orario_diretta:
-            now = datetime.datetime.now()
-            if now.minute < 30:
-                orario_diretta = now.replace(minute=30, second=0).strftime("%H:%M")
-            else:
-                orario_diretta = (now + datetime.timedelta(hours=1)).replace(minute=0, second=0).strftime("%H:%M")
+            orario_diretta = "19:00"
 
     foto_url = media_info.get("fotoUrl") or media_info.get("mediaUrl") or media_info.get("foto_url", "")
     foto_img = None
@@ -2030,7 +2077,7 @@ def crea_card_annuncio_diretta_1_1(media_info, orario_diretta=None, palette=None
     start_y = (rh - tot_h) // 2
 
     draw_rib.text(((rw - (bb_r1[2]-bb_r1[0])) // 2, start_y), r1_txt, font=f_r1, fill=(255, 255, 255, 255))
-    draw_rib.text(((rw - (bb_r2[2]-bb_r2[0])) // 2, start_y + h_r1 + 8), r2_txt, font=f_r2, fill=(255, 240, 130, 255))
+    draw_rib.text(((rw - (bb_r2[2]-bb_r2[0])) // 2, start_y + h_r1 + 8), r2_txt, font=f_r2, fill=ribbon_accent + (255,))
 
     rot_ribbon = ribbon_layer.rotate(-angle_deg, expand=True, resample=Image.BICUBIC)
     rot_w, rot_h = rot_ribbon.size
@@ -2244,7 +2291,11 @@ def crea_story_capellupo_sidebar_9_16(media_info, palette=None, output_path=None
         bb = dummy_draw.textbbox((0, 0), l, font=f_desc)
         needed_h += (bb[3] - bb[1]) + 6
     needed_h += 24
-    card_h = max(needed_h, 580)
+    
+    foot_h = 100
+    foot_y = H - foot_h - 40
+    max_card_h = foot_y - card_y - 25
+    card_h = min(max_card_h, max(needed_h, 580))
 
     # Disegna Card Bianca con ombra
     draw = ImageDraw.Draw(canvas)
@@ -2288,12 +2339,10 @@ def crea_story_capellupo_sidebar_9_16(media_info, palette=None, output_path=None
     draw.line([(bb_pr[0], bb_pr[3] + 2), (bb_pr[2], bb_pr[3] + 2)], fill=hl_col, width=2)
     cy += (bb_pr[3] - bb_pr[1]) + 16
 
-    # Descrizione Colonna F
+    # Descrizione Colonna F perfettamente calibrata all'interno della card
     txt_dark = palette.get("text_dark", (30, 41, 59))
-    for l in desc_lines[:6]:
-        draw.text((card_x + pad_x, cy), l, font=f_desc, fill=txt_dark)
-        bb_l = draw.textbbox((0, 0), l, font=f_desc)
-        cy += (bb_l[3] - bb_l[1]) + 6
+    avail_desc_h = max(60, (card_y + card_h) - cy - 20)
+    draw_fitted_text(draw, testo_pulito, (card_x + pad_x, cy, inner_w, avail_desc_h), max_font_size=23, min_font_size=13, line_spacing=5, fill=txt_dark)
 
     # 4. Footer Ufficiale Storie — Immobiliare Giancani
     foot_h = 100
@@ -2608,18 +2657,12 @@ def crea_story_gabetti_diagonal_9_16(media_info, palette=None, output_path=None)
     curr_y += draw.textbbox((0, 0), loc_txt, font=f_loc)[3] + 16
 
     testo_f = str(media_info.get("testoF", "")).strip()
-    if not testo_f:
-        mq_str = formatta_metri_quadri(media_info.get("mq", "120"))
-        testo_f = f"Quando la strategia è corretta, si ottiene il massimo realizzo economico. Soluzione di {mq_str} di pregio."
-    
-    f_head = get_font(font_head_size, bold=True, font_type="sans")
-    head_lines = _wrap_text_lines(draw, testo_f, f_head, W - pad_left * 2)
-    for hl in head_lines[:3]:
-        draw.text((pad_left, curr_y), hl, font=f_head, fill=(24, 28, 36, 255))
-        bb_h = draw.textbbox((0, 0), hl, font=f_head)
-        curr_y += (bb_h[3] - bb_h[1]) + 10
-
+    foot_h = 100
+    foot_y = H - foot_h - 40
+    avail_desc_h = max(60, (foot_y - 20) - curr_y - 45)
+    curr_y = draw_fitted_text(draw, testo_f, (pad_left, curr_y, W - pad_left * 2, min(avail_desc_h, 160)), max_font_size=font_head_size, min_font_size=15, bold=True, line_spacing=6, fill=(24, 28, 36, 255))
     curr_y += 12
+
     badge_claim = str(media_info.get("claim", "+10% Il nostro metodo funziona!"))
     f_badge = get_font(font_badge_size, bold=True, font_type="sans")
     draw.text((pad_left, curr_y), badge_claim, font=f_badge, fill=ribbon_color)

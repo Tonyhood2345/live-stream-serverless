@@ -75,11 +75,11 @@ def get_ffmpeg_binary():
 
 FFMPEG_EXE = get_ffmpeg_binary()
 
-# Identikit visivo fisso del gatto protagonista (Stile Cartone Animato)
+# Identikit visivo fisso del gatto protagonista (Stile Fiaba Classica & Antique Storybook)
 CAT_CHARACTER_BASE = (
-    "cute chibi cartoon orange tabby cat standing upright on two legs, "
-    "wearing a bright blue and white striped t-shirt and cute shorts, classic cartoon animation style, "
-    "cheerful smiling face with big cartoon eyes, colorful cartoon art, full body character, vertical 9:16"
+    "cute anthropomorphic orange tabby cat standing upright on two legs, "
+    "wearing a vintage blue and white striped shirt, antique storybook illustration, "
+    "fine ink line art, detailed cross-hatching textures, vertical 9:16"
 )
 
 
@@ -227,15 +227,18 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True):
             if os.path.exists(output_img):
                 os.remove(output_img)
 
-    # 2. Suffisso stilistico fisso e forte obbligatorio
-    CHIBI_STYLE_SUFFIX = (
-        ", cute chibi cartoon orange tabby cat, expressive Disney Pixar 3D style, "
-        "vibrant warm colors, clean simple lines, friendly smile, storybook illustration, "
-        "detailed background setting, cinematic soft lighting, vertical 9:16, masterpiece, no photorealism"
+    # 2. Suffisso stilistico fisso e forte obbligatorio: Antique Storybook Illustration
+    ANTIQUE_STYLE_SUFFIX = (
+        ", Antique storybook illustration style, vintage botanical engraving fused with luminous watercolor wash. "
+        "Fine ink line art, detailed cross-hatching textures, and clean calligraphic contours. "
+        "Hand-painted soft watercolor palette in deep indigo, dusty blue, and warm ochre on aged cream parchment paper texture. "
+        "Celestial starburst motifs, delicate gold leaf foil accents, engraved nautical and astronomical chart elements. "
+        "Whimsical classic fairytale aesthetic, rich detailed linework, warm atmospheric lighting, masterclass literary print quality, "
+        "vertical 9:16, masterpiece, no 3d render, no CGI, no glossy, no photorealistic"
     )
-    clean_prompt = prompt.rstrip(" ,.")
-    if "no photorealism" not in clean_prompt.lower():
-        full_prompt = f"{clean_prompt}{CHIBI_STYLE_SUFFIX}"
+    clean_prompt = prompt.replace("pixar 3d style,", "").replace("pixar 3d style", "").rstrip(" ,.")
+    if "no 3d render" not in clean_prompt.lower():
+        full_prompt = f"{clean_prompt}{ANTIQUE_STYLE_SUFFIX}"
     else:
         full_prompt = clean_prompt
 

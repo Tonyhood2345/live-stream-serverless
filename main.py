@@ -7,11 +7,13 @@
    
   SPECIFICHE:
   - Formato: Video Verticale 9:16 (720x1280)
-  - Protagonista: Gatto arancione in piedi, maglietta a righe blu/bianche
-  - Stile Visivo: Antique Storybook Illustration (Incisione + Acquerello + Oro)
+  - Protagonista: Gatto arancione tigrato UMANIZZATO (antropomorfo, postura eretta,
+    zampe usate come mani espressive, maglietta vintage a righe blu e bianche)
+  - Stile Visivo: Antique Storybook Illustration (Incisione botanica/astronomica,
+    acquerello luminoso indigo/ocra, accenti foglia d'oro, carta pergamena)
   - Estrazione: Rigorosamente da Colonna F (database_storie_classici.csv)
   - Voce Narrante: Edge-TTS Neurale Italiano (it-IT-DiegoNeural / it-IT-ElsaNeural)
-  - Immagini AI: Pollinations.ai con Seed coerente e fallback resiliente
+  - Immagini AI: Pollinations.ai con Seed coerente e fallback grafico resiliente
   - Montaggio: FFmpeg (Ken Burns dinamico, sottotitoli Pillow, musica mixata)
   - Notifica: Invio automatico su Telegram Bot API
   - Branding: Mette costantemente in risalto 'Immobiliare Giancani'
@@ -35,7 +37,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Patch aiohttp per runner CI e Windows
+# Patch aiohttp per runner CI e ambienti Windows
 try:
     import aiohttp
     orig_ws_connect = aiohttp.ClientSession.ws_connect
@@ -74,19 +76,20 @@ def get_ffmpeg_binary():
 
 FFMPEG_EXE = get_ffmpeg_binary()
 
-# ── NUOVO STILE: ANTIQUE STORYBOOK (INK, WATERCOLOR & GOLD) ─────────────────
-CAT_CHARACTER_BASE = (
-    "A cute anthropomorphic orange tabby cat standing upright on two hind legs, "
-    "expressive gentle eyes, sweet smile, wearing a vintage navy blue and white horizontal striped t-shirt"
+# ── PERSONAGGIO UMANIZZATO E STILE GRAFICO FUSI ────────────────────────────
+CAT_HUMANIZED_CHARACTER = (
+    "A charming fully anthropomorphic orange tabby cat character behaving like a gentle human storyteller, "
+    "standing tall and upright on two hind legs with perfect human posture, expressive front paws gesturing like human hands, "
+    "wearing a classic vintage navy blue and white horizontal striped sailor shirt, warm intelligent eyes, friendly gentle smile"
 )
 
-ANTIQUE_STYLE_SUFFIX = (
-    ", Antique storybook illustration style, vintage botanical and astronomical engraving fused with luminous watercolor wash. "
-    "Fine pen-and-ink line art, detailed cross-hatching textures, and clean calligraphic contours. "
+ART_STYLE_PROMPT = (
+    "Antique storybook illustration style, vintage botanical engraving fused with luminous watercolor wash. "
+    "Fine ink line art, detailed cross-hatching textures, and clean calligraphic contours. "
     "Hand-painted soft watercolor palette in deep indigo, dusty blue, and warm ochre on aged cream parchment paper texture. "
-    "Celestial starburst motifs, delicate gold leaf foil accents, engraved vintage astronomical chart elements. "
+    "Celestial starburst motifs, delicate gold leaf foil accents, engraved nautical and astronomical chart elements. "
     "Whimsical classic fairytale aesthetic, rich detailed linework, warm atmospheric lighting, masterclass literary print quality. "
-    "--no 3d render, CGI, glossy, plastic, octane, Unreal Engine, photorealistic"
+    "--no 3d render, CGI, glossy, photorealistic, plastic, octane render, unreal engine"
 )
 
 
@@ -129,7 +132,7 @@ def estrai_storia_colonna_f(csv_file=CSV_PATH, id_richiesto=None):
     return storia
 
 
-# ── STRUTTURAZIONE DELLE 4 SCENE ────────────────────────────────────────────
+# ── STRUTTURAZIONE DELLE 4 SCENE NARRATIVE ──────────────────────────────────
 def crea_struttura_scene(storia):
     testo_f = storia["testo_colonna_f"]
     prompts_raw = storia["prompts_g"].split("|||") if storia["prompts_g"] else []
@@ -157,14 +160,14 @@ def crea_struttura_scene(storia):
     for i in range(4):
         prompt_custom = prompts_raw[i].strip() if i < len(prompts_raw) else ""
         if prompt_custom:
-            prompt_base = prompt_custom
+            scene_desc = prompt_custom
         else:
-            prompt_base = f"{CAT_CHARACTER_BASE}, in the vintage storybook scenery of {storia['titolo']}, scene {i+1}"
+            scene_desc = f"immersed in the timeless literary world of {storia['titolo']}, scene {i+1}"
             
         scene.append({
             "scena_id": i + 1,
             "testo": frasi[i],
-            "prompt_base": prompt_base,
+            "scene_desc": scene_desc,
             "is_outro": (i == 3)
         })
 
@@ -196,7 +199,7 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 
 # ── DOWNLOAD IMMAGINI AI CON STILE INK & WATERCOLOR (POLLINATIONS) ───────────
-def scarica_immagine_pollinations(prompt_base, output_img, seed=100, use_cache=True):
+def scarica_immagine_pollinations(scene_desc, output_img, seed=100, use_cache=True):
     if use_cache and os.path.exists(output_img) and os.path.getsize(output_img) > 10000:
         try:
             with Image.open(output_img) as test_img:
@@ -207,18 +210,18 @@ def scarica_immagine_pollinations(prompt_base, output_img, seed=100, use_cache=T
             if os.path.exists(output_img):
                 os.remove(output_img)
 
-    # Bonifica rigorosa da qualsiasi residuo 3D / CGI dai dati del CSV
+    # Bonifica rigorosa da qualsiasi residuo 3D / CGI ereditato dal CSV
     parole_da_rimuovere = [
         "pixar 3d style", "3d pixar", "disney pixar", "pixar style", "pixar",
         "3d render", "render 3d", "chibi 3d", "cgi", "octane render", "unreal engine"
     ]
-    clean_prompt = prompt_base
+    clean_desc = scene_desc
     for w in parole_da_rimuovere:
-        clean_prompt = re.sub(re.escape(w), "", clean_prompt, flags=re.IGNORECASE)
-    clean_prompt = re.sub(r'\s+', ' ', clean_prompt).strip(" ,.")
+        clean_desc = re.sub(re.escape(w), "", clean_desc, flags=re.IGNORECASE)
+    clean_desc = re.sub(r'\s+', ' ', clean_desc).strip(" ,.")
 
-    # Composizione finale vincolata al nuovo stile
-    full_prompt = f"{clean_prompt}{ANTIQUE_STYLE_SUFFIX}"
+    # Composizione rigorosa: Personaggio Umanizzato + Dettaglio Scena + Stile Grafico Scelto
+    full_prompt = f"{CAT_HUMANIZED_CHARACTER}, {clean_desc}. {ART_STYLE_PROMPT}"
     encoded_prompt = urllib.parse.quote(full_prompt)
     
     models_to_try = ["flux", "turbo", "flux"]
@@ -226,7 +229,7 @@ def scarica_immagine_pollinations(prompt_base, output_img, seed=100, use_cache=T
 
     for attempt in range(1, max_retries + 1):
         model_choice = models_to_try[(attempt - 1) % len(models_to_try)]
-        # Risoluzione verticale nativa 720x1280 per resa grafica ottimale
+        # Risoluzione verticale 720x1280
         url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&nologo=true&seed={seed}&model={model_choice}"
         
         try:
@@ -260,15 +263,14 @@ def scarica_immagine_pollinations(prompt_base, output_img, seed=100, use_cache=T
             time.sleep(3)
 
     print("  ⚠️ Fallback grafico attivato...")
-    crea_immagine_fallback(output_img, prompt_base)
+    crea_immagine_fallback(output_img, scene_desc)
     return True
 
 
 def crea_immagine_fallback(output_img, testo_descrittivo):
-    """Fallback con palette acquerello pergamena & blu notte."""
+    """Fallback armonizzato con la palette acquerello pergamena & blu polvere."""
     img = Image.new("RGB", (720, 1280), color=(245, 238, 220))
     draw = ImageDraw.Draw(img)
-    # Gradiente acquerellato verso blu polvere
     for y in range(1280):
         ratio = y / 1280.0
         r = int(245 - (245 - 28) * ratio)
@@ -276,10 +278,8 @@ def crea_immagine_fallback(output_img, testo_descrittivo):
         b = int(220 - (220 - 75) * ratio)
         draw.line([(0, y), (720, y)], fill=(r, g, b))
     
-    # Motivo stellare e alone circolare stile mappa celeste
     draw.ellipse([260, 200, 460, 400], outline=(218, 165, 32), width=3)
     draw.ellipse([280, 220, 440, 380], fill=(255, 248, 230), outline=(218, 165, 32), width=1)
-    # Libro aperto stilizzato
     draw.rectangle([280, 750, 440, 830], fill=(240, 230, 210), outline=(139, 69, 19), width=2)
     img.save(output_img, "JPEG", quality=95)
 
@@ -315,7 +315,7 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
     draw.text((360, 102), titolo_libro.upper(), fill=(255, 255, 255), font=font_titolo, anchor="mm")
     draw.text((360, 134), f"di {autore}", fill=(185, 220, 255), font=font_autore, anchor="mm")
 
-    # 2. BOX SOTTOTITOLI: Terzo inferiore (y=950-1100), contrasto garantito
+    # 2. BOX SOTTOTITOLI: Terzo inferiore (y=950-1100)
     draw.rounded_rectangle([40, 950, 680, 1100], radius=18, fill=(0, 0, 0, 185), outline=(255, 255, 255, 130), width=2)
     
     import textwrap
@@ -356,7 +356,6 @@ def crea_clip_ken_burns(img_path, audio_path, overlay_path, clip_output, idx):
     durata = ottieni_durata_audio(audio_path) + 0.35
     num_frames = int(durata * 25)
     
-    # Zoom lento alternato
     if idx % 2 == 1:
         zoom_filter = f"zoompan=z='min(zoom+0.0012,1.18)':d={num_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280:fps=25"
     else:
@@ -509,7 +508,7 @@ def invia_su_telegram(video_path, storia):
 async def esegui_pipeline(story_id=None, voice="it-IT-DiegoNeural"):
     start_time = time.time()
     print("="*75)
-    print("🐱 AVVIO BOT: GATTO NARRATORE (STILE ILLUSTRATO INK & WASH) — 9:16")
+    print("🐱 AVVIO BOT: GATTO NARRATORE UMANIZZATO (INK & WASH FIABESCO) — 9:16")
     print("⭐ Produzione & Strategia a cura di: IMMOBILIARE GIANCANI")
     print("="*75)
 
@@ -536,7 +535,7 @@ async def esegui_pipeline(story_id=None, voice="it-IT-DiegoNeural"):
         # Immagine AI
         story_id_int = int(storia["id"]) if str(storia["id"]).isdigit() else 1
         scene_seed = story_id_int * 100 + idx
-        scarica_immagine_pollinations(s["prompt_base"], img_file, seed=scene_seed)
+        scarica_immagine_pollinations(s["scene_desc"], img_file, seed=scene_seed)
         
         # Overlay grafico
         crea_overlay_grafico(s["testo"], storia["titolo"], storia["autore"], overlay_file, is_outro=s["is_outro"])

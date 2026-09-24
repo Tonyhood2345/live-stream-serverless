@@ -26,5 +26,12 @@
     "fonte": "Appartamento Piano Terra Favara",
     "stanza": "Porta della camere singola",
     "fotoUrl": "https://lh3.googleusercontent.com/d/1v8mAKdQKK2N82yJetrb21As9qMM9Y4ge"
+  },
+  "default_casa_indipendente_terrazzo": {
+    "timestamp": 1790261539.967193,
+    "titolo": "Casa Indipendente con Garage e Terrazza",
+    "fonte": "Casa Indipendente Favara",
+    "stanza": "",
+    "fotoUrl": "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?q=80&w=1200&auto=format&fit=crop"
   }
 }

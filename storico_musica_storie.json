@@ -2,10 +2,11 @@
   "regola": "Nessuna musica uguale per oltre 10 storie consecutive",
   "totale_tracce_disponibili": 18,
   "buffer_anti_ripetizione": 10,
-  "ultimo_aggiornamento": "2026-09-24 09:51:26",
+  "ultimo_aggiornamento": "2026-09-24 11:33:50",
   "ultime_musiche": [
     "jazz_lounge_business_8",
     "jazz_eleganza_8",
-    "pianoforte_classico_3"
+    "pianoforte_classico_3",
+    "cinematic_film_5"
   ]
 }

@@ -94,7 +94,11 @@ CAT_CHARACTER_BASE = (
     "bright vibrant saturated colors, classic 2D cel animation art, vertical 9:16"
 )
 
-BIBLICAL_PROMPT_PREFIX = "[CLASSICAL BIBLICAL OIL/WARM WATERCOLOR STYLE]"
+BIBLICAL_PROMPT_PREFIX = (
+    "2D cartoon animation style, classic animated movie cel art, bold clean black ink contour outlines, "
+    "vivid bright saturated colors, crisp cel shading, animated biblical scene, vertical 9:16, "
+    "masterpiece --no realistic, photorealistic, 3d render, CGI, cat, feline, kitten, animal"
+)
 STANDARD_PROMPT_PREFIX = "[2D CLEAN VECTOR WEBCOMIC STYLE, THICK OUTLINES, FLAT SHADING]"
 
 
@@ -199,10 +203,20 @@ def crea_struttura_scene(storia, mode="standard"):
         try:
             scenes_json = json.loads(storia["prompts_g"].strip())
             if isinstance(scenes_json, list) and len(scenes_json) > 0:
+                import re
                 scene = []
                 for sc in scenes_json:
                     text_chunk = sc.get("voiceover_chunk") or sc.get("overlay_text", "")
                     prompt_str = sc.get("prompt", "")
+                    if categoria == "BIBBIA":
+                        # Rimozione tassativa del gatto e garanzia stile Cartone Animato 2D
+                        prompt_str = re.sub(r",?\s*with a Small expressive ginger tabby cat[^,]*(witness|composition|foreground)?[^,]*,?", "", prompt_str, flags=re.IGNORECASE)
+                        prompt_str = re.sub(r",?\s*with a Small expressive ginger tabby cat[^,]*,?", "", prompt_str, flags=re.IGNORECASE)
+                        prompt_str = prompt_str.replace("[CLASSICAL BIBLICAL OIL/WARM WATERCOLOR STYLE],", "")
+                        if "2d cartoon animation style" not in prompt_str.lower():
+                            prompt_str = f"{BIBLICAL_PROMPT_PREFIX}, {prompt_str.strip()}"
+                        if "--no" not in prompt_str.lower():
+                            prompt_str += " --no realistic, photorealistic, 3d render, CGI, cat, feline, kitten, animal"
                     scene.append({
                         "scena_id": sc.get("id", len(scene)),
                         "testo": text_chunk,
@@ -221,22 +235,26 @@ def crea_struttura_scene(storia, mode="standard"):
     testo_f = storia["testo_colonna_f"]
     prompts_raw = [p.strip() for p in storia["prompts_g"].split("|||") if p.strip()] if storia.get("prompts_g") else []
     
-    # Suddivisione testo Colonna F in blocchi di scena
+    # Suddivisione testo Colonna F in blocchi di scena pertinenti
     if "|||" in testo_f:
         frasi = [f.strip() for f in testo_f.split("|||") if f.strip()]
     else:
         import re
         frasi = [f.strip() for f in re.split(r'(?<=[.!?])\s+', testo_f) if f.strip()]
     
-    num_scene = max(len(prompts_raw), len(frasi), 4)
-    while len(frasi) < num_scene:
-        frasi.append("Un percorso ricco di ispirazione, saggezza e scoperte indimenticabili.")
+    frasi = [f for f in frasi if f]
+    
+    # REGOLA MANDATORIA: Nessuna frase fittizia o generica. Solo ed esclusivamente il testo del post!
+    if not frasi:
+        frasi = [testo_f]
+        
+    num_scene = len(frasi)
 
-    # Regola Utente: Prima della narrazione pronuncia la frase hook "Ecco a voi in 2 minuti..."
-    hook_keywords = ["ecco a voi in 2 minuti", "ecco a voi, in 2 minuti", "in 2 minuti ecco uno"]
-    has_hook = any(hk in frasi[0].lower() for hk in hook_keywords)
-    if not has_hook:
-        frasi[0] = f"Ecco a voi, in 2 minuti: {storia['titolo']}! E iniziamo con la narrazione: {frasi[0]}"
+    # Introduzione coerente per i Grandi Classici (se non già presente)
+    if categoria == "STANDARD":
+        hook_keywords = ["ecco a voi in 2 minuti", "ecco a voi, in 2 minuti", "in 2 minuti ecco"]
+        if not any(hk in frasi[0].lower() for hk in hook_keywords):
+            frasi[0] = f"Ecco a voi in 2 minuti: {storia['titolo']} di {storia['autore']}! {frasi[0]}"
 
     # Assicuriamo che l'ultima scena rispetti la regola globale mettendo in risalto Immobiliare Giancani
     if "Immobiliare Giancani" not in frasi[-1]:
@@ -248,21 +266,25 @@ def crea_struttura_scene(storia, mode="standard"):
         if prompt_custom:
             full_prompt = prompt_custom
         elif categoria == "BIBBIA":
-            # Routing Bibbia: Gatto spettatore silenzioso e rispettoso
+            # Routing Bibbia: Cartone animato senza gatto, continuita personaggi
             full_prompt = (
-                f"{BIBLICAL_PROMPT_PREFIX}, Biblical event in {storia['titolo']}: {frasi[i][:70]}, "
-                f"dramatic golden ambient lighting, sacred atmosphere, with a {CORE_CAT_CHARACTER} "
-                f"sitting silently in the corner foreground as a respectful, awe-struck witness, 9:16 composition"
+                f"{BIBLICAL_PROMPT_PREFIX}, Biblical scene in {storia['titolo']}: {frasi[i][:80]}, "
+                f"expressive animated characters, dramatic golden animated lighting, vertical 9:16 "
+                f"--no realistic, photorealistic, 3d render, CGI, cat, feline, kitten, animal"
             )
         elif categoria == "PILLOLE":
-            # Routing Pillole Immobiliari
+            # Routing Pillole Immobiliari: Architettura moderna pertinente all'argomento (NO GATTO)
             full_prompt = (
-                f"[LUXURY REAL ESTATE ARCHITECTURE STYLE], elegant modern home interior, {storia['titolo']}, "
-                f"with a {CORE_CAT_CHARACTER} sitting proudly next to architectural blueprint, warm sunlight, 9:16 composition"
+                f"[LUXURY REAL ESTATE ARCHITECTURE STYLE], elegant modern Italian home interior, topic: {storia['titolo']}, "
+                f"architectural blueprint on marble table, warm ambient sunlight, vertical 9:16, architectural photography "
+                f"--no cat, feline, animal, cartoon"
             )
         else:
-            # Routing Standard Libri
-            full_prompt = f"{CAT_CHARACTER_BASE}, in the classical animated cartoon world of {storia['titolo']}, scene {i+1}"
+            # Routing Standard Libri: Scena dal libro in stile animato 2D
+            full_prompt = (
+                f"2D cartoon animation style, classic animated movie cel art, bold clean black ink contour outlines, "
+                f"vivid bright saturated colors, scene from {storia['titolo']}: {frasi[i][:80]}, vertical 9:16"
+            )
             
         scene.append({
             "scena_id": i + 1,
@@ -324,13 +346,13 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True):
                 os.remove(output_img)
 
     # 2. Suffisso stilistico fisso: rispetta lo stile Biblico, Luxury o Cartone 2D
-    if "[CLASSICAL BIBLICAL" in prompt or "[LUXURY REAL ESTATE" in prompt or "[2D CLEAN VECTOR" in prompt:
+    if "2d cartoon" in prompt.lower() or "[luxury real estate" in prompt.lower() or "[2d clean vector" in prompt.lower():
         full_prompt = prompt
     else:
         CARTOON_STYLE_SUFFIX = (
             ", 2D cartoon animation style, classic animated movie cel art, bold clean black ink contour outlines, "
             "vivid bright saturated colors, crisp cel shading, cheerful lively animated background, "
-            "vertical 9:16, masterpiece --no 3d render, CGI, glossy, photorealistic, realistic cat, humans"
+            "vertical 9:16, masterpiece --no 3d render, CGI, glossy, photorealistic"
         )
         clean_prompt = prompt.replace("pixar 3d style,", "").replace("pixar 3d style", "").rstrip(" ,.")
         if "no 3d" not in clean_prompt.lower() and "no 3d render" not in clean_prompt.lower():
@@ -386,32 +408,33 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True):
     return True
 
 
-def crea_immagine_fallback(output_img, testo_descrittivo):
-    """Crea un'immagine 720x1280 elegante come fallback artistico."""
-    img = Image.new("RGB", (720, 1280), color=(15, 23, 42))
+def crea_immagine_fallback(output_img, testo_descrittivo, categoria="STANDARD"):
+    """Crea un'immagine 720x1280 elegante come fallback artistico pertinente al post."""
+    cat_upper = str(categoria).upper()
+    if "BIBBIA" in cat_upper:
+        c_top, c_bot = (32, 24, 14), (65, 48, 22)
+    elif "PILLOLE" in cat_upper:
+        c_top, c_bot = (14, 24, 40), (28, 48, 78)
+    else:
+        c_top, c_bot = (16, 22, 38), (35, 48, 72)
+
+    img = Image.new("RGB", (720, 1280), color=c_top)
     draw = ImageDraw.Draw(img)
-    # Gradiente verticale atmosferico
+    # Gradiente verticale atmosferico pulito senza figure fittizie
     for y in range(1280):
         ratio = y / 1280.0
-        r = int(15 + (45 - 15) * ratio)
-        g = int(23 + (30 - 23) * ratio)
-        b = int(42 + (80 - 42) * ratio)
+        r = int(c_top[0] + (c_bot[0] - c_top[0]) * ratio)
+        g = int(c_top[1] + (c_bot[1] - c_top[1]) * ratio)
+        b = int(c_top[2] + (c_bot[2] - c_top[2]) * ratio)
         draw.line([(0, y), (720, y)], fill=(r, g, b))
-    # Luna e stelle per atmosfera favolistica
-    draw.ellipse([480, 180, 580, 280], fill=(255, 235, 170), outline=(255, 255, 220), width=3)
-    # Silhouette gattino arancione
-    draw.ellipse([300, 480, 420, 600], fill=(245, 130, 32))
-    draw.ellipse([320, 430, 400, 510], fill=(245, 130, 32))
-    draw.polygon([(320, 440), (335, 400), (350, 440)], fill=(245, 130, 32))
-    draw.polygon([(370, 440), (385, 400), (400, 440)], fill=(245, 130, 32))
     img.save(output_img, "JPEG", quality=95)
 
 
 # ── OVERLAY GRAFICO CON SOTTOTITOLI E TITOLO (PILLOW) ──────────────────────
-def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=False):
+def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=False, categoria="STANDARD"):
     """
     Crea un PNG trasparente 720x1280 contenente:
-    - Badge superiore con Titolo Libro e Autore (y=45-155)
+    - Badge superiore con Kicker pertinente, Titolo e Autore (y=45-155)
     - Box sottotitoli nel terzo inferiore (y tra 950 e 1100 px), nero semitrasparente al 70% (0,0,0,178)
     - Outro badge posizionato sotto (y tra 1115 e 1245 px) con risalto massimo a Immobiliare Giancani
     """
@@ -437,7 +460,7 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
                 continue
         return ImageFont.load_default()
 
-    font_kicker = carica_font(cinzel_path, ["georgiab.ttf", "pala.ttf", "arialbd.ttf"], 22)
+    font_kicker = carica_font(cinzel_path, ["georgiab.ttf", "pala.ttf", "arialbd.ttf"], 21)
     font_titolo = carica_font(playfair_path, ["georgiab.ttf", "palab.ttf", "arialbd.ttf"], 28)
     font_autore = carica_font(lora_path, ["georgia.ttf", "palai.ttf", "arial.ttf"], 22)
     font_sub = carica_font(lora_path, ["georgiab.ttf", "palab.ttf", "arialbd.ttf"], 26)
@@ -445,10 +468,18 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
     font_motto = carica_font(playfair_path, ["georgia.ttf", "palab.ttf", "arial.ttf"], 21)
     font_submotto = carica_font(lora_path, ["georgia.ttf", "pala.ttf", "arial.ttf"], 18)
 
-    # 1. BADGE SUPERIORE: Stile Frontespizio / Libro Classico (y=40-155)
+    # 1. BADGE SUPERIORE: Dinamico e pertinente alla categoria del post
+    cat_upper = str(categoria).upper()
+    if "BIBBIA" in cat_upper:
+        kicker_text = "— STORIE BIBLICHE IN 2 MINUTI —"
+    elif "PILLOLE" in cat_upper:
+        kicker_text = "— PILLOLE IMMOBILIARI & LEGALI —"
+    else:
+        kicker_text = "— I GRANDI CLASSICI IN 2 MINUTI —"
+
     draw.rounded_rectangle([40, 40, 680, 155], radius=16, fill=(18, 24, 38, 225), outline=(212, 175, 55, 230), width=2)
     draw.rounded_rectangle([46, 46, 674, 149], radius=12, outline=(212, 175, 55, 100), width=1)
-    draw.text((360, 65), "— I GRANDI CLASSICI IN 2 MINUTI —", fill=(234, 198, 108), font=font_kicker, anchor="mm")
+    draw.text((360, 65), kicker_text, fill=(234, 198, 108), font=font_kicker, anchor="mm")
     draw.text((360, 98), titolo_libro.upper(), fill=(255, 252, 245), font=font_titolo, anchor="mm")
     draw.text((360, 132), f"di {autore}", fill=(210, 225, 245), font=font_autore, anchor="mm")
 
@@ -641,26 +672,26 @@ def invia_su_telegram(video_path, storia):
         sub_info = (
             f"📜 <b>{storia['titolo']}</b> ({storia.get('autore', '')})\n"
             f"⏱️ Formato: <i>Riassunto Completo in 2 Minuti</i>\n"
-            f"🎨 Stile: <i>Biblico Tradizionale / Acquerello Caldo</i>"
+            f"🎨 Stile: <i>Cartone Animato 2D</i>"
         )
         tags = "#StorieBibliche #EternoNostraGiustizia #Fede #ParolaDiDio #ImmobiliareGiancani"
     elif categoria == "PILLOLE":
         header = "🏢 <b>PILLOLA IMMOBILIARE & LEGALE (ORE 06:00)</b>"
         sub_info = (
-            f"📜 <b>{storia['titolo']}</b>\n"
+            f"📜 <b>{storia['titolo']}</b> ({storia.get('autore', '')})\n"
             f"⏱️ Formato: <i>Consiglio Esperto in 2 Minuti</i>\n"
             f"👔 Rubrica: <i>Guida Pratica & Tutela Legale</i>"
         )
         tags = "#Immobiliare #ConsulenzaLegale #Casa #PillolaDelGiorno #Favara #Agrigento #ImmobiliareGiancani"
     else:
-        header = "🐱 <b>IL GATTO NARRATORE DI GRANDI CLASSICI</b>"
+        header = "📚 <b>I GRANDI CLASSICI DELLA LETTERATURA</b>"
         sub_info = (
             f"📖 <b>{storia['titolo']}</b> ({storia.get('anno', '')})\n"
             f"✍️ Autore: <b>{storia.get('autore', '')}</b>\n"
             f"⏱️ Formato: <i>Riassunto Completo in 2 Minuti</i>\n"
-            f"🎭 Genere: <i>{storia.get('genere', '')}</i>"
+            f"🎨 Stile: <i>Cartone Animato 2D</i>"
         )
-        tags = "#GrandiClassici #Letteratura #GattoNarratore #Storytelling #ImmobiliareGiancani"
+        tags = "#GrandiClassici #Letteratura #Cultura #Libri #ImmobiliareGiancani"
 
     caption = (
         f"{header}\n\n"
@@ -771,18 +802,32 @@ def pubblica_reel_facebook(video_path, storia):
             print(f"❌ Errore upload binary Reel: {r2.text}")
             return False
             
-        # 3. Finish Phase
-        testo_pulito = storia['testo_colonna_f'].replace('|||', ' ')
+        # 3. Finish Phase - Didascalia e Hashtag rigorosamente pertinenti al singolo post
+        testo_pulito = storia['testo_colonna_f'].replace('|||', ' ').strip()
+        cat = storia.get("categoria", "STANDARD").upper()
+        if cat == "BIBBIA":
+            header = "📖 STORIE BIBLICHE — «ETERNO NOSTRA GIUSTIZIA»"
+            sub_info = f"📜 {storia['titolo']} ({storia.get('autore', '')})\n⏱️ Riassunto Narrativo in 2 Minuti\n🎨 Stile: Cartone Animato 2D"
+            tags = "#StorieBibliche #Bibbia #EternoNostraGiustizia #Fede #ParolaDiDio #AntonioGiancani #ImmobiliareGiancani"
+        elif cat == "PILLOLE":
+            header = "🏢 PILLOLE IMMOBILIARI & LEGALI QUOTIDIANE"
+            sub_info = f"📜 {storia['titolo']} ({storia.get('autore', '')})\n⏱️ Consiglio e Tutela Legale in 2 Minuti\n👔 Rubrica: Guida Pratica Immobiliare"
+            tags = "#Immobiliare #DirittoImmobiliare #Normativa #ConsulenzaLegale #Casa #AntonioGiancani #ImmobiliareGiancani"
+        else:
+            header = "📚 GRANDI CLASSICI DELLA LETTERATURA"
+            sub_info = f"📖 {storia['titolo']} ({storia.get('anno', '')}) di {storia.get('autore', '')}\n⏱️ Riassunto Narrativo in 2 Minuti\n🎨 Stile: Cartone Animato 2D"
+            tags = "#GrandiClassici #Letteratura #Cultura #Libri #AntonioGiancani #ImmobiliareGiancani"
+
         caption = (
-            f"🐱 IL GATTO NARRATORE DI GRANDI CLASSICI\n\n"
-            f"Ecco a voi in 2 minuti: {storia['titolo']} ({storia['anno']}) di {storia['autore']}!\n\n"
-            f"{testo_pulito[:450]}...\n\n"
+            f"{header}\n\n"
+            f"{sub_info}\n\n"
+            f"💬 Narrazione Ufficiale (Colonna F):\n"
+            f"«{testo_pulito[:450]}...»\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"👉 Produzione e Personal Branding:\n"
             f"⭐ IMMOBILIARE GIANCANI ⭐\n"
-            f"Il Valore di Sentirsi a Casa\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"#Reels #GrandiClassici #Letteratura #AntonioGiancani #ImmobiliareGiancani #Libri #Storytelling"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{tags}"
         )
         r3 = requests.post(url_reels, data={
             "upload_phase": "finish",
@@ -970,7 +1015,7 @@ async def esegui_pipeline(story_id=None, voice="it-IT-DiegoNeural", mode="standa
         scarica_immagine_pollinations(s["prompt"], img_file, seed=scene_seed)
         
         # Overlay con sottotitoli e branding
-        crea_overlay_grafico(s["testo"], storia["titolo"], storia["autore"], overlay_file, is_outro=s["is_outro"])
+        crea_overlay_grafico(s["testo"], storia["titolo"], storia["autore"], overlay_file, is_outro=s["is_outro"], categoria=storia.get("categoria", mode))
         
         # Montaggio clip Ken Burns
         print(f"  🎞️ Montaggio Ken Burns ({round(durata_scena, 1)}s)...")

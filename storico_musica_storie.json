@@ -2,7 +2,7 @@
   "regola": "Nessuna musica uguale per oltre 10 storie consecutive",
   "totale_tracce_disponibili": 18,
   "buffer_anti_ripetizione": 10,
-  "ultimo_aggiornamento": "2026-09-25 15:48:58",
+  "ultimo_aggiornamento": "2026-09-25 19:58:24",
   "ultime_musiche": [
     "jazz_lounge_business_8",
     "jazz_eleganza_8",
@@ -11,6 +11,7 @@
     "pianoforte_armonia_4",
     "electronic_modern_9",
     "ambient_profondo_3",
-    "ambient_ispirazione_1"
+    "ambient_ispirazione_1",
+    "ambient_calma_2"
   ]
 }

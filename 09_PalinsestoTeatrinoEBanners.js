@@ -161,11 +161,70 @@ function inizializzaFoglioTeatrino() { return { success: true }; }
 
 function getTeatrinoComico() {
   try {
-    var sketch = [
-      { daria: "DarIO, ma hai visto che panorama da questo terrazzo?", dario: "Altro che terrazzo DarIA, qui ci facciamo direttamente il barbecue per tutta la Sicilia! — Immobiliare Giancani" },
-      { daria: "DarIO, guarda che rifiniture in questa cucina!", dario: "Spettacolare! Se cucino io però scatta subito l'allarme antincendio! — Immobiliare Giancani" },
-      { daria: "DarIO, gli spettatori in chat chiedono se la casa ha il garage!", dario: "Certo che sì! Ci sta la macchina, la moto e pure tutti i tuoi vestiti dello shopping! — Immobiliare Giancani" }
-    ];
+    const sketch = [
+  // 1. Cucina
+  { daria: "DarIO, guarda che rifiniture in questa cucina!", dario: "Spettacolare! Se cucino io però scatta subito l'allarme antincendio! — Immobiliare Giancani" },
+  
+  // 2. Garage
+  { daria: "DarIO, gli spettatori in chat chiedono se la casa ha il garage!", dario: "Certo che sì! Ci sta la macchina, la moto e pure tutti i tuoi vestiti dello shopping! — Immobiliare Giancani" },
+  
+  // 3. Giardino
+  { daria: "Guarda che giardino meraviglioso, perfetto per i bambini!", dario: "E soprattutto perfetto per le mie grigliate domenicali! Preparate le costine! — Immobiliare Giancani" },
+  
+  // 4. Cabina armadio
+  { daria: "DarIO, hai visto la cabina armadio nella camera padronale?", dario: "L'ho vista, l'ho vista... ho già capito che a me toccherà l'angolino buio dietro la porta! — Immobiliare Giancani" },
+  
+  // 5. Terrazzo/Vista
+  { daria: "Ragazzi, da questo terrazzo c'è una vista mozzafiato, vero DarIO?", dario: "Assolutamente! Così posso spiare... ehm, salutare cordialmente i vicini la mattina! — Immobiliare Giancani" },
+  
+  // 6. Doppi servizi
+  { daria: "DarIO, finalmente una casa con i doppi servizi!", dario: "Un sogno che si avvera! Niente più lotte mattutine per chi deve usare lo specchio per primo! — Immobiliare Giancani" },
+  
+  // 7. Salone grande
+  { daria: "Guarda quant'è spazioso questo salone, ideale per ricevere gli ospiti!", dario: "O per piazzarci un divano a sei posti e non alzarsi più per tutto il weekend! — Immobiliare Giancani" },
+  
+  // 8. Classe Energetica
+  { daria: "DarIO, l'immobile è in classe energetica A, un bel risparmio in bolletta!", dario: "Ottima notizia! Con quello che risparmio posso finalmente comprarmi la televisione nuova! — Immobiliare Giancani" },
+  
+  // 9. Tavernetta
+  { daria: "Avete notato la tavernetta? È perfetta per le cene con gli amici.", dario: "Confermo! E se gli amici non se ne vanno, li facciamo dormire direttamente lì giù! — Immobiliare Giancani" },
+  
+  // 10. Domotica
+  { daria: "DarIO, questa casa ha la domotica integrata. Puoi accendere le luci con la voce!", dario: "Fantastico! Spero solo che la casa non inizi a rispondermi male come fai tu a volte... scherzo! — Immobiliare Giancani" },
+  
+  // 11. Zona tranquilla
+  { daria: "La zona è tranquillissima, circondata dal verde e senza traffico.", dario: "Il silenzio assoluto... l'ideale per le mie famose pennichelle pomeridiane! — Immobiliare Giancani" },
+  
+  // 12. Camino
+  { daria: "DarIO, guarda che splendido camino in muratura in soggiorno!", dario: "Già mi ci vedo: copertina, cioccolata calda, e io che mi addormento in tre secondi netti! — Immobiliare Giancani" },
+  
+  // 13. Luminosità
+  { daria: "Hai visto quanta luce naturale entra da queste vetrate giganti?", dario: "Tantissima! Mi toccherà mettere gli occhiali da sole anche dentro casa. — Immobiliare Giancani" },
+  
+  // 14. Sicurezza
+  { daria: "La porta è blindata e ci sono già le inferriate di design, sicurezza al top!", dario: "Ottimo, così sono sicuro che i ladri non mi ruberanno le mie preziose scorte di biscotti! — Immobiliare Giancani" },
+  
+  // 15. Lavanderia
+  { daria: "C'è anche un comodo vano lavanderia separato, comodissimo!", dario: "Perfetto! Anche se per me la lavatrice rimane un oggetto misterioso e incomprensibile. — Immobiliare Giancani" },
+  
+  // 16. Servizi vicini
+  { daria: "E ricordiamo a tutti che siamo a due passi da scuole, supermercati e parchi.", dario: "Esatto! Praticamente posso andare a fare la spesa in pantofole. Un lusso vero! — Immobiliare Giancani" },
+  
+  // 17. Mansarda
+  { daria: "DarIO, la mansarda è rifinita benissimo, un vero e proprio angolo di paradiso.", dario: "Perfetta per crearci la mia sala hobby... o per nascondermi quando devi fare le pulizie! — Immobiliare Giancani" },
+  
+  // 18. Bagno / Vasca
+  { daria: "Guardate che vasca da bagno angolare, un vero angolo relax!", dario: "La prenoto subito! Aggiungete i sali da bagno, io non esco più da lì per due giorni! — Immobiliare Giancani" },
+  
+  // 19. Open Space
+  { daria: "L'open space è davvero di tendenza, unisce cucina e zona living in totale armonia.", dario: "Così posso guardare la partita in TV mentre controllo che l'acqua della pasta non esondi! Geniale! — Immobiliare Giancani" },
+  
+  // 20. Chiusura innamorata
+  { daria: "DarIO, io mi sono già innamorata di questo immobile, è un vero gioiellino!", dario: "Anche io! Quasi quasi stacchiamo la diretta, facciamo finta che sia già venduta e ci trasferiamo noi! — Immobiliare Giancani" }
+];
+
+var scelto = sketch[Math.floor(Math.random() * sketch.length)];
+return scelto; // o gestiscila in base alla logica della tua funzione
     var scelto = sketch[Math.floor(Math.random() * sketch.length)];
     return { success: true, sketch: scelto };
   } catch(e) {

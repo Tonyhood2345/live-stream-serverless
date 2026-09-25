@@ -1,18 +1,27 @@
 name: 🐱 Gatto Narratore di Grandi Classici (Video Verticali 9:16)
 
 on:
-  # Esecuzione automatica giornaliera alle 18:00 (ora italiana)
-  # Nota: GitHub Actions opera in UTC.
-  # Con ora legale (CEST, UTC+2): 16:00 UTC = 18:00 Roma.
-  # Con ora solare (CET, UTC+1): 17:00 UTC = 18:00 Roma.
+  # Esecuzione automatica giornaliera:
+  # - Ore 06:00 italiane (04:00 UTC): Pillole Immobiliari & Legali
+  # - Ore 20:00 italiane (18:00 UTC): Reels Grandi Classici & Storie Bibliche
   schedule:
-    - cron: '0 16 * * *'
+    - cron: '0 4 * * *'
+    - cron: '0 18 * * *'
 
-  # Trigger manuale per test immediato dalla dashboard di GitHub
+  # Trigger manuale per test immediato dalla dashboard di GitHub o dalla Regia Generator
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'Modalità bot (bibbia = Storie Bibliche, standard = Grandi Classici, pillole = Pillole 06:00)'
+        required: false
+        default: 'bibbia'
+        type: choice
+        options:
+          - bibbia
+          - standard
+          - pillole
       story_id:
-        description: 'ID specifico della storia (es. 1 per Il Piccolo Principe, lascia vuoto per casuale)'
+        description: 'ID specifico della storia o pillola (lascia vuoto per casuale)'
         required: false
         default: ''
       voice:
@@ -49,12 +58,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🚀 Esecuzione Pipeline Gatto Narratore
+      - name: 🚀 Esecuzione Pipeline Bot Reels Multi-Modalità
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
         run: |
           CMD="python main.py"
+          if [ -n "${{ github.event.inputs.mode }}" ]; then
+            CMD="$CMD --mode ${{ github.event.inputs.mode }}"
+          fi
           if [ -n "${{ github.event.inputs.story_id }}" ]; then
             CMD="$CMD --id ${{ github.event.inputs.story_id }}"
           fi

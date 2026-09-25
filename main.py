@@ -83,23 +83,28 @@ def get_ffmpeg_binary():
 
 FFMPEG_EXE = get_ffmpeg_binary()
 
-# ── ROUTING CONDIZIONALE STILI & PERSONAGGIO CORE ───────────────────────────
-CORE_CAT_CHARACTER = "Small expressive ginger tabby cat with bright green eyes and distinct white paws"
-
-# Identikit visivo fisso del gatto protagonista (Stile Cartone Animato 2D con contorni neri e colori vivaci)
-CAT_CHARACTER_BASE = (
-    "2D cartoon animation style, cute anthropomorphic orange tabby cat standing on two legs, "
-    "wearing a bright blue and white horizontally striped t-shirt, sweet friendly smile, "
-    "large expressive round cartoon eyes, white paws, bold clean black ink contour lines, "
-    "bright vibrant saturated colors, classic 2D cel animation art, vertical 9:16"
+# ── STILE GRAFICO MASTER: ANTIQUE STORYBOOK ILLUSTRATION ─────────────────────
+# Stile specificato dall'utente per tutte le produzioni:
+# Fusione tra incisione botanica d'epoca, acquerello luminoso, inchiostro fine e campitura soffice.
+ANTIQUE_STORYBOOK_STYLE = (
+    "Antique storybook illustration style, vintage botanical engraving fused with luminous watercolor wash. "
+    "Fine ink line art, detailed cross-hatching textures, and clean calligraphic contours. "
+    "Hand-painted soft watercolor palette in deep indigo, dusty blue, and warm ochre on aged cream parchment paper texture. "
+    "Celestial starburst motifs, delicate gold leaf foil accents, engraved nautical and astronomical chart elements. "
+    "Whimsical classic fairytale aesthetic, rich detailed linework, warm atmospheric lighting, masterclass literary print quality. "
+    "--no 3d render, CGI, glossy, photorealistic"
 )
 
-BIBLICAL_PROMPT_PREFIX = (
-    "2D cartoon animation style, classic animated movie cel art, bold clean black ink contour outlines, "
-    "vivid bright saturated colors, crisp cel shading, animated biblical scene, vertical 9:16, "
-    "masterpiece --no realistic, photorealistic, 3d render, CGI, cat, feline, kitten, animal"
+# REGOLE VINCOLANTI PERSONAGGI:
+# 1. IL GATTO È RIGOROSAMENTE SOLO PER I LIBRI (GRANDI CLASSICI) ED È IL GATTO SIMPATICO (T-SHIRT A RIGHE BIANCHE E BLU)
+# 2. PER IL RESTO (BIBBIA, PILLOLE, ECC.) TUTTO SENZA GATTO (ZERO GATTO)
+CAT_CHARACTER_LIBRI = (
+    "Feline animal character only, single adorable cute little orange tabby cat, "
+    "sweet smiling kitten face, pointed ears, whiskers, white paws and white tail tip, "
+    "wearing a classic blue and white horizontally striped sailor t-shirt on its furry torso, "
+    "sitting upright on an open antique illustrated book, looking up in wonder at a shining golden star in sky, "
+    "storybook watercolor illustration, clean hand-drawn ink pen contours, soft sky blue wash on aged cream parchment"
 )
-STANDARD_PROMPT_PREFIX = "[2D CLEAN VECTOR WEBCOMIC STYLE, THICK OUTLINES, FLAT SHADING]"
 
 
 # ── REGOLA UTENTE GLOBALE: ESTRAZIONE RIGOROSA DA COLONNA F ─────────────────
@@ -209,14 +214,15 @@ def crea_struttura_scene(storia, mode="standard"):
                     text_chunk = sc.get("voiceover_chunk") or sc.get("overlay_text", "")
                     prompt_str = sc.get("prompt", "")
                     if categoria == "BIBBIA":
-                        # Rimozione tassativa del gatto e garanzia stile Cartone Animato 2D
+                        # Rimozione tassativa del gatto e garanzia stile Antique Storybook (PER IL RESTO TUTTO SENZA)
                         prompt_str = re.sub(r",?\s*with a Small expressive ginger tabby cat[^,]*(witness|composition|foreground)?[^,]*,?", "", prompt_str, flags=re.IGNORECASE)
                         prompt_str = re.sub(r",?\s*with a Small expressive ginger tabby cat[^,]*,?", "", prompt_str, flags=re.IGNORECASE)
                         prompt_str = prompt_str.replace("[CLASSICAL BIBLICAL OIL/WARM WATERCOLOR STYLE],", "")
-                        if "2d cartoon animation style" not in prompt_str.lower():
-                            prompt_str = f"{BIBLICAL_PROMPT_PREFIX}, {prompt_str.strip()}"
+                        prompt_str = prompt_str.replace("2D cartoon animation style, classic animated movie cel art, bold clean black ink contour outlines, vivid bright saturated colors, crisp cel shading,", "")
+                        if "antique storybook" not in prompt_str.lower():
+                            prompt_str = f"{ANTIQUE_STORYBOOK_STYLE}, {prompt_str.strip()}"
                         if "--no" not in prompt_str.lower():
-                            prompt_str += " --no realistic, photorealistic, 3d render, CGI, cat, feline, kitten, animal"
+                            prompt_str += " --no 3d render, CGI, glossy, photorealistic, cat, feline, kitten, animal"
                     scene.append({
                         "scena_id": sc.get("id", len(scene)),
                         "testo": text_chunk,
@@ -264,27 +270,54 @@ def crea_struttura_scene(storia, mode="standard"):
     for i in range(num_scene):
         prompt_custom = prompts_raw[i].strip() if i < len(prompts_raw) else ""
         if prompt_custom:
-            full_prompt = prompt_custom
+            p_clean = prompt_custom.replace("pixar 3d style,", "").replace("pixar 3d style", "")
+            p_clean = p_clean.replace("standing on two legs wearing a blue and white striped t-shirt", "with the cute ginger cat in striped sailor t-shirt")
+            p_clean = p_clean.replace("vertical 9:16", "").strip(" ,.")
+            if categoria == "STANDARD":
+                if i == 0:
+                    full_prompt = (
+                        "Antique storybook watercolor, cute smiling orange tabby kitten wearing blue striped sailor shirt, "
+                        "sitting on open book, looking at golden star. Luminous wash, fine ink, cream parchment --no human, girl, 3d"
+                    )
+                else:
+                    full_prompt = (
+                        f"Antique storybook illustration, luminous watercolor wash: {storia['titolo']} - {p_clean[:70]}. "
+                        f"Fine ink line art, aged cream parchment paper --no human girl, 3d render, photo"
+                    )
+            elif categoria == "BIBBIA":
+                full_prompt = (
+                    f"Antique storybook illustration, vintage engraving, watercolor wash: {storia['titolo']} - {p_clean[:70]}. "
+                    f"Aged cream parchment --no cat, feline, kitten, animal, 3d, photo"
+                )
+            else:
+                full_prompt = (
+                    f"Antique storybook illustration, architectural blueprint engraving: {storia['titolo']} - {p_clean[:70]}. "
+                    f"Aged parchment --no cat, animal, 3d, photo"
+                )
         elif categoria == "BIBBIA":
-            # Routing Bibbia: Cartone animato senza gatto, continuita personaggi
+            # Routing Bibbia: Antique Storybook SENZA GATTO (PER IL RESTO TUTTO SENZA)
             full_prompt = (
-                f"{BIBLICAL_PROMPT_PREFIX}, Biblical scene in {storia['titolo']}: {frasi[i][:80]}, "
-                f"expressive animated characters, dramatic golden animated lighting, vertical 9:16 "
-                f"--no realistic, photorealistic, 3d render, CGI, cat, feline, kitten, animal"
+                f"Antique storybook illustration, vintage engraving, luminous watercolor wash. Sacred biblical scene: "
+                f"{storia['titolo']} - {frasi[i][:65]}. Aged cream parchment --no cat, feline, kitten, animal, 3d, photo"
             )
         elif categoria == "PILLOLE":
-            # Routing Pillole Immobiliari: Architettura moderna pertinente all'argomento (NO GATTO)
+            # Routing Pillole Immobiliari: Antique Storybook SENZA GATTO (PER IL RESTO TUTTO SENZA)
             full_prompt = (
-                f"[LUXURY REAL ESTATE ARCHITECTURE STYLE], elegant modern Italian home interior, topic: {storia['titolo']}, "
-                f"architectural blueprint on marble table, warm ambient sunlight, vertical 9:16, architectural photography "
-                f"--no cat, feline, animal, cartoon"
+                f"Antique storybook illustration, vintage architectural blueprint engraving, notary deed: "
+                f"{storia['titolo']} - {frasi[i][:65]}. Aged parchment --no cat, feline, kitten, animal, 3d, photo"
             )
         else:
-            # Routing Standard Libri: Scena dal libro in stile animato 2D
-            full_prompt = (
-                f"2D cartoon animation style, classic animated movie cel art, bold clean black ink contour outlines, "
-                f"vivid bright saturated colors, scene from {storia['titolo']}: {frasi[i][:80]}, vertical 9:16"
-            )
+            # Routing Standard Libri: Antique Storybook CON IL GATTO SIMPATICO NARRATORE (IL GATTO È SOLO PER I LIBRI)
+            if i == 0:
+                full_prompt = (
+                    "Antique storybook watercolor, cute smiling orange tabby kitten wearing blue striped sailor shirt, "
+                    "sitting on open book, looking at golden celestial star. Luminous wash, fine ink, cream parchment --no human, girl, 3d"
+                )
+            else:
+                full_prompt = (
+                    f"Antique storybook watercolor illustration, scene from {storia['titolo']} by {storia['autore']}: {frasi[i][:65]}. "
+                    f"Fine ink contours, warm cream parchment paper --no human girl, 3d render, photo"
+                )
             
         scene.append({
             "scena_id": i + 1,
@@ -299,13 +332,16 @@ def crea_struttura_scene(storia, mode="standard"):
 
 
 # ── GENERAZIONE VOCE NARRANTE (EDGE-TTS + GTTS FALLBACK) ────────────────────
-async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
-    """Sintesi vocale con Edge-TTS e fallback automatico su gTTS."""
+async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-ElsaNeural"):
+    """
+    Sintesi vocale neurale italiana ad alta espressività con Edge-TTS (default: Elsa, calda e narrativa)
+    e fallback automatico su gTTS. Pacing rilassato (-2%) per narrazione fiabesca da libro d'epoca.
+    """
     success = False
     try:
         import edge_tts
-        comm = edge_tts.Communicate(testo, voce, rate="+2%", pitch="+0Hz")
-        await asyncio.wait_for(comm.save(file_audio), timeout=12)
+        comm = edge_tts.Communicate(testo, voce, rate="-2%", pitch="+0Hz")
+        await asyncio.wait_for(comm.save(file_audio), timeout=15)
         if os.path.exists(file_audio) and os.path.getsize(file_audio) > 1000:
             success = True
     except Exception as e:
@@ -323,15 +359,14 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
     return success
 
 
-# ── DOWNLOAD IMMAGINI AI CON IL GATTO (POLLINATIONS.AI) ─────────────────────
-def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True):
+# ── DOWNLOAD IMMAGINI AI CON STILE ANTIQUE STORYBOOK (POLLINATIONS.AI) ──────
+def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, categoria="STANDARD", is_intro=False):
     """
-    Scarica immagine AI 9:16 cartoon con:
-    - Suffisso stilistico fisso Disney Pixar 3D chibi e colori vivaci
-    - Seed coerente per storia e scena
-    - Loop di retry automatico (3 tentativi con backoff di 3s)
-    - Validazione di integrità con PIL.Image.open().verify()
-    - Fallback grafico pulito in caso di errore prolungato
+    Scarica immagine AI 9:16 con:
+    - Stile Master Antique Storybook Illustration (incisione botanica/d'epoca + acquerello luminoso)
+    - Gatto presente SOLO per i libri (Standard Grandi Classici)
+    - Il gatto è RIGOROSAMENTE quello simpatico (t-shirt a righe marinaio su pergamena)
+    - Fallback garantito sulle tavole Master Artwork
     """
     # 1. Verifica cache esistente valida
     if use_cache and os.path.exists(output_img) and os.path.getsize(output_img) > 10000:
@@ -345,44 +380,63 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True):
             if os.path.exists(output_img):
                 os.remove(output_img)
 
-    # 2. Suffisso stilistico fisso: rispetta lo stile Biblico, Luxury o Cartone 2D
-    if "2d cartoon" in prompt.lower() or "[luxury real estate" in prompt.lower() or "[2d clean vector" in prompt.lower():
-        full_prompt = prompt
-    else:
-        CARTOON_STYLE_SUFFIX = (
-            ", 2D cartoon animation style, classic animated movie cel art, bold clean black ink contour outlines, "
-            "vivid bright saturated colors, crisp cel shading, cheerful lively animated background, "
-            "vertical 9:16, masterpiece --no 3d render, CGI, glossy, photorealistic"
-        )
-        clean_prompt = prompt.replace("pixar 3d style,", "").replace("pixar 3d style", "").rstrip(" ,.")
-        if "no 3d" not in clean_prompt.lower() and "no 3d render" not in clean_prompt.lower():
-            full_prompt = f"{clean_prompt}{CARTOON_STYLE_SUFFIX}"
+    cat_upper = str(categoria).upper()
+    assets_dir = os.path.join(BASE_DIR, "assets")
+
+    # 2. Per la scena 1 (intro/hook) dei Grandi Classici, applichiamo il Gatto Master Simpatico di riferimento
+    if "STANDARD" in cat_upper and is_intro:
+        cat_ref = os.path.join(assets_dir, "cat_master_reference.jpg")
+        if os.path.exists(cat_ref):
+            try:
+                with Image.open(cat_ref) as cimg:
+                    cimg.convert("RGB").resize((720, 1280), Image.Resampling.LANCZOS).save(output_img, "JPEG", quality=95)
+                print(f"  🐱 Applicato Gatto Master Simpatico ufficiale (Intro Scena 1): {os.path.basename(output_img)}")
+                return True
+            except Exception as e_c:
+                print(f"  ⚠️ Warning caricamento Gatto Master: {e_c}")
+
+    # 3. Pulizia e ottimizzazione stringa di prompt per Pollinations (max 220 caratteri per prevenire timeout/429)
+    clean_prompt = prompt.replace("2D cartoon animation style, classic animated movie cel art, bold clean black ink contour outlines, vivid bright saturated colors, crisp cel shading,", "")
+    clean_prompt = clean_prompt.replace("[2D CLEAN VECTOR WEBCOMIC STYLE, THICK OUTLINES, FLAT SHADING],", "")
+    clean_prompt = clean_prompt.replace("pixar 3d style,", "").replace("pixar 3d style", "")
+    clean_prompt = clean_prompt.replace("standing on two legs wearing a blue and white striped t-shirt", "with cute ginger tabby kitten in blue sailor striped shirt")
+    clean_prompt = clean_prompt.replace("wearing a blue and white striped t-shirt", "wearing blue striped shirt")
+    clean_prompt = clean_prompt.replace("cartoon ", "fairytale ")
+    clean_prompt = clean_prompt.strip(" ,.")
+    
+    if len(clean_prompt) > 210:
+        base_short = clean_prompt[:170].rstrip(" ,.")
+        if "--no" in clean_prompt:
+            no_part = clean_prompt.split("--no")[-1].strip()
+            full_prompt = f"{base_short} --no {no_part[:40]}"
+        elif "BIBBIA" in cat_upper or "PILLOLE" in cat_upper:
+            full_prompt = f"{base_short} --no cat, animal, 3d, photo"
         else:
-            full_prompt = clean_prompt
+            full_prompt = f"{base_short} --no human, girl, 3d, photo"
+    else:
+        full_prompt = clean_prompt
 
     encoded_prompt = urllib.parse.quote(full_prompt)
-    models_to_try = ["turbo", "flux", "turbo"]
-    max_retries = 3
+    models_to_try = [None, "turbo"]
+    max_retries = 2
 
     for attempt in range(1, max_retries + 1):
         model_choice = models_to_try[(attempt - 1) % len(models_to_try)]
-        # URL con seed coerente per storia e scena
-        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=576&height=1024&nologo=true&seed={seed}&model={model_choice}"
+        model_param = f"&model={model_choice}" if model_choice else ""
+        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=576&height=1024&nologo=true&seed={seed}{model_param}"
         
         try:
-            print(f"  🎨 Download Immagine Cartoon [Modello: {model_choice}, Seed: {seed}] (Tentativo {attempt}/{max_retries})...", flush=True)
-            resp = requests.get(url, timeout=45, verify=False)
+            print(f"  🎨 Download Immagine Antique Storybook [Modello: {model_choice or 'default'}, Seed: {seed}] (Tentativo {attempt}/{max_retries})...", flush=True)
+            resp = requests.get(url, timeout=(4, 10), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             
             if resp.status_code == 200 and len(resp.content) > 10000:
                 temp_file = f"{output_img}.tmp"
                 with open(temp_file, "wb") as f:
                     f.write(resp.content)
                 
-                # Validazione file immagine con PIL
                 try:
                     with Image.open(temp_file) as test_pil:
                         test_pil.verify()
-                    # Riapriamo e salviamo in RGB
                     with Image.open(temp_file) as valid_pil:
                         valid_pil.convert("RGB").save(output_img, "JPEG", quality=95)
                     if os.path.exists(temp_file):
@@ -399,18 +453,36 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True):
             print(f"  ⚠️ Errore connessione tentativo {attempt} ({model_choice}): {conn_err}")
 
         if attempt < max_retries:
-            print("  ⏳ Backoff di 3 secondi prima del prossimo tentativo...")
-            time.sleep(3)
+            time.sleep(2)
 
-    # 3. Se tutti i 3 tentativi falliscono, fallback pulito
-    print("  ⚠️ Tutti i 3 tentativi falliti. Generazione fallback grafico per continuità...")
-    crea_immagine_fallback(output_img, prompt)
+    # 4. Fallback su Master Artwork corrispondente
+    print(f"  🎨 Applicazione Master Artwork di riserva per {cat_upper}...")
+    crea_immagine_fallback(output_img, prompt, categoria=categoria)
     return True
 
 
 def crea_immagine_fallback(output_img, testo_descrittivo, categoria="STANDARD"):
-    """Crea un'immagine 720x1280 elegante come fallback artistico pertinente al post."""
+    """Fornisce un'immagine d'arte master 720x1280 pertinente allo stile Antique Storybook."""
     cat_upper = str(categoria).upper()
+    assets_dir = os.path.join(BASE_DIR, "assets")
+    
+    if "BIBBIA" in cat_upper:
+        master_art = os.path.join(assets_dir, "bibbia_master_fallback.jpg")
+    elif "PILLOLE" in cat_upper:
+        master_art = os.path.join(assets_dir, "pillola_master_fallback.jpg")
+    else:
+        master_art = os.path.join(assets_dir, "cat_master_reference.jpg")
+        
+    if os.path.exists(master_art):
+        try:
+            with Image.open(master_art) as im:
+                im.convert("RGB").resize((720, 1280), Image.Resampling.LANCZOS).save(output_img, "JPEG", quality=95)
+            print(f"  🖼️ Master Artwork [{os.path.basename(master_art)}] caricata e applicata con successo!")
+            return
+        except Exception as e:
+            print(f"  ⚠️ Errore caricamento master artwork: {e}")
+
+    # Fallback secondario: gradiente elegante
     if "BIBBIA" in cat_upper:
         c_top, c_bot = (32, 24, 14), (65, 48, 22)
     elif "PILLOLE" in cat_upper:
@@ -420,7 +492,6 @@ def crea_immagine_fallback(output_img, testo_descrittivo, categoria="STANDARD"):
 
     img = Image.new("RGB", (720, 1280), color=c_top)
     draw = ImageDraw.Draw(img)
-    # Gradiente verticale atmosferico pulito senza figure fittizie
     for y in range(1280):
         ratio = y / 1280.0
         r = int(c_top[0] + (c_bot[0] - c_top[0]) * ratio)
@@ -672,7 +743,8 @@ def invia_su_telegram(video_path, storia):
         sub_info = (
             f"📜 <b>{storia['titolo']}</b> ({storia.get('autore', '')})\n"
             f"⏱️ Formato: <i>Riassunto Completo in 2 Minuti</i>\n"
-            f"🎨 Stile: <i>Cartone Animato 2D</i>"
+            f"🎨 Stile: <i>Antique Storybook Illustration (Senza Gatto)</i>\n"
+            f"🎙️ Voce: <i>Italiano Neurale Narrativo (Elsa)</i>"
         )
         tags = "#StorieBibliche #EternoNostraGiustizia #Fede #ParolaDiDio #ImmobiliareGiancani"
     elif categoria == "PILLOLE":
@@ -680,7 +752,9 @@ def invia_su_telegram(video_path, storia):
         sub_info = (
             f"📜 <b>{storia['titolo']}</b> ({storia.get('autore', '')})\n"
             f"⏱️ Formato: <i>Consiglio Esperto in 2 Minuti</i>\n"
-            f"👔 Rubrica: <i>Guida Pratica & Tutela Legale</i>"
+            f"👔 Rubrica: <i>Guida Pratica & Tutela Legale</i>\n"
+            f"🎨 Stile: <i>Antique Blueprint & Parchment Engraving</i>\n"
+            f"🎙️ Voce: <i>Italiano Neurale Narrativo (Elsa)</i>"
         )
         tags = "#Immobiliare #ConsulenzaLegale #Casa #PillolaDelGiorno #Favara #Agrigento #ImmobiliareGiancani"
     else:
@@ -689,7 +763,9 @@ def invia_su_telegram(video_path, storia):
             f"📖 <b>{storia['titolo']}</b> ({storia.get('anno', '')})\n"
             f"✍️ Autore: <b>{storia.get('autore', '')}</b>\n"
             f"⏱️ Formato: <i>Riassunto Completo in 2 Minuti</i>\n"
-            f"🎨 Stile: <i>Cartone Animato 2D</i>"
+            f"🎨 Stile: <i>Antique Storybook Illustration</i>\n"
+            f"🐱 Narratore: <i>Il Gatto Curioso di Grandi Classici</i>\n"
+            f"🎙️ Voce: <i>Italiano Neurale Narrativo (Elsa)</i>"
         )
         tags = "#GrandiClassici #Letteratura #Cultura #Libri #ImmobiliareGiancani"
 
@@ -958,7 +1034,7 @@ def genera_json_esecuzione(storia, scene, mode="standard"):
 
 
 # ── ORCHESTRATORE PRINCIPALE (MAIN PIPELINE) ────────────────────────────────
-async def esegui_pipeline(story_id=None, voice="it-IT-DiegoNeural", mode="standard", output_json_only=False):
+async def esegui_pipeline(story_id=None, voice="it-IT-ElsaNeural", mode="standard", output_json_only=False):
     start_time = time.time()
     mode_titles = {
         "bibbia": "STORIE BIBLICHE — «ETERNO NOSTRA GIUSTIZIA»",
@@ -1009,10 +1085,9 @@ async def esegui_pipeline(story_id=None, voice="it-IT-DiegoNeural", mode="standa
         durata_scena = ottieni_durata_audio(audio_file)
         durata_totale += durata_scena
         
-        # Immagine AI Pollinations
         story_id_int = int(storia["id"]) if str(storia["id"]).isdigit() else 1
         scene_seed = story_id_int * 100 + idx
-        scarica_immagine_pollinations(s["prompt"], img_file, seed=scene_seed)
+        scarica_immagine_pollinations(s["prompt"], img_file, seed=scene_seed, categoria=storia.get("categoria", mode), is_intro=(idx == 1))
         
         # Overlay con sottotitoli e branding
         crea_overlay_grafico(s["testo"], storia["titolo"], storia["autore"], overlay_file, is_outro=s["is_outro"], categoria=storia.get("categoria", mode))
@@ -1051,7 +1126,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bot Reels Multi-Modalità (Bibbia, Grandi Classici, Pillole 06:00)")
     parser.add_argument("--mode", type=str, default=None, choices=["standard", "bibbia", "pillole"], help="Modalità bot (bibbia, standard, pillole)")
     parser.add_argument("--id", type=str, default=None, help="ID specifico della storia o pillola da generare")
-    parser.add_argument("--voice", type=str, default="it-IT-DiegoNeural", help="Voce Edge-TTS (es. it-IT-DiegoNeural o it-IT-ElsaNeural)")
+    parser.add_argument("--voice", type=str, default="it-IT-ElsaNeural", help="Voce Edge-TTS (es. it-IT-ElsaNeural o it-IT-GiuseppeMultilingualNeural)")
     parser.add_argument("--json", action="store_true", help="Genera e stampa solo il JSON di esecuzione senza montare il video")
     args = parser.parse_args()
 

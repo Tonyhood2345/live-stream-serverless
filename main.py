@@ -630,24 +630,48 @@ def invia_su_telegram(video_path, storia):
     
     # Caption formattata per Telegram (max 1024 caratteri consentiti per video)
     testo_pulito = storia['testo_colonna_f'].replace('|||', ' ')
-    if len(testo_pulito) > 400:
-        estratto_display = testo_pulito[:380] + "..."
+    if len(testo_pulito) > 350:
+        estratto_display = testo_pulito[:330] + "..."
     else:
         estratto_display = testo_pulito
 
+    categoria = storia.get("categoria", "STANDARD").upper()
+    if categoria == "BIBBIA":
+        header = "📖 <b>STORIE BIBLICHE — «ETERNO NOSTRA GIUSTIZIA»</b>"
+        sub_info = (
+            f"📜 <b>{storia['titolo']}</b> ({storia.get('autore', '')})\n"
+            f"⏱️ Formato: <i>Riassunto Completo in 2 Minuti</i>\n"
+            f"🎨 Stile: <i>Biblico Tradizionale / Acquerello Caldo</i>"
+        )
+        tags = "#StorieBibliche #EternoNostraGiustizia #Fede #ParolaDiDio #ImmobiliareGiancani"
+    elif categoria == "PILLOLE":
+        header = "🏢 <b>PILLOLA IMMOBILIARE & LEGALE (ORE 06:00)</b>"
+        sub_info = (
+            f"📜 <b>{storia['titolo']}</b>\n"
+            f"⏱️ Formato: <i>Consiglio Esperto in 2 Minuti</i>\n"
+            f"👔 Rubrica: <i>Guida Pratica & Tutela Legale</i>"
+        )
+        tags = "#Immobiliare #ConsulenzaLegale #Casa #PillolaDelGiorno #Favara #Agrigento #ImmobiliareGiancani"
+    else:
+        header = "🐱 <b>IL GATTO NARRATORE DI GRANDI CLASSICI</b>"
+        sub_info = (
+            f"📖 <b>{storia['titolo']}</b> ({storia.get('anno', '')})\n"
+            f"✍️ Autore: <b>{storia.get('autore', '')}</b>\n"
+            f"⏱️ Formato: <i>Riassunto Completo in 2 Minuti</i>\n"
+            f"🎭 Genere: <i>{storia.get('genere', '')}</i>"
+        )
+        tags = "#GrandiClassici #Letteratura #GattoNarratore #Storytelling #ImmobiliareGiancani"
+
     caption = (
-        f"🐱 *IL GATTO NARRATORE DI GRANDI CLASSICI*\n\n"
-        f"📖 *{storia['titolo']}* ({storia['anno']})\n"
-        f"✍️ Autore: *{storia['autore']}*\n"
-        f"⏱️ Formato: _Riassunto Completo in 2 Minuti_\n"
-        f"🎭 Genere: _{storia['genere']}_\n\n"
-        f"💬 *Estratto Narrazione (Colonna F):*\n"
-        f"«_{estratto_display}_»\n\n"
+        f"{header}\n\n"
+        f"{sub_info}\n\n"
+        f"💬 <b>Estratto Narrazione (Colonna F):</b>\n"
+        f"«<i>{estratto_display}</i>»\n\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"👉 *Produzione e Personal Branding:*\n"
-        f"🏠 ⭐ *IMMOBILIARE GIANCANI* ⭐\n"
+        f"👉 <b>Produzione e Personal Branding:</b>\n"
+        f"🏠 ⭐ <b>IMMOBILIARE GIANCANI</b> ⭐\n"
         f"━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"#GrandiClassici #Letteratura #GattoNarratore #LibriPerBambini #Storytelling #ImmobiliareGiancani"
+        f"{tags}"
     )
     
     inline_keyboard = {
@@ -656,7 +680,7 @@ def invia_su_telegram(video_path, storia):
                 {"text": "✨ Sito Web Immobiliare Giancani", "url": "https://immobiliaregiancani.it"}
             ],
             [
-                {"text": "🔄 Altra Storia Classica", "callback_data": "NUOVA_STORIA"}
+                {"text": "🔄 Altro Contenuto", "callback_data": "NUOVA_STORIA"}
             ]
         ]
     }
@@ -673,7 +697,7 @@ def invia_su_telegram(video_path, storia):
                 data = {
                     "chat_id": chat_target,
                     "caption": caption,
-                    "parse_mode": "Markdown",
+                    "parse_mode": "HTML",
                     "supports_streaming": True,
                     "reply_markup": json.dumps(inline_keyboard)
                 }
@@ -682,17 +706,17 @@ def invia_su_telegram(video_path, storia):
                     print(f"✅ Video inviato con successo su Telegram a {chat_target}!")
                     almeno_uno_inviato = True
                     # Invia anche il testo integrale del riassunto se lungo
-                    if len(testo_pulito) > 400:
+                    if len(testo_pulito) > 350:
                         msg_testo = (
-                            f"📜 *TESTO INTEGRALE RIASSUNTO (2 MINUTI)*\n"
-                            f"📖 *{storia['titolo']}* di {storia['autore']}\n\n"
-                            f"{storia['testo_colonna_f'].replace('|||', '\n\n')}\n\n"
+                            f"📜 <b>TESTO INTEGRALE NARRATO (COLONNA F)</b>\n"
+                            f"📖 <b>{storia['titolo']}</b>\n\n"
+                            f"{storia['testo_colonna_f'].replace('|||', chr(10) + chr(10))}\n\n"
                             f"━━━━━━━━━━━━━━━━━━━━\n"
-                            f"⭐ Con la passione e l'affidabilità di *Immobiliare Giancani*."
+                            f"⭐ Con la passione e l'affidabilità di <b>Immobiliare Giancani</b>."
                         )
                         requests.post(
                             f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                            json={"chat_id": chat_target, "text": msg_testo, "parse_mode": "Markdown"},
+                            json={"chat_id": chat_target, "text": msg_testo, "parse_mode": "HTML"},
                             timeout=20,
                             verify=False
                         )
@@ -980,10 +1004,21 @@ async def esegui_pipeline(story_id=None, voice="it-IT-DiegoNeural", mode="standa
 # ── ENTRY POINT CLI ─────────────────────────────────────────────────────────
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bot Reels Multi-Modalità (Bibbia, Grandi Classici, Pillole 06:00)")
-    parser.add_argument("--mode", type=str, default="standard", choices=["standard", "bibbia", "pillole"], help="Modalità bot (bibbia, standard, pillole)")
+    parser.add_argument("--mode", type=str, default=None, choices=["standard", "bibbia", "pillole"], help="Modalità bot (bibbia, standard, pillole)")
     parser.add_argument("--id", type=str, default=None, help="ID specifico della storia o pillola da generare")
     parser.add_argument("--voice", type=str, default="it-IT-DiegoNeural", help="Voce Edge-TTS (es. it-IT-DiegoNeural o it-IT-ElsaNeural)")
     parser.add_argument("--json", action="store_true", help="Genera e stampa solo il JSON di esecuzione senza montare il video")
     args = parser.parse_args()
 
-    asyncio.run(esegui_pipeline(story_id=args.id, voice=args.voice, mode=args.mode, output_json_only=args.json))
+    mode_effettivo = args.mode
+    if not mode_effettivo:
+        import datetime
+        ora_utc = datetime.datetime.now(datetime.timezone.utc).hour
+        # Schedule cron: 04:00 UTC (ore 06:00 Roma) -> pillole
+        # Schedule cron: 18:00 UTC (ore 20:00 Roma) -> bibbia
+        if 2 <= ora_utc <= 8:
+            mode_effettivo = "pillole"
+        else:
+            mode_effettivo = "bibbia"
+
+    asyncio.run(esegui_pipeline(story_id=args.id, voice=args.voice, mode=mode_effettivo, output_json_only=args.json))

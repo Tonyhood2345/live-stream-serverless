@@ -47,5 +47,12 @@
     "fonte": "Appartamento 2 piano Via Pavia Con vista panoramica",
     "stanza": "Vista panoromica dettaglio",
     "fotoUrl": "https://lh3.googleusercontent.com/d/1PRIpYU4393BOh59fKf35eAVx0ltt2Wh9"
+  },
+  "default_agrigento_attico_panoramico": {
+    "timestamp": 1790351326.5854113,
+    "titolo": "Attico Panoramico Vista Valle dei Templi",
+    "fonte": "Attico Vista Valle",
+    "stanza": "",
+    "fotoUrl": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop"
   }
 }

@@ -1,8 +1,8 @@
 name: Serverless Multistream Live
 on:
   schedule:
-    # ⏰ Avvio automatico quotidiano serale: 17:00 UTC = 19:00 CEST (orario estivo italiano)
-    - cron: '0 17 * * *'
+    # ⏰ Avvio automatico quotidiano serale: 18:00 UTC = 20:00 CEST (orario estivo italiano)
+    - cron: '0 18 * * *'
   workflow_dispatch:
     inputs:
       video_url:

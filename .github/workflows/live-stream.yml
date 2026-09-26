@@ -299,6 +299,10 @@ jobs:
           # Seconda YT key rimossa (era scaduta/non necessaria)
           # --- 3. TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"
+          if [ -z "$TK_KEY" ] && [ -n "${{ secrets.TK_KEY }}" ]; then
+            TK_KEY="${{ secrets.TK_KEY }}"
+            echo "🎵 Endpoint TikTok RTMP recuperato da GitHub Secret TK_KEY"
+          fi
           if [ -z "$TK_KEY" ] && [ -f /tmp/tiktok_rtmp.txt ]; then
             TK_KEY=$(cat /tmp/tiktok_rtmp.txt | tr -d '\r\n')
             echo "🎵 Endpoint TikTok RTMP recuperato da adapter: $TK_KEY"

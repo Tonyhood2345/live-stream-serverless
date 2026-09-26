@@ -68,7 +68,7 @@ jobs:
 
       - name: Install Python Dependencies
         run: |
-          pip install --no-cache-dir pillow numpy requests edge-tts
+          pip install --no-cache-dir pillow numpy requests edge-tts google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib httplib2
 
       - name: Verifica Finestra Oraria (07:00 - 23:00 Europe/Rome)
         id: time_check
@@ -96,6 +96,8 @@ jobs:
           FB_ANTONIO_TOKEN: ${{ secrets.FB_ANTONIO_TOKEN }}
           IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
           APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+          YOUTUBE_TOKEN_GIANCANI_JSON: ${{ secrets.YOUTUBE_TOKEN_GIANCANI_JSON }}
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_FORCE_STYLE: ${{ github.event.inputs.force_style }}
           INPUT_IMMOBILE: ${{ github.event.inputs.immobile }}

@@ -1,42 +1,48 @@
-name: 🐱 Gatto Narratore di Grandi Classici (Video Verticali 9:16)
+name: 🎬 Pipeline Reels Multi-Modalità (Mitologia, Libri, Bibbia, Pillole)
 
 on:
-  # Esecuzione automatica giornaliera:
-  # - Ore 06:00 italiane (04:00 UTC): Pillole Immobiliari & Legali
-  # - Ore 20:00 italiane (18:00 UTC): Reels Grandi Classici & Storie Bibliche
+  # Schedulazione automatica nei picchi di engagement (Orari Italiani UTC+1 / UTC+2 CEST):
+  # - 05:15 UTC (07:15 Roma): Pillole Immobiliari & Legali
+  # - 11:30 UTC (13:30 Roma): Mitologia Greca & Epica
+  # - 16:30 UTC (18:30 Roma): Grandi Libri Classici (Gatto Narratore)
+  # - 19:00 UTC (21:00 Roma): Storie Bibliche
   schedule:
-    - cron: '0 4 * * *'
-    - cron: '0 18 * * *'
+    - cron: '15 5 * * *'
+    - cron: '30 11 * * *'
+    - cron: '30 16 * * *'
+    - cron: '0 19 * * *'
 
-  # Trigger manuale per test immediato dalla dashboard di GitHub o dalla Regia Generator
+  # Trigger manuale dalla dashboard GitHub con tutte le 4 modalità
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Modalità bot (bibbia = Storie Bibliche, standard = Grandi Classici, pillole = Pillole 06:00)'
+        description: 'Modalità bot (lascia vuoto per selezione automatica in base all orario)'
         required: false
-        default: 'bibbia'
+        default: 'auto'
         type: choice
         options:
-          - bibbia
+          - auto
+          - mitologia
           - standard
+          - bibbia
           - pillole
       story_id:
         description: 'ID specifico della storia o pillola (lascia vuoto per casuale)'
         required: false
         default: ''
       voice:
-        description: 'Voce Edge-TTS (it-IT-DiegoNeural o it-IT-ElsaNeural)'
+        description: 'Voce Edge-TTS'
         required: false
-        default: 'it-IT-DiegoNeural'
+        default: 'it-IT-ElsaNeural'
         type: choice
         options:
-          - it-IT-DiegoNeural
           - it-IT-ElsaNeural
+          - it-IT-DiegoNeural
 
 jobs:
   genera_e_pubblica_video:
     runs-on: ubuntu-latest
-    name: 🎬 Genera Video Verticale e Invia su Telegram
+    name: 🎬 Genera Video Verticale e Pubblica
 
     steps:
       - name: 📥 Checkout repository
@@ -48,32 +54,61 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: 🎞️ Installa FFmpeg di sistema
+      - name: 🎞️ Installa FFmpeg di sistema e font Linux
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg fonts-dejavu fonts-liberation
 
       - name: 📦 Installa dipendenze Python
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pillow edge-tts requests urllib3 aiohttp
 
-      - name: 🚀 Esecuzione Pipeline Bot Reels Multi-Modalità
+      - name: 🚀 Esecuzione Pipeline Bot Reels
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
         run: |
-          CMD="python main.py"
-          if [ -n "${{ github.event.inputs.mode }}" ]; then
-            CMD="$CMD --mode ${{ github.event.inputs.mode }}"
+          # 1. Determinazione modalità
+          INPUT_MODE="${{ github.event.inputs.mode }}"
+          
+          if [ -z "$INPUT_MODE" ] || [ "$INPUT_MODE" = "auto" ]; then
+            # Rilevamento ora UTC per scheduling automatico
+            ORA_UTC=$(date -u +%H)
+            echo "Esecuzione programmata - Ora UTC rilevata: $ORA_UTC"
+            
+            if [ "$ORA_UTC" -ge 4 ] && [ "$ORA_UTC" -le 8 ]; then
+              TARGET_MODE="pillole"
+            elif [ "$ORA_UTC" -ge 9 ] && [ "$ORA_UTC" -le 13 ]; then
+              TARGET_MODE="mitologia"
+            elif [ "$ORA_UTC" -ge 14 ] && [ "$ORA_UTC" -le 17 ]; then
+              TARGET_MODE="standard"
+            else
+              TARGET_MODE="bibbia"
+            fi
+          else
+            TARGET_MODE="$INPUT_MODE"
           fi
+
+          echo "🎯 Modalità selezionata per l'episodio: $TARGET_MODE"
+
+          # 2. Composizione comando di avvio
+          CMD="python main.py --mode $TARGET_MODE"
+
           if [ -n "${{ github.event.inputs.story_id }}" ]; then
             CMD="$CMD --id ${{ github.event.inputs.story_id }}"
           fi
+
           if [ -n "${{ github.event.inputs.voice }}" ]; then
             CMD="$CMD --voice ${{ github.event.inputs.voice }}"
+          else
+            CMD="$CMD --voice it-IT-ElsaNeural"
           fi
+
           echo "Esecuzione comando: $CMD"
           $CMD
 

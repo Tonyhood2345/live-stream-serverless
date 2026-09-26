@@ -3,11 +3,11 @@
 """
 ==============================================================================
   🎬 BOT REELS MULTI-MODALITÀ MASTER (2m30s - 3m00s)
-  1. Immagini native 9:16 con Crop-Fit intelligente (ZERO deformazioni/stiramenti)
-  2. Stile Cartone Animato 2D puro con colori saturi e contorni inchiostro
-  3. Badge Titolo d'impatto nella scena iniziale (Hook visivo)
-  4. Grafica sottotitoli stile Comic/Cartoon con doppia ombra e alto contrasto
-  5. Banner superiore SOLO per Agenzia Immobiliare (Pillole)
+  - Proporzioni native 9:16 reali: ritaglio centrale Smart-Fit (ZERO immagini stirate)
+  - Stile Cartone Animato 2D Cel-Shaded vivido con inchiostrazione marcata
+  - Badge Titolo d'impatto nella prima scena (Hook narrativo)
+  - Sottotitoli con stile Comic Sticker 3D ad altissima leggibilità
+  - Banner superiore SOLO per Agenzia Immobiliare (Pillole)
 ==============================================================================
 """
 
@@ -72,32 +72,32 @@ def get_ffmpeg_binary():
 
 FFMPEG_EXE = get_ffmpeg_binary()
 
-# ── PROMPT VISIVI SPECIALIZZATI (STILE CARTOON NATIVO 9:16) ──────────────────
+# ── PROMPT VISIVI SPECIALIZZATI: STILE CARTONE ANIMATO 2D NATIVO ─────────────
 STYLE_PROMPTS = {
     "mitologia": (
-        "2D vibrant cartoon animation style, classic animated movie cel art, "
-        "Greek mythology epic fantasy, bold clean black ink contour outlines, vivid bright saturated colors, "
-        "crisp cel shading, expressive characters, vertical 9:16 composition, full portrait orientation. "
-        "--no 3d render, CGI, glossy, photorealistic, deformed anatomy, cat, feline, pet, horizontal frame"
+        "2D colorful cartoon animation style, classic animated movie cel art, "
+        "Greek mythology epic fantasy, sharp black ink outlines, cel shading, bright saturated colors, "
+        "dynamic heroic composition, full vertical 9:16 mobile format. "
+        "--no 3d render, CGI, glossy, photorealistic, realistic, bad anatomy, cat, feline, pet, horizontal frame"
     ),
     "bibbia": (
-        "Warm storybook cartoon illustration, luminous watercolor and ink animation style, "
-        "sacred historical atmosphere, clear outlines, bright expressive palette, vertical 9:16 framing. "
-        "--no cat, kitten, animal, 3d, CGI, photorealistic"
+        "Classic 2D storybook animated cel illustration, warm glowing watercolor and clean ink art, "
+        "expressive heroic figures, bright clear colors, vertical 9:16 framing. "
+        "--no cat, kitten, animal, 3d, CGI, photo"
     ),
     "standard": (
-        "Classic hand-drawn 2D cartoon animation style, colorful fairytale book cel art, "
-        "bold ink lines, rich warm colors, cute expressive mood, full vertical 9:16 mobile format. "
+        "Vibrant 2D fairytale cartoon animation style, animated film cel shading, "
+        "crisp hand-drawn outlines, rich warm colors, cute classic storybook aesthetic, vertical 9:16 orientation. "
         "--no 3d render, CGI, glossy, photorealistic"
     ),
     "pillole": (
-        "Clean modern flat vector cartoon illustration, professional real estate office, notary desk, "
-        "architectural plans, bright vibrant daylight colors, vertical 9:16 infographic style. "
+        "Modern flat 2D vector cartoon infographic illustration, bright sunny real estate office, "
+        "notary signing desk, architectural blueprints, vivid colors, vertical 9:16 portrait composition. "
         "--no cat, feline, dog, pet, animal, 3d render, CGI"
     )
 }
 
-# ── ESTRAZIONE DATI DA CSV ──────────────────────────────────────────────────
+# ── ESTRAZIONE DATI CSV ──────────────────────────────────────────────────────
 def estrai_storia_colonna_f(id_richiesto=None, mode="standard"):
     mode = mode.lower()
     if mode in ["mitologia", "mito"]:
@@ -191,7 +191,6 @@ def crea_struttura_scene(storia, target_mode):
     else:
         frasi_raw = [f.strip() for f in re.split(r'(?<=[.!?])\s+', testo_f) if f.strip()]
 
-    # Pacing calibrato per raggiungere 150-180 secondi effettivi
     frasi = []
     chunk = ""
     target_chunk_len = 110 if target_mode in ["standard", "mitologia"] else 130
@@ -208,10 +207,10 @@ def crea_struttura_scene(storia, target_mode):
     if not frasi:
         frasi = [testo_f]
 
-    # Hook e Brand Closing personalizzati
+    # Hook iniziale moderno
     if target_mode == "mitologia":
         if not any(k in frasi[0].lower() for k in ["mito", "leggenda"]):
-            frasi[0] = f"Oggi esploriamo un mito epico: {storia['titolo']}. {frasi[0]}"
+            frasi[0] = f"Oggi esploriamo un mito leggendario: {storia['titolo']}. {frasi[0]}"
         if "Immobiliare Giancani" not in frasi[-1]:
             frasi[-1] = frasi[-1].rstrip(".") + ". Grandi miti insegnano che determinazione e strategia superano ogni ostacolo. Per la tua casa, scegli la sicurezza di Immobiliare Giancani."
     elif target_mode == "standard":
@@ -237,13 +236,13 @@ def crea_struttura_scene(storia, target_mode):
 
         if target_mode == "standard":
             if i == 0:
-                full_p = "2D cartoon animation style, cute smiling orange tabby kitten wearing blue striped sailor t-shirt on open book, vibrant comic colors, vertical 9:16 --no human, 3d"
+                full_p = "2D cartoon animation cel style, cute smiling orange tabby kitten in sailor striped t-shirt sitting on open book, vibrant comic colors, vertical 9:16 --no human, 3d"
             else:
                 full_p = f"{base_style}, scene from {storia['titolo']}: {clean_custom} --no 3d, photo"
         elif target_mode == "mitologia":
-            full_p = f"{base_style}, Greek myth {storia['titolo']}: {clean_custom} --no cat, kitten, animal pet"
+            full_p = f"{base_style}, heroic myth of {storia['titolo']}: {clean_custom} --no cat, kitten, animal pet"
         elif target_mode == "pillole":
-            full_p = f"{base_style}, notary real estate guide {storia['titolo']}: {clean_custom}"
+            full_p = f"{base_style}, practical guide {storia['titolo']}: {clean_custom}"
         else:
             full_p = f"{base_style}, sacred Bible history {storia['titolo']}: {clean_custom}"
 
@@ -257,12 +256,11 @@ def crea_struttura_scene(storia, target_mode):
 
     return scene
 
-# ── VOCE NARRANTE NEURALE (PACING DA AUDIOLIBRO) ─────────────────────────────
+# ── VOCE NARRANTE NEURALE ───────────────────────────────────────────────────
 async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-ElsaNeural"):
     success = False
     try:
         import edge_tts
-        # Cadenza rallentata (-5%) per dare espressività cinematografica
         comm = edge_tts.Communicate(testo, voce, rate="-5%", pitch="+0Hz")
         await asyncio.wait_for(comm.save(file_audio), timeout=30)
         if os.path.exists(file_audio) and os.path.getsize(file_audio) > 1000:
@@ -281,19 +279,18 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-ElsaNeural"):
             
     return success
 
-# ── DOWNLOAD IMMAGINE: NATIVO 9:16 CON SMART CROP-FIT (NO DEFORMAZIONI) ─────
-def adatta_immagine_9_16(img_source_path, img_dest_path, target_size=(720, 1280)):
+# ── GESTIONE IMMAGINE 9:16: NESSUN ALLARGAMENTO, SOLO CROP CENTRALE ─────────
+def ritaglia_e_adatta_9_16(sorgente_path, destinazione_path, target_size=(720, 1280)):
     """
-    Centra e ritaglia l'immagine senza mai stirarla o deformare le proporzioni.
+    Ritaglio centrale proporzionale 9:16: l'immagine mantiene la sua forma naturale
+    e non subisce alcuno stiramento orizzontale o verticale.
     """
-    with Image.open(img_source_path) as im:
-        im_converted = im.convert("RGB")
-        # ImageOps.fit ritaglia centralmente mantenendo il rapporto d'aspetto perfetto 9:16
-        im_fitted = ImageOps.fit(im_converted, target_size, Image.Resampling.LANCZOS)
-        im_fitted.save(img_dest_path, "JPEG", quality=95)
+    with Image.open(sorgente_path) as im:
+        im_rgb = im.convert("RGB")
+        im_crop = ImageOps.fit(im_rgb, target_size, Image.Resampling.LANCZOS, centering=(0.5, 0.5))
+        im_crop.save(destinazione_path, "JPEG", quality=95)
 
 def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="standard", is_intro=False):
-    # 1. Verifica cache integra
     if os.path.exists(output_img) and os.path.getsize(output_img) > 15000:
         try:
             with Image.open(output_img) as im_chk:
@@ -302,23 +299,22 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
         except Exception:
             if os.path.exists(output_img): os.remove(output_img)
 
-    # 2. Master Gatto solo per Standard Intro
     assets_dir = os.path.join(BASE_DIR, "assets")
     if target_mode == "standard" and is_intro:
         cat_ref = os.path.join(assets_dir, "cat_master_reference.jpg")
         if os.path.exists(cat_ref):
             try:
-                adatta_immagine_9_16(cat_ref, output_img)
+                ritaglia_e_adatta_9_16(cat_ref, output_img)
                 return True
             except Exception:
                 pass
 
-    # 3. Richiesta a Pollinations con risoluzione verticale nativa (768x1344)
     clean_p = prompt.replace("2D cartoon animation style,", "").strip(" ,.")[:220]
     encoded = urllib.parse.quote(clean_p)
 
     for attempt in range(1, 4):
         curr_seed = seed + (attempt * 19)
+        # Richiesta esplicita con aspect ratio verticale nativo (768x1344)
         url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1344&nologo=true&seed={curr_seed}&model=turbo"
         try:
             resp = requests.get(url, timeout=(6, 15), verify=False, headers={"User-Agent": "Mozilla/5.0"})
@@ -329,8 +325,8 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
                 try:
                     with Image.open(tmp_file) as valid_pil:
                         valid_pil.verify()
-                    # Normalizzazione e crop 9:16 perfetto senza deformazioni
-                    adatta_immagine_9_16(tmp_file, output_img)
+                    # Crop perfetto senza stiramenti
+                    ritaglia_e_adatta_9_16(tmp_file, output_img)
                     if os.path.exists(tmp_file): os.remove(tmp_file)
                     return True
                 except Exception:
@@ -339,15 +335,14 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
             print(f"  ⚠️ Tentativo {attempt} fallito ({e_net}), riprovo...")
         time.sleep(1.5)
 
-    # 4. Fallback di emergenza con gradiente verticale
-    print(f"  🎨 Attivato fallback vettoriale 9:16 per {target_mode.upper()}...")
+    # Fallback vettoriale a pieno schermo
     colori_tema = {
-        "mitologia": (38, 24, 18),
-        "standard": (20, 28, 42),
-        "bibbia": (34, 26, 16),
-        "pillole": (18, 26, 38)
+        "mitologia": (42, 24, 18),
+        "standard": (22, 30, 44),
+        "bibbia": (36, 28, 16),
+        "pillole": (18, 28, 42)
     }
-    col = colori_tema.get(target_mode, (24, 24, 24))
+    col = colori_tema.get(target_mode, (25, 25, 25))
     img = Image.new("RGB", (720, 1280), color=col)
     draw = ImageDraw.Draw(img)
     for y in range(1280):
@@ -359,14 +354,13 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
     img.save(output_img, "JPEG", quality=95)
     return True
 
-# ── OVERLAY GRAFICO: BADGE TITOLO INTRO & SOTTOTITOLI CARTOON CON OMBRA 3D ──
+# ── OVERLAY GRAFICO: BADGE TITOLO INTRO & SOTTOTITOLI COMIC CON STROKE 3D ───
 def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=False, is_outro=False, target_mode="standard"):
     img = Image.new("RGBA", (720, 1280), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Ricerca font stile Cartoon / Comic / Display
-    def load_custom_font(size_target, bold=True):
-        candidates = [
+    def carica_font_comic(size_target):
+        font_candidates = [
             os.path.join(BASE_DIR, "assets", "fonts", "KomikaAxis.ttf"),
             os.path.join(BASE_DIR, "assets", "fonts", "Bangers.ttf"),
             os.path.join(BASE_DIR, "assets", "fonts", "Montserrat-Black.ttf"),
@@ -376,39 +370,49 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=F
             "C:\\Windows\\Fonts\\comicbd.ttf",
             "C:\\Windows\\Fonts\\arialbd.ttf"
         ]
-        for f in candidates:
+        for f in font_candidates:
             if os.path.exists(f):
                 try: return ImageFont.truetype(f, size_target)
                 except: pass
         return ImageFont.load_default()
 
-    font_title_intro = load_custom_font(38)
-    font_sub_intro = load_custom_font(22)
-    font_sub = load_custom_font(35)
-    font_brand = load_custom_font(32)
+    font_title_badge = carica_font_comic(36)
+    font_category_badge = carica_font_comic(22)
+    font_sub = carica_font_comic(35)
+    font_brand = carica_font_comic(32)
 
-    # 1. BADGE TITOLO ALL'INIZIO (Solo per i primi secondi di ogni video)
+    # 1. BADGE TITOLO NELLA PRIMA SCENA (Hook visivo cartoon)
     if is_intro:
         if target_mode == "pillole":
-            # Per le pillole immobiliari: banner elegante in alto
-            draw.rounded_rectangle([45, 55, 675, 135], radius=18, fill=(12, 18, 30, 225), outline=(225, 185, 80, 235), width=2)
-            draw.text((360, 95), "PILLOLA IMMOBILIARE & LEGALE", fill=(245, 225, 150), font=font_sub_intro, anchor="mm")
+            # Per l'agenzia immobiliare: banner superiore rettangolare pulito
+            draw.rounded_rectangle([45, 55, 675, 135], radius=18, fill=(12, 18, 30, 225), outline=(235, 190, 85, 240), width=2)
+            draw.text((360, 95), "PILLOLA IMMOBILIARE & LEGALE", fill=(255, 230, 150), font=font_category_badge, anchor="mm")
         else:
-            # Per Mitologia, Libri e Bibbia: Card Titolo centrale/superiore d'impatto visivo
-            box_t = 110
-            box_b = 230
-            # Sfondo traslucido arrotondato stile comic
-            draw.rounded_rectangle([40, box_t, 680, box_b], radius=22, fill=(8, 12, 20, 210), outline=(245, 200, 70, 240), width=3)
-            # Etichetta categoria
-            cat_label = "MITOLOGIA CLASSICA" if target_mode == "mitologia" else ("STORIA DELLA BIBBIA" if target_mode == "bibbia" else "I GRANDI CLASSICI")
-            draw.text((360, box_t + 32), f"★ {cat_label} ★", fill=(245, 205, 80), font=font_sub_intro, anchor="mm")
-            # Titolo principale grande
-            titolo_clean = titolo_libro.upper()
-            if len(titolo_clean) > 24:
-                titolo_clean = titolo_clean[:22] + "..."
-            draw.text((360, box_t + 78), titolo_clean, fill=(255, 255, 255), font=font_title_intro, anchor="mm")
+            # Per Mitologia, Libri e Bibbia: Badge Comic centrale con doppio bordo e stelle
+            card_top = 110
+            card_bottom = 235
+            # Ombra nera del badge
+            draw.rounded_rectangle([38, card_top + 4, 682, card_bottom + 4], radius=22, fill=(0, 0, 0, 180))
+            # Box principale con bordo dorato spesso stile fumetto
+            draw.rounded_rectangle([35, card_top, 685, card_bottom], radius=20, fill=(10, 15, 26, 225), outline=(255, 210, 60, 255), width=3)
+            draw.rounded_rectangle([40, card_top + 5, 680, card_bottom - 5], radius=16, outline=(255, 255, 255, 120), width=1)
+            
+            # Etichetta Categoria
+            etichette = {
+                "mitologia": "★ MITOLOGIA CLASSICA ★",
+                "bibbia": "★ STORIE DELLA BIBBIA ★",
+                "standard": "★ I GRANDI CLASSICI ★"
+            }
+            cat_text = etichette.get(target_mode, "★ GRANDE STORIA ★")
+            draw.text((360, card_top + 34), cat_text, fill=(255, 215, 75), font=font_category_badge, anchor="mm")
+            
+            # Titolo grande al centro
+            titolo_display = titolo_libro.upper()
+            if len(titolo_display) > 25:
+                titolo_display = titolo_display[:23] + "..."
+            draw.text((360, card_top + 84), titolo_display, fill=(255, 255, 255), font=font_title_badge, anchor="mm")
 
-    # 2. SOTTOTITOLI STILE CARTOON (Font grande, colore solare, doppia ombreggiatura 3D, NO box nero cieco)
+    # 2. SOTTOTITOLI STILE CARTOON (Effetto Sticker Comic con doppio contorno e ombra 3D)
     import textwrap
     lines = textwrap.wrap(testo, width=26)
     line_h = 48
@@ -418,24 +422,25 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=F
     for idx, line in enumerate(lines):
         y_pos = start_y + (idx * line_h)
         
-        # Ombra profonda 3D nera (effetto rilievo stile fumetto)
+        # Ombra profonda a sbalzo (effetto 3D pop)
         for offset in range(1, 6):
             draw.text((360 + offset, y_pos + offset), line, fill=(0, 0, 0, 255), font=font_sub, anchor="mm")
             
-        # Contorno marcato per contrasto assoluto
-        for dx in range(-3, 4):
-            for dy in range(-3, 4):
+        # Contorno circolare nero marcato a 360° (effetto adesivo cartoon)
+        for dx in range(-4, 5):
+            for dy in range(-4, 5):
                 if dx != 0 or dy != 0:
                     draw.text((360 + dx, y_pos + dy), line, fill=(0, 0, 0, 255), font=font_sub, anchor="mm")
 
-        # Testo principale giallo solare brillantissimo (stile comic)
-        draw.text((360, y_pos), line, fill=(255, 250, 215), font=font_sub, anchor="mm")
+        # Testo principale giallo solare / bianco crema ad alto contrasto
+        colore_faccia = (255, 255, 220) if idx % 2 == 0 else (255, 245, 160)
+        draw.text((360, y_pos), line, fill=colore_faccia, font=font_sub, anchor="mm")
 
     # 3. OUTRO CARD (Scena finale di chiusura)
     if is_outro:
-        draw.rounded_rectangle([45, 1090, 675, 1225], radius=18, fill=(10, 15, 25, 235), outline=(235, 190, 80, 240), width=2)
-        draw.text((360, 1135), "IMMOBILIARE GIANCANI", fill=(235, 195, 95), font=font_brand, anchor="mm")
-        draw.text((360, 1180), "La Guida Sicura per la Tua Prossima Casa", fill=(250, 250, 255), font=font_sub_intro, anchor="mm")
+        draw.rounded_rectangle([45, 1090, 675, 1225], radius=18, fill=(10, 15, 25, 235), outline=(245, 195, 75, 245), width=2)
+        draw.text((360, 1135), "IMMOBILIARE GIANCANI", fill=(245, 205, 85), font=font_brand, anchor="mm")
+        draw.text((360, 1180), "La Guida Sicura per la Tua Prossima Casa", fill=(255, 255, 255), font=font_category_badge, anchor="mm")
 
     img.save(output_overlay, "PNG")
 
@@ -451,7 +456,7 @@ def ottieni_durata_audio(audio_path):
             return max(4.0, float(h)*3600 + float(m)*60 + float(s))
     return 8.0
 
-# ── MONTAGGIO CLIP KEN BURNS (FULL 9:16 DINAMICO) ──────────────────────────
+# ── MONTAGGIO CLIP: KEN BURNS CON PRE-SCALING 9:16 (NESSUN ALLARGAMENTO) ────
 def crea_clip_ken_burns(img_path, audio_path, overlay_path, clip_output, idx):
     durata = ottieni_durata_audio(audio_path) + 0.35
     num_frames = int(durata * 25)
@@ -461,7 +466,11 @@ def crea_clip_ken_burns(img_path, audio_path, overlay_path, clip_output, idx):
     else:
         zoom_filter = f"zoompan=z='if(lte(zoom,1.0),1.15,max(1.001,zoom-0.0009))':d={num_frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=720x1280:fps=25"
 
-    filter_complex = f"[0:v]{zoom_filter}[bg];[bg][1:v]overlay=0:0[v]"
+    # Pre-scaling a 720:1280 per mantenere l'aspect ratio perfetto senza stirare l'immagine
+    filter_complex = (
+        f"[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,{zoom_filter}[bg];"
+        f"[bg][1:v]overlay=0:0[v]"
+    )
 
     cmd = [
         FFMPEG_EXE, "-y",
@@ -477,7 +486,7 @@ def crea_clip_ken_burns(img_path, audio_path, overlay_path, clip_output, idx):
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
-# ── MONTAGGIO VIDEO FINALE CON AUDIO DUCKING ────────────────────────────────
+# ── MONTAGGIO VIDEO FINALE ─────────────────────────────────────────────────
 def monta_video_finale(clips, output_video, durata_totale):
     concat_list = os.path.join(OUTPUT_DIR, "concat_clips.txt")
     with open(concat_list, "w", encoding="utf-8") as f:
@@ -519,7 +528,7 @@ def monta_video_finale(clips, output_video, durata_totale):
     if os.path.exists(video_temp):
         os.remove(video_temp)
 
-# ── SOCIAL SHARING AUTOMATICO ───────────────────────────────────────────────
+# ── SOCIAL SHARING ──────────────────────────────────────────────────────────
 def invia_su_telegram(video_path, storia, target_mode):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID: return False
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
@@ -607,7 +616,7 @@ async def esegui_pipeline(story_id=None, voice="it-IT-ElsaNeural", mode="standar
         await genera_voce_edge_tts(s["testo"], audio_file, voce=voice)
         durata_totale += ottieni_durata_audio(audio_file)
 
-        # 2. Immagine nativa 9:16 ritagliata al millimetro
+        # 2. Immagine nativa 9:16 senza deformazioni
         seed = int(storia["id"]) * 100 + idx if str(storia["id"]).isdigit() else idx * 100
         scarica_immagine_pollinations(s["prompt"], img_file, seed=seed, target_mode=target_mode, is_intro=s["is_intro"])
 

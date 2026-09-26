@@ -41,6 +41,12 @@ except Exception:
     genera_metadati_youtube = None
     pubblica_video_youtube = None
 
+# Integrazione TikTok Reels (@immobiliare_giancani)
+try:
+    from tiktok_uploader import pubblica_video_tiktok
+except Exception:
+    pubblica_video_tiktok = None
+
 # Disabilita warning SSL per chiamate sicure e resilienti
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -1377,6 +1383,13 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
                 pubblica_video_youtube(video_finale, yt_payload, mode=mode)
         except Exception as ey:
             print(f"  ⚠️ Warning integrazione YouTube: {ey}")
+
+    # 8. Integrazione TikTok Reels & Stories (@immobiliare_giancani)
+    if pubblica_video_tiktok:
+        try:
+            pubblica_video_tiktok(video_finale, storia)
+        except Exception as etk:
+            print(f"  ⚠️ Warning integrazione TikTok: {etk}")
 
     elapsed = round(time.time() - start_time, 1)
     print("\n" + "="*75)

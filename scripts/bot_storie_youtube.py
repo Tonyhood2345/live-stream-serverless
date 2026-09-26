@@ -709,31 +709,113 @@ def pubblica_storia_instagram(ig_user_id, page_token, video_path):
         "metodo": "Meta Business Cross-Posting Bridge"
     }
 
-def pubblica_short_youtube(video_path, item_data, watch_url):
+def pubblica_short_youtube(video_path, item_data, watch_url=None):
     """
-    Pubblica o registra il video come YouTube Short sul canale @immobiliaregiancani761.
-    Include il link dell'annuncio per inviare l'utente all'immobile al tocco.
+    Pubblica direttamente il video come YouTube Short sul canale ufficiale
+    @immobiliaregiancani761 (ID: UC7jCI1x_cwh_sOrNPJpaKyQ) tramite YouTube Data API v3.
     """
     print(f"\n🎬 Pubblicazione YouTube Short sul Canale (@immobiliaregiancani761)...")
     try:
         titolo = item_data.get('titolo', 'Opportunità Immobiliare')
         prezzo = item_data.get('prezzo', 'Trattativa Riservata')
         mq = normalize_mq(item_data.get('mq', '120'))
-        testo_f = item_data.get('testoF', '')
-        video_url = item_data.get('videoUrl', '')
-        thumb_url = item_data.get('thumbUrl', '')
+        testo_f = item_data.get('testoF', '').strip()
 
+        # 1. Ricerca token OAuth2 valido per il canale
+        token_paths = [
+            os.path.join(os.path.dirname(__file__), "token_youtube.json"),
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_youtube.json"),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "token_youtube_giancani.json"),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "token_youtube_mitologia.json")
+        ]
+        token_file = None
+        for tp in token_paths:
+            if os.path.exists(tp):
+                token_file = tp
+                break
+
+        if token_file and os.path.exists(video_path):
+            from google.oauth2.credentials import Credentials
+            from google.auth.transport.requests import Request
+            from googleapiclient.discovery import build
+            from googleapiclient.http import MediaFileUpload
+            import google_auth_httplib2
+            import httplib2
+
+            creds = Credentials.from_authorized_user_file(token_file)
+            if creds.expired and creds.refresh_token:
+                try:
+                    creds.refresh(Request())
+                    with open(token_file, "w", encoding="utf-8") as tf:
+                        tf.write(creds.to_json())
+                except Exception as e_rf:
+                    print(f"  ⚠️ Warning refresh token YouTube: {e_rf}")
+
+            if creds.valid:
+                http_client = httplib2.Http(disable_ssl_certificate_validation=True)
+                auth_http = google_auth_httplib2.AuthorizedHttp(creds, http=http_client)
+                youtube = build("youtube", "v3", http=auth_http)
+
+                short_title = f"{titolo} | {prezzo} #Shorts"
+                if len(short_title) > 95:
+                    short_title = f"{titolo[:60]} | #Shorts"
+
+                link_visita = watch_url or "https://immobiliaregiancani.it"
+                description = (
+                    f"🏢 {titolo.upper()}\n"
+                    f"📐 Superficie: {mq}\n"
+                    f"💰 Prezzo: {prezzo}\n\n"
+                    f"📜 Narrazione Ufficiale (Colonna F):\n"
+                    f"«{testo_f}»\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"👉 Guarda l'annuncio completo: {link_visita}\n"
+                    f"🏠 IMMOBILIARE GIANCANI — Favara (Agrigento)\n"
+                    f"📍 Corso Vittorio Veneto 151, Favara (AG)\n"
+                    f"🌐 Sito Web: https://immobiliaregiancani.it\n"
+                    f"📞 Telefono: +39 320 166 7156\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"#Shorts #ImmobiliareGiancani #Favara #Agrigento #CaseInVendita #AntonioGiancani"
+                )
+
+                body = {
+                    "snippet": {
+                        "title": short_title,
+                        "description": description,
+                        "tags": ["Immobiliare Giancani", "Favara", "Agrigento", "Case in Vendita", "Immobiliare", "Shorts", "YouTube Shorts", "Antonio Giancani"],
+                        "categoryId": "27",
+                        "defaultLanguage": "it"
+                    },
+                    "status": {
+                        "privacyStatus": "public",
+                        "selfDeclaredMadeForKids": False
+                    }
+                }
+
+                media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
+                print("  🚀 [YouTube Data API] Upload in corso su @immobiliaregiancani761...")
+                request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+                response = request.execute()
+                v_id = response.get("id")
+                yt_short_url = f"https://youtube.com/shorts/{v_id}"
+                print(f"  ✅ [YouTube Shorts] Pubblicato con successo! URL: {yt_short_url}")
+                return {
+                    "nome": "YouTube Shorts (@immobiliaregiancani761)",
+                    "success": True,
+                    "story_id": v_id,
+                    "url": yt_short_url
+                }
+
+        # 2. Fallback su Apps Script
         payload = {
             "action": "pubblica_youtube_short",
             "titolo": titolo,
             "mq": mq,
             "prezzo": prezzo,
             "testoF": testo_f,
-            "videoUrl": video_url,
+            "videoUrl": item_data.get('videoUrl', ''),
             "watchUrl": watch_url,
-            "thumbUrl": thumb_url
+            "thumbUrl": item_data.get('thumbUrl', '')
         }
-
         if os.path.exists(video_path) and os.path.getsize(video_path) < 8 * 1024 * 1024:
             with open(video_path, 'rb') as f:
                 payload["base64Video"] = base64.b64encode(f.read()).decode('utf-8')

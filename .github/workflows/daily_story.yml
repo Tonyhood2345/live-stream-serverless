@@ -2,21 +2,21 @@ name: 🎬 Pipeline Reels Multi-Modalità (Mitologia, Libri, Bibbia, Pillole)
 
 on:
   # Schedulazione automatica nei picchi di engagement (Orari Italiani UTC+1 / UTC+2 CEST):
-  # - 05:15 UTC (07:15 Roma): Pillole Immobiliari & Legali
-  # - 11:30 UTC (13:30 Roma): Mitologia Greca & Epica
-  # - 16:30 UTC (18:30 Roma): Grandi Libri Classici (Gatto Narratore)
-  # - 19:00 UTC (21:00 Roma): Storie Bibliche
+  # - 05:15 UTC (07:15 Roma): Pillole Immobiliari & Legali (mattina/risveglio)
+  # - 11:30 UTC (13:30 Roma): Mitologia Greca & Epica (pausa pranzo)
+  # - 16:30 UTC (18:30 Roma): Grandi Libri Classici con Gatto (rientro a casa/relax)
+  # - 19:00 UTC (21:00 Roma): Storie Bibliche (prima serata)
   schedule:
     - cron: '15 5 * * *'
     - cron: '30 11 * * *'
     - cron: '30 16 * * *'
     - cron: '0 19 * * *'
 
-  # Trigger manuale dalla dashboard GitHub con tutte le 4 modalità
+  # Trigger manuale dalla dashboard GitHub
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Modalità bot (lascia vuoto per selezione automatica in base all orario)'
+        description: 'Modalità bot (lascia "auto" per selezione automatica in base all orario)'
         required: false
         default: 'auto'
         type: choice
@@ -54,7 +54,7 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: 🎞️ Installa FFmpeg di sistema e font Linux
+      - name: 🎞️ Installa FFmpeg di sistema e Font Linux
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg fonts-dejavu fonts-liberation
@@ -94,10 +94,16 @@ jobs:
             TARGET_MODE="$INPUT_MODE"
           fi
 
-          echo "🎯 Modalità selezionata per l'episodio: $TARGET_MODE"
+          echo "🎯 Modalità attiva per l'episodio: $TARGET_MODE"
 
-          # 2. Composizione comando di avvio
-          CMD="python main.py --mode $TARGET_MODE"
+          # 2. Controllo file di esecuzione (main.py o bot.py)
+          SCRIPT_TARGET="main.py"
+          if [ ! -f "main.py" ] && [ -f "bot.py" ]; then
+            SCRIPT_TARGET="bot.py"
+          fi
+
+          # 3. Composizione comando CLI
+          CMD="python $SCRIPT_TARGET --mode $TARGET_MODE"
 
           if [ -n "${{ github.event.inputs.story_id }}" ]; then
             CMD="$CMD --id ${{ github.event.inputs.story_id }}"

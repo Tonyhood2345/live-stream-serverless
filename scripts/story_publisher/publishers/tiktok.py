@@ -19,8 +19,14 @@ def pubblica_storia_tiktok(video_path, item_data):
     Garantisce lo stesso file video 1080x1920, la stessa durata e gli stessi testi di Facebook e YouTube.
     """
     print("\n🎵 Pubblicazione Video Storia su TikTok (@immobiliare_giancani)...")
-    ctx = unverified_create_default_context()
     try:
+        try:
+            from tiktok_uploader import pubblica_video_tiktok as uploader_pub
+            res = uploader_pub(video_path, item_data)
+            return res
+        except ImportError:
+            pass
+
         titolo = item_data.get('titolo', 'Opportunità Immobiliare')
         prezzo = item_data.get('prezzo', 'Trattativa Riservata')
         mq = item_data.get('mq', '120 metri quadri')
@@ -34,6 +40,7 @@ def pubblica_storia_tiktok(video_path, item_data):
             shutil.copy2(video_path, tk_video_path)
 
         # Notifica e sincronizzazione con Google Apps Script backend
+        ctx = unverified_create_default_context()
         payload = {
             "action": "pubblica_tiktok_story",
             "titolo": titolo,

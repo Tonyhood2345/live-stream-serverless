@@ -37,10 +37,10 @@ def main():
 
     print("=" * 80)
     print("🏛️ AVVIO BOT DEDICATO: MITOLOGIA GRECA («MITI DELL'ANTICA GRECIA»)")
-    print("⚔️ Formato: Racconto Epico in 2 Minuti | Layout Verticale 9:16")
-    print("🎨 Stile: Cartone Animato 2D Cel Art Epico (NO Gatto)")
+    print("⚔️ Formato: Racconto Epico Culturale in 2 Minuti | Layout Verticale 9:16")
+    print("🎨 Stile: 3D Pixar / Disney Animation (Stile Immagine di Riferimento Utente)")
     print("🛡️ Destinazione attiva: SOLO ED ESCLUSIVAMENTE TELEGRAM")
-    print("⭐ Produzione e Personal Branding: IMMOBILIARE GIANCANI")
+    print("⭐ Rubrica Culturale offerta da: IMMOBILIARE GIANCANI")
     print("=" * 80)
 
     # Esecuzione pipeline in modalità mitologia con invio esclusivo su Telegram

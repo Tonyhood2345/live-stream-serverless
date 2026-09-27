@@ -32,6 +32,8 @@ import shutil
 import datetime
 import requests
 import urllib3
+import io
+import base64
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 # Integrazione YouTube Shorts
@@ -97,6 +99,19 @@ os.makedirs(CUSTOM_IMG_DIR, exist_ok=True)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g3dY9qnIIVc_hWzDdOuHm-MS6M")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")
 TELEGRAM_CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@immobiliaregiancani")
+
+# Credenziali Google Gemini (Imagen 3 / Nano Banana Pro)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+if not GEMINI_API_KEY:
+    env_local = os.path.join(BASE_DIR, ".env")
+    if os.path.exists(env_local):
+        try:
+            with open(env_local, "r", encoding="utf-8") as ef:
+                for eline in ef:
+                    if eline.startswith("GEMINI_API_KEY="):
+                        GEMINI_API_KEY = eline.split("=", 1)[1].strip()
+        except Exception:
+            pass
 
 # Credenziali Facebook Page (Pagina Ufficiale / Profilo di Antonio Giancani)
 FB_PAGE_ID = os.environ.get("FB_PAGE_ID", "108297671444008")
@@ -441,6 +456,44 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-ElsaNeural"):
     return success
 
 
+# ── GENERATORE IMMAGINI GOOGLE GEMINI (IMAGEN 3 / NANO BANANA PRO) ────────────
+def genera_immagine_google_gemini(prompt, output_img, seed=None):
+    """
+    Tenta la generazione in alta definizione tramite le API ufficiali di Google Gemini
+    (modello nano-banana-pro-preview / gemini-3-pro-image).
+    Ritorna True se l'immagine è stata generata e salvata, False in caso di fallback.
+    """
+    if not GEMINI_API_KEY:
+        return False
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/nano-banana-pro-preview:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"Generate a high-quality vertical 9:16 illustration in antique storybook or 2D cel cartoon style: {prompt}"}]
+        }]
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=25, verify=False)
+        if resp.status_code == 200:
+            data = resp.json()
+            cands = data.get("candidates", [])
+            if cands:
+                parts = cands[0].get("content", {}).get("parts", [])
+                for p in parts:
+                    if "inlineData" in p and "data" in p["inlineData"]:
+                        b64_bytes = base64.b64decode(p["inlineData"]["data"])
+                        with Image.open(io.BytesIO(b64_bytes)) as pil_gemini:
+                            adatta_immagine_9_16(pil_gemini).save(output_img, "JPEG", quality=95)
+                        print(f"  ✨ [GEMINI BANANA AI] Immagine generata con successo da Google Nano Banana Pro: {os.path.basename(output_img)}")
+                        return True
+        elif resp.status_code == 429:
+            # Quota esaurita o limit 0 (free tier in attesa di billing) -> prosegue con Pollinations/FLUX
+            pass
+    except Exception as e_gem:
+        pass
+    return False
+
+
 # ── DOWNLOAD IMMAGINI AI CON STILE 2D CARTOON O ANTIQUE (POLLINATIONS.AI) ─────
 def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, categoria="STANDARD", is_intro=False, idx=1, story_id="1"):
     """
@@ -582,6 +635,14 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                 full_prompt = f"{base_short} --no human, girl, 3d, photo"
         else:
             full_prompt = clean_prompt
+
+    # 4.5. Tentativo prioritario con Google Gemini (Nano Banana Pro / Imagen AI)
+    if GEMINI_API_KEY:
+        try:
+            if genera_immagine_google_gemini(full_prompt, output_img, seed=seed):
+                return True
+        except Exception as e_gem_call:
+            pass
 
     encoded_prompt = urllib.parse.quote(full_prompt)
     models_to_try = [None, "turbo"]

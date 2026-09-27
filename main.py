@@ -688,16 +688,15 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         if len(full_prompt) > 230:
             full_prompt = full_prompt[:210].rstrip(" ,.") + " --no photo, realistic, 3d, cat"
     elif "MITOLOGIA" in cat_upper:
-        clean_prompt = prompt.replace("pixar 3d style,", "").replace("pixar 3d style", "")
+        clean_prompt = prompt.replace(ANTIQUE_STORYBOOK_STYLE, "").strip(" ,.")
         clean_prompt = re.sub(r",?\s*with a Small expressive ginger tabby cat[^,]*,?", "", clean_prompt, flags=re.IGNORECASE)
-        clean_prompt = clean_prompt.replace(ANTIQUE_STORYBOOK_STYLE, "").strip(" ,.")
-        if "cartoon" not in clean_prompt.lower():
-            clean_prompt = f"2D cartoon animation style, classic animated feature film cel art, heroic Greek mythology, {clean_prompt}"
+        if "pixar" not in clean_prompt.lower():
+            clean_prompt = f"3D Pixar Disney animation style, heroic Greek mythology, {clean_prompt}"
         if "--no" not in clean_prompt.lower():
-            clean_prompt += " --no photo, realistic, photorealistic, 3d, cgi, cat, feline, kitten, animal"
+            clean_prompt += " --no photo, realistic, photorealistic, dark, gritty, blurry, cat"
         full_prompt = clean_prompt
         if len(full_prompt) > 230:
-            full_prompt = full_prompt[:210].rstrip(" ,.") + " --no photo, realistic, 3d, cat"
+            full_prompt = full_prompt[:200].rstrip(" ,.") + " --no photo, realistic, cat"
     else:
         clean_prompt = prompt.replace("2D cartoon animation style, classic animated movie cel art, bold clean black ink contour outlines, vivid bright saturated colors, crisp cel shading,", "")
         clean_prompt = clean_prompt.replace("[2D CLEAN VECTOR WEBCOMIC STYLE, THICK OUTLINES, FLAT SHADING],", "")

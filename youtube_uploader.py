@@ -89,42 +89,68 @@ def genera_metadati_youtube(video_path, storia, mode="mitologia"):
     colonna_f = storia.get("testo_colonna_f", "").replace("|||", "\n\n").strip()
     storia_id = storia.get("id", "1")
 
+    personaggi = storia.get("personaggi", "")
+    ambientazione = storia.get("ambientazione", "")
+    morale = storia.get("morale", "")
+
     if mode_key == "mitologia":
         short_title = f"{titolo} in 2 Minuti | Miti dell'Antica Grecia #Shorts"
         header = f"🏛️ {titolo.upper()} — STORIE DELLA MITOLOGIA GRECA IN 2 MINUTI 🏛️"
+        extra_info = ""
+        if personaggi:
+            extra_info += f"👥 Protagonisti: {personaggi}\n"
+        if ambientazione:
+            extra_info += f"📍 Ambientazione: {ambientazione}\n"
+        if morale:
+            extra_info += f"💡 Morale & Insegnamento: {morale}\n"
         hashtags = "#Shorts #MitologiaGreca #MitiGreci #Olimpo #Eroi #CulturaClassica #ImmobiliareGiancani #AntonioGiancani"
     elif mode_key == "bibbia":
         short_title = f"{titolo} in 2 Minuti | Storie della Bibbia #Shorts"
         header = f"📖 {titolo.upper()} — STORIE DELLA BIBBIA («ETERNO NOSTRA GIUSTIZIA») 📖"
+        extra_info = ""
+        if storia.get("riferimento_biblico"):
+            extra_info += f"📜 Riferimento: {storia.get('riferimento_biblico')}\n"
+        if morale:
+            extra_info += f"💡 Insegnamento di Fede: {morale}\n"
         hashtags = "#Shorts #StorieDellaBibbia #Bibbia #Fede #ParolaDiDio #EternoNostraGiustizia #ImmobiliareGiancani #AntonioGiancani"
     elif "pillole" in m_lower:
         short_title = f"{titolo} | Pillole Immobiliari & Legali #Shorts"
         header = f"🏢 {titolo.upper()} — PILLOLE IMMOBILIARI & LEGALI CON DARIA 🏢"
+        extra_info = ""
+        if storia.get("normativa"):
+            extra_info += f"⚖️ Riferimento Normativo: {storia.get('normativa')}\n"
         hashtags = "#Shorts #ImmobiliareGiancani #PilloleImmobiliari #ConsulenzaLegale #Favara #Agrigento #DarIA #AntonioGiancani"
     elif "standard" in m_lower or "gatto" in m_lower or "libri" in m_lower:
         short_title = f"{titolo} | Il Gatto Racconta i Grandi Classici #Shorts"
         header = f"🐱 {titolo.upper()} — I GRANDI LIBRI CLASSICI RACCONTATI DAL GATTO 🐱"
+        extra_info = f"📖 Autore: {storia.get('autore', '')} ({storia.get('anno', '')})\n"
         hashtags = "#Shorts #GrandiClassici #Libri #GattoNarratore #Cultura #ImmobiliareGiancani #AntonioGiancani"
     else:
         short_title = f"{titolo} | Immobiliare Giancani con DarIA #Shorts"
         header = f"🏠 {titolo.upper()} — IMMOBILIARE GIANCANI CON DARIA 🏠"
+        extra_info = ""
         hashtags = "#Shorts #ImmobiliareGiancani #DarIA #CaseInVendita #Favara #Agrigento #AntonioGiancani"
 
     # Troncamento titolo se supera i 100 caratteri (limite max di YouTube)
     if len(short_title) > 95:
         short_title = short_title[:90] + " #Shorts"
 
+    info_blocco = f"\n{extra_info.strip()}\n" if extra_info.strip() else ""
+
     description = (
-        f"{header}\n\n"
+        f"{header}\n"
+        f"{info_blocco}\n"
         f"📜 Narrazione Ufficiale (Colonna F):\n"
         f"«{colonna_f}»\n\n"
+        f"💬 Ti è piaciuto questo racconto? Lascia un commento, metti Mi Piace e iscriviti al canale per non perdere i prossimi appuntamenti!\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👉 Produzione, Strategia e Personal Branding:\n"
+        f"👉 Produzione, Consulenza & Personal Branding:\n"
         f"🏠 IMMOBILIARE GIANCANI — Favara (Agrigento)\n"
         f"🌐 Sito Web Ufficiale: https://immobiliaregiancani.it\n"
         f"👤 A cura di Antonio Giancani\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"{hashtags}"
+        f"{hashtags}\n\n"
+        f"🌟 Contenuto a cura di IMMOBILIARE GIANCANI"
     )
 
     tags = list(config["default_tags"])

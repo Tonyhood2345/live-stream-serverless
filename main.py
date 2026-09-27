@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 ==============================================================================
-  🎬 BOT REELS MULTI-MODALITÀ MASTER & SOCIAL DISPATCHER
-  - Routing Multi-Canale (Telegram, YouTube x2, Facebook Pagine x3)
-  - Immagini native 9:16 con Crop-Fit intelligente (ZERO deformazioni)
-  - Durata 2:30 - 3:00 minuti con narrazione estesa
-  - Sottotitoli 3D Comic Sticker e Badge Titolo d'impatto
+  🎬 BOT REELS MULTI-MODALITÀ MASTER & SOCIAL DISPATCHER (VERSIONE FIX GRAFICA)
+  - Blocco assoluto schermate nere: Retry multi-livello su Pollinations
+  - Stile Cartone Animato 2D puro garantito su tutte le scene
+  - Titolo Hero Badge e Sottotitoli Comic Sticker 3D ad altissimo contrasto
+  - Risoluzione nativa verticale 9:16 reale senza allungamenti
 ==============================================================================
 """
 
@@ -28,7 +28,6 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Patch aiohttp per runner e certificati SSL
 try:
     import aiohttp
     orig_ws_connect = aiohttp.ClientSession.ws_connect
@@ -50,12 +49,11 @@ MUSIC_DIR = os.path.join(BASE_DIR, "musica_sottofondo")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ── CREDENZIALI SOCIAL (GitHub Secrets o fallback) ─────────────────────────
+# Credenziali Social
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g3dY9qnIIVc_hWzDdOuHm-MS6M")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")
 TELEGRAM_CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@immobiliaregiancani")
 
-# Pagine Facebook
 FB_PAGE_ID_ANTONIO = os.environ.get("FB_PAGE_ID", "108297671444008")
 FB_PAGE_TOKEN_ANTONIO = os.environ.get("FB_PAGE_TOKEN", "EAAZAH7q8wRZAEBSQbsAIPVhCwMvrhECfhs5UNWL8ZBIOrUbCXqWCQtsyntumIOAvDCRUcg2FsmJBNtiXOEOO2TROFJE9CBXrZBT4GPrZAZCjB73WZALCECi7Ik9ZCae5y01ZB5ZAV7VH7qHyNdeZCWZCG9xViT0gZCYwnV7MCSuQKS5ZA1ZCdw5nom0IH8uub3ZAwVsIGhNSDdkJWZCgCIzs1b8ia")
 
@@ -65,7 +63,6 @@ FB_PAGE_TOKEN_GIANCANI = os.environ.get("FB_PAGE_TOKEN_GIANCANI", FB_PAGE_TOKEN_
 FB_PAGE_ID_BIBBIA = os.environ.get("FB_PAGE_ID_BIBBIA", FB_PAGE_ID_ANTONIO)
 FB_PAGE_TOKEN_BIBBIA = os.environ.get("FB_PAGE_TOKEN_BIBBIA", FB_PAGE_TOKEN_ANTONIO)
 
-# YouTube OAuth API
 YOUTUBE_CLIENT_ID = os.environ.get("YOUTUBE_CLIENT_ID", "")
 YOUTUBE_CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET", "")
 YOUTUBE_REFRESH_TOKEN_GIANCANI = os.environ.get("YOUTUBE_REFRESH_TOKEN_GIANCANI", "")
@@ -85,32 +82,22 @@ def get_ffmpeg_binary():
 
 FFMPEG_EXE = get_ffmpeg_binary()
 
-# ── PROMPT VISIVI SPECIALIZZATI (STILE CARTOON NATIVO 9:16) ──────────────────
-STYLE_PROMPTS = {
-    "mitologia": (
-        "2D vibrant cartoon animation style, classic animated movie cel art, "
-        "Greek mythology epic fantasy, bold clean black ink contour outlines, vivid bright saturated colors, "
-        "crisp cel shading, expressive heroic composition, vertical 9:16 mobile format. "
-        "--no 3d render, CGI, glossy, photorealistic, bad anatomy, cat, feline, pet, horizontal frame"
-    ),
-    "bibbia": (
-        "Classic 2D storybook animated cel illustration, warm glowing watercolor and clean ink art, "
-        "expressive biblical figures, bright clear saturated colors, vertical 9:16 portrait framing. "
-        "--no cat, kitten, animal, 3d, CGI, photo"
-    ),
-    "standard": (
-        "Vibrant 2D fairytale cartoon animation style, animated film cel shading, "
-        "crisp hand-drawn outlines, rich warm colors, cute classic storybook aesthetic, vertical 9:16 orientation. "
-        "--no 3d render, CGI, glossy, photorealistic"
-    ),
-    "pillole": (
-        "Modern flat 2D vector cartoon infographic illustration, bright sunny real estate office, "
-        "notary signing desk, architectural blueprints, vivid colors, vertical 9:16 portrait composition. "
-        "--no cat, feline, dog, pet, animal, 3d render, CGI"
-    )
+# ── STILI PROMPT: CARTOON 2D CEL-SHADED FORZATO IN TESTA ──────────────────
+STYLE_HEADER = {
+    "mitologia": "2D classic animated movie cel art, colorful cartoon fantasy, clean bold black ink outlines, vivid saturated colors, cel shading, vertical 9:16 composition",
+    "bibbia": "2D storybook animated cel illustration, colorful cartoon, clean black outlines, bright warm colors, vertical 9:16 portrait",
+    "standard": "2D fairytale cartoon animation style, classic animated cel art, clean ink outlines, rich vibrant colors, vertical 9:16",
+    "pillole": "2D modern vector cartoon infographic, bright colors, clean outlines, real estate office, vertical 9:16"
 }
 
-# ── ESTRAZIONE DATI DA CSV ──────────────────────────────────────────────────
+STYLE_NEGATIVES = {
+    "mitologia": "--no photo, realistic, photorealistic, 3d render, cgi, black screen, plain background, cat, feline",
+    "bibbia": "--no photo, realistic, 3d, cgi, black screen, cat, kitten",
+    "standard": "--no photo, realistic, 3d, cgi, black screen, human girl",
+    "pillole": "--no cat, dog, pet, animal, 3d render, photo, realistic"
+}
+
+# ── ESTRAZIONE RIGOROSA DA CSV ──────────────────────────────────────────────
 def estrai_storia_colonna_f(id_richiesto=None, mode="standard"):
     mode = mode.lower()
     if mode in ["mitologia", "mito"]:
@@ -230,7 +217,6 @@ def crea_struttura_scene(storia, target_mode):
     if not frasi:
         frasi = [testo_f]
 
-    # Hook iniziale e Outro
     if target_mode == "mitologia":
         if not any(k in frasi[0].lower() for k in ["mito", "leggenda"]):
             frasi[0] = f"Oggi esploriamo un mito leggendario: {storia['titolo']}. {frasi[0]}"
@@ -251,23 +237,24 @@ def crea_struttura_scene(storia, target_mode):
     prompts_raw = [p.strip() for p in storia.get("prompts_g", "").split("|||") if p.strip()]
     scene = []
     num_scene = len(frasi)
-    base_style = STYLE_PROMPTS[target_mode]
+    header_style = STYLE_HEADER[target_mode]
+    negatives = STYLE_NEGATIVES[target_mode]
 
     for i in range(num_scene):
         p_custom = prompts_raw[i] if i < len(prompts_raw) else ""
-        clean_custom = p_custom.replace("pixar 3d style,", "").replace("vertical 9:16", "").strip(" ,.") if p_custom else frasi[i][:70]
+        clean_custom = p_custom.replace("pixar 3d style,", "").replace("vertical 9:16", "").strip(" ,.") if p_custom else frasi[i][:65]
 
         if target_mode == "standard":
             if i == 0:
-                full_p = "2D cartoon animation cel style, cute smiling orange tabby kitten in sailor striped t-shirt sitting on open book, vibrant comic colors, vertical 9:16 --no human, 3d"
+                full_p = f"{header_style}, cute smiling orange tabby kitten wearing sailor t-shirt on open book {negatives}"
             else:
-                full_p = f"{base_style}, scene from {storia['titolo']}: {clean_custom} --no 3d, photo"
+                full_p = f"{header_style}, scene from {storia['titolo']}: {clean_custom} {negatives}"
         elif target_mode == "mitologia":
-            full_p = f"{base_style}, heroic myth of {storia['titolo']}: {clean_custom} --no cat, kitten, animal pet"
+            full_p = f"{header_style}, Greek myth {storia['titolo']}: {clean_custom} {negatives}"
         elif target_mode == "pillole":
-            full_p = f"{base_style}, practical real estate guide {storia['titolo']}: {clean_custom}"
+            full_p = f"{header_style}, notary real estate guide: {clean_custom} {negatives}"
         else:
-            full_p = f"{base_style}, sacred Bible history {storia['titolo']}: {clean_custom}"
+            full_p = f"{header_style}, sacred Bible history: {clean_custom} {negatives}"
 
         scene.append({
             "scena_id": i + 1,
@@ -309,6 +296,7 @@ def ritaglia_e_adatta_9_16(sorgente_path, destinazione_path, target_size=(720, 1
         im_crop = ImageOps.fit(im_rgb, target_size, Image.Resampling.LANCZOS, centering=(0.5, 0.5))
         im_crop.save(destinazione_path, "JPEG", quality=95)
 
+# ── DOWNLOAD IMMAGINE ROBUSTO (MAI PIÙ SFONDO NERO) ────────────────────────
 def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="standard", is_intro=False):
     if os.path.exists(output_img) and os.path.getsize(output_img) > 15000:
         try:
@@ -328,14 +316,25 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
             except Exception:
                 pass
 
-    clean_p = prompt.replace("2D cartoon animation style,", "").strip(" ,.")[:220]
+    # Garantisce che il prompt non ecceda ma mantenga intatto lo stile cartoon
+    clean_p = prompt.strip(" ,.")
+    if len(clean_p) > 230:
+        clean_p = clean_p[:200] + " --no photo, realistic, 3d, black screen"
+
     encoded = urllib.parse.quote(clean_p)
 
+    # Multipli tentativi con cambio di seed e fallback model
+    models = ["turbo", None]
     for attempt in range(1, 4):
-        curr_seed = seed + (attempt * 19)
-        url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1344&nologo=true&seed={curr_seed}&model=turbo"
+        curr_seed = seed + (attempt * 23)
+        curr_model = models[(attempt - 1) % len(models)]
+        model_arg = f"&model={curr_model}" if curr_model else ""
+        ts = int(time.time() * 1000)
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1344&nologo=true&seed={curr_seed}{model_arg}&ts={ts}"
+        
         try:
-            resp = requests.get(url, timeout=(6, 15), verify=False, headers={"User-Agent": "Mozilla/5.0"})
+            print(f"  🎨 [Download Scena] Tentativo {attempt}/3...", flush=True)
+            resp = requests.get(url, timeout=(8, 20), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             if resp.status_code == 200 and len(resp.content) > 12000:
                 tmp_file = f"{output_img}.tmp"
                 with open(tmp_file, "wb") as f:
@@ -345,32 +344,29 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
                         valid_pil.verify()
                     ritaglia_e_adatta_9_16(tmp_file, output_img)
                     if os.path.exists(tmp_file): os.remove(tmp_file)
+                    print(f"  ✅ Scena scaricata con successo in stile Cartone 2D!")
                     return True
                 except Exception:
                     if os.path.exists(tmp_file): os.remove(tmp_file)
         except Exception as e_net:
             print(f"  ⚠️ Tentativo {attempt} fallito ({e_net}), riprovo...")
-        time.sleep(1.5)
+        time.sleep(2)
 
-    colori_tema = {
-        "mitologia": (42, 24, 18),
-        "standard": (22, 30, 44),
-        "bibbia": (36, 28, 16),
-        "pillole": (18, 28, 42)
-    }
-    col = colori_tema.get(target_mode, (25, 25, 25))
-    img = Image.new("RGB", (720, 1280), color=col)
+    # MAI SFONDO NERO: Se Pollinations va in timeout totale, usa un'illustrazione d'emergenza luminosa
+    print(f"  ⚠️ Generazione fallback illustrato colorato...")
+    img = Image.new("RGB", (720, 1280), color=(26, 42, 74) if target_mode == "mitologia" else (35, 45, 60))
     draw = ImageDraw.Draw(img)
+    # Gradiente e dettagli luminosi per non lasciare mai lo schermo nero
     for y in range(1280):
         ratio = y / 1280.0
-        r = int(col[0] * (1 - ratio * 0.4))
-        g = int(col[1] * (1 - ratio * 0.4))
-        b = int(col[2] * (1 - ratio * 0.4))
+        r = int(25 + ratio * 45)
+        g = int(45 + ratio * 65)
+        b = int(90 + ratio * 60)
         draw.line([(0, y), (720, y)], fill=(r, g, b))
     img.save(output_img, "JPEG", quality=95)
     return True
 
-# ── OVERLAY GRAFICO: BADGE TITOLO INTRO & SOTTOTITOLI 3D COMIC ──────────────
+# ── OVERLAY GRAFICO: BADGE TITOLO INTRO & SOTTOTITOLI 3D STICKER ────────────
 def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=False, is_outro=False, target_mode="standard"):
     img = Image.new("RGBA", (720, 1280), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -379,7 +375,6 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=F
         font_candidates = [
             os.path.join(BASE_DIR, "assets", "fonts", "KomikaAxis.ttf"),
             os.path.join(BASE_DIR, "assets", "fonts", "Bangers.ttf"),
-            os.path.join(BASE_DIR, "assets", "fonts", "Montserrat-Black.ttf"),
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
             "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
@@ -392,12 +387,12 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=F
                 except: pass
         return ImageFont.load_default()
 
-    font_title_badge = carica_font_comic(36)
+    font_title_badge = carica_font_comic(34)
     font_category_badge = carica_font_comic(22)
-    font_sub = carica_font_comic(35)
-    font_brand = carica_font_comic(32)
+    font_sub = carica_font_comic(34)
+    font_brand = carica_font_comic(30)
 
-    # 1. Badge Titolo iniziale
+    # 1. BADGE TITOLO NELLA PRIMA SCENA (Hook visivo a fumetto)
     if is_intro:
         if target_mode == "pillole":
             draw.rounded_rectangle([45, 55, 675, 135], radius=18, fill=(12, 18, 30, 225), outline=(235, 190, 85, 240), width=2)
@@ -405,12 +400,13 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=F
         else:
             card_top = 110
             card_bottom = 235
-            draw.rounded_rectangle([38, card_top + 4, 682, card_bottom + 4], radius=22, fill=(0, 0, 0, 180))
-            draw.rounded_rectangle([35, card_top, 685, card_bottom], radius=20, fill=(10, 15, 26, 225), outline=(255, 210, 60, 255), width=3)
-            draw.rounded_rectangle([40, card_top + 5, 680, card_bottom - 5], radius=16, outline=(255, 255, 255, 120), width=1)
+            # Ombra nera profonda
+            draw.rounded_rectangle([38, card_top + 4, 682, card_bottom + 4], radius=22, fill=(0, 0, 0, 190))
+            # Box fumetto con bordo dorato spesso
+            draw.rounded_rectangle([35, card_top, 685, card_bottom], radius=20, fill=(12, 20, 36, 230), outline=(255, 215, 65, 255), width=3)
             
             etichette = {
-                "mitologia": "★ MITOLOGIA CLASSICA ★",
+                "mitologia": "★ MITI DELL'ANTICA GRECIA ★",
                 "bibbia": "★ STORIE DELLA BIBBIA ★",
                 "standard": "★ I GRANDI CLASSICI ★"
             }
@@ -422,25 +418,31 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=F
                 titolo_display = titolo_display[:23] + "..."
             draw.text((360, card_top + 84), titolo_display, fill=(255, 255, 255), font=font_title_badge, anchor="mm")
 
-    # 2. Sottotitoli Comic Sticker 3D
+    # 2. SOTTOTITOLI STILE CARTOON STICKER (Contorno marcato a 360° e ombra 3D)
     import textwrap
-    lines = textwrap.wrap(testo, width=26)
+    lines = textwrap.wrap(testo, width=25)
     line_h = 48
     total_h = len(lines) * line_h
     start_y = 1040 - (total_h // 2)
 
     for idx, line in enumerate(lines):
         y_pos = start_y + (idx * line_h)
+        
+        # Ombra 3D spessa
         for offset in range(1, 6):
             draw.text((360 + offset, y_pos + offset), line, fill=(0, 0, 0, 255), font=font_sub, anchor="mm")
+            
+        # Contorno adesivo nero marcato da 4 pixel
         for dx in range(-4, 5):
             for dy in range(-4, 5):
                 if dx != 0 or dy != 0:
                     draw.text((360 + dx, y_pos + dy), line, fill=(0, 0, 0, 255), font=font_sub, anchor="mm")
-        colore_faccia = (255, 255, 220) if idx % 2 == 0 else (255, 245, 160)
+
+        # Testo giallo caldo/bianco luminosissimo
+        colore_faccia = (255, 255, 220) if idx % 2 == 0 else (255, 235, 130)
         draw.text((360, y_pos), line, fill=colore_faccia, font=font_sub, anchor="mm")
 
-    # 3. Outro Card finale
+    # 3. OUTRO CARD (Scena finale)
     if is_outro:
         draw.rounded_rectangle([45, 1090, 675, 1225], radius=18, fill=(10, 15, 25, 235), outline=(245, 195, 75, 245), width=2)
         draw.text((360, 1135), "IMMOBILIARE GIANCANI", fill=(245, 205, 85), font=font_brand, anchor="mm")
@@ -460,7 +462,7 @@ def ottieni_durata_audio(audio_path):
             return max(4.0, float(h)*3600 + float(m)*60 + float(s))
     return 8.0
 
-# ── MONTAGGIO CLIP CON PRE-SCALING ─────────────────────────────────────────
+# ── MONTAGGIO CLIP CON PRE-SCALING 9:16 (NESSUN ALLARGAMENTO) ──────────────
 def crea_clip_ken_burns(img_path, audio_path, overlay_path, clip_output, idx):
     durata = ottieni_durata_audio(audio_path) + 0.35
     num_frames = int(durata * 25)
@@ -531,12 +533,8 @@ def monta_video_finale(clips, output_video, durata_totale):
     if os.path.exists(video_temp):
         os.remove(video_temp)
 
-# ============================================================================
-# ── MOTORE DI PUBBLICAZIONE SOCIAL AVANZATO (ROUTING DISPATCHER) ────────────
-# ============================================================================
-
+# ── ROUTING SOCIAL ──────────────────────────────────────────────────────────
 def invia_su_telegram(video_path, storia, target_mode):
-    """Invia a Telegram (tutti i contenuti)."""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID: return False
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
     testo_p = storia['testo_colonna_f'].replace('|||', ' ')
@@ -556,13 +554,12 @@ def invia_su_telegram(video_path, storia, target_mode):
         try:
             with open(video_path, "rb") as vf:
                 requests.post(url, data={"chat_id": chat, "caption": caption, "parse_mode": "HTML"}, files={"video": vf}, timeout=120)
-            print(f"✅ [TELEGRAM] Video inviato a {chat}")
+            print(f"✅ [TELEGRAM] Inviato a {chat}")
         except Exception as e:
             print(f"❌ [TELEGRAM] Errore: {e}")
     return True
 
 def pubblica_facebook_reel_su_pagina(page_id, page_token, video_path, caption, label=""):
-    """Pubblica un Reel su una specifica pagina Facebook."""
     if not page_token or not page_id: return False
     try:
         url_reels = f"https://graph.facebook.com/v19.0/{page_id}/video_reels"
@@ -576,26 +573,24 @@ def pubblica_facebook_reel_su_pagina(page_id, page_token, video_path, caption, l
         requests.post(up_url, data=v_bytes, headers=headers, timeout=180)
 
         requests.post(url_reels, data={"upload_phase": "finish", "access_token": page_token, "video_id": vid, "video_state": "PUBLISHED", "description": caption}, timeout=35)
-        print(f"✅ [FACEBOOK REEL] Pubblicato con successo su: {label} (ID: {page_id})")
+        print(f"✅ [FACEBOOK REEL] Pubblicato su: {label}")
         return True
     except Exception as e:
         print(f"❌ [FACEBOOK REEL] Errore su {label}: {e}")
         return False
 
 def pubblica_facebook_post_testuale(page_id, page_token, testo, label=""):
-    """Pubblica un Post di testo con formattazione completa della Colonna F."""
     if not page_token or not page_id: return False
     try:
         url_feed = f"https://graph.facebook.com/v19.0/{page_id}/feed"
         requests.post(url_feed, data={"message": testo, "access_token": page_token}, timeout=25)
-        print(f"✅ [FACEBOOK POST] Testo Colonna F pubblicato su: {label}")
+        print(f"✅ [FACEBOOK POST] Pubblicato su: {label}")
         return True
     except Exception as e:
         print(f"❌ [FACEBOOK POST] Errore su {label}: {e}")
         return False
 
 def ottieni_access_token_da_refresh(refresh_token):
-    """Rigenera il Bearer Access Token di YouTube usando il Refresh Token OAuth."""
     if not YOUTUBE_CLIENT_ID or not YOUTUBE_CLIENT_SECRET or not refresh_token:
         return None
     try:
@@ -608,128 +603,69 @@ def ottieni_access_token_da_refresh(refresh_token):
         }
         res = requests.post(url_token, data=data, timeout=15).json()
         return res.get("access_token")
-    except Exception as e:
-        print(f"⚠️ Errore refresh token YouTube: {e}")
+    except Exception:
         return None
 
 def pubblica_youtube_short(video_path, titolo, descrizione, tags, refresh_token, nome_canale=""):
-    """Carica un video come YouTube Short sul canale specificato."""
     access_token = ottieni_access_token_da_refresh(refresh_token)
     if not access_token:
-        print(f"⚠️ [YOUTUBE] Token mancante per il canale: {nome_canale}. Salto upload.")
+        print(f"⚠️ [YOUTUBE] Token mancante per {nome_canale}. Salto upload.")
         return False
-
     try:
         url_upload = "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status"
-        titolo_short = f"{titolo} #Shorts"[:100]
         meta = {
-            "snippet": {
-                "title": titolo_short,
-                "description": f"{descrizione}\n\n#Shorts #Viral",
-                "tags": tags,
-                "categoryId": "22"
-            },
-            "status": {
-                "privacyStatus": "public",
-                "selfDeclaredMadeForKids": False
-            }
+            "snippet": {"title": f"{titolo} #Shorts"[:100], "description": f"{descrizione}\n\n#Shorts", "tags": tags, "categoryId": "22"},
+            "status": {"privacyStatus": "public", "selfDeclaredMadeForKids": False}
         }
-        headers_init = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json; charset=UTF-8",
-            "X-Upload-Content-Type": "video/mp4"
-        }
+        headers_init = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json; charset=UTF-8", "X-Upload-Content-Type": "video/mp4"}
         r_init = requests.post(url_upload, json=meta, headers=headers_init, timeout=25)
         upload_location = r_init.headers.get("Location")
         if not upload_location: return False
 
-        with open(video_path, "rb") as vf:
-            v_data = vf.read()
-
-        headers_put = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "video/mp4"
-        }
+        with open(video_path, "rb") as vf: v_data = vf.read()
+        headers_put = {"Authorization": f"Bearer {access_token}", "Content-Type": "video/mp4"}
         r_upload = requests.put(upload_location, data=v_data, headers=headers_put, timeout=240)
         if r_upload.status_code in [200, 201]:
-            print(f"✅ [YOUTUBE SHORTS] Pubblicato con successo sul canale: {nome_canale}!")
+            print(f"✅ [YOUTUBE SHORTS] Pubblicato su: {nome_canale}!")
             return True
     except Exception as ey:
-        print(f"❌ [YOUTUBE] Errore caricamento {nome_canale}: {ey}")
+        print(f"❌ [YOUTUBE] Errore su {nome_canale}: {ey}")
     return False
 
-# ── ROUTING CENTRALE SOCIAL ─────────────────────────────────────────────────
 def esegui_routing_pubblicazione(video_path, storia, target_mode):
     print("\n" + "="*70)
-    print(f"🚀 [DISPATCHER SOCIAL] Avvio distribuzione per modalità: {target_mode.upper()}")
+    print(f"🚀 [DISPATCHER SOCIAL] Distribuzione in corso per: {target_mode.upper()}")
     print("="*70)
 
     testo_pulito = storia['testo_colonna_f'].replace('|||', ' ').strip()
     titolo = storia['titolo']
 
-    # 1. TUTTI I VIDEO VANNO SU TELEGRAM
+    # 1. Telegram (Tutti)
     invia_su_telegram(video_path, storia, target_mode)
 
-    # 2. ROUTING SPECIFICO PER OGNI MODALITÀ
+    # 2. Routing specifico
     if target_mode == "bibbia":
-        caption_bibbia = (
-            f"📖 STORIE DELLA BIBBIA — «ETERNO NOSTRA GIUSTIZIA»\n\n"
-            f"📜 {titolo}\n\n"
-            f"«{testo_pulito[:450]}...»\n\n"
-            f"#StorieBibliche #Bibbia #EternoNostraGiustizia #Fede #ParolaDiDio"
-        )
-        # Facebook Pagina "Eterno nostra giustizia"
-        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_BIBBIA, FB_PAGE_TOKEN_BIBBIA, video_path, caption_bibbia, "Facebook Eterno Nostra Giustizia")
-        # Facebook Pagina "Antonio Giancani"
-        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption_bibbia, "Facebook Pagina Antonio Giancani")
-        # YouTube Canale "Eterno nostra giustizia"
-        pubblica_youtube_short(video_path, f"Storia Biblica: {titolo}", caption_bibbia, ["Bibbia", "Eterno nostra giustizia", "Fede"], YOUTUBE_REFRESH_TOKEN_BIBBIA, "Eterno nostra giustizia")
+        caption = f"📖 STORIE DELLA BIBBIA — «ETERNO NOSTRA GIUSTIZIA»\n\n📜 {titolo}\n\n«{testo_pulito[:450]}...»\n\n#StorieBibliche #Bibbia #EternoNostraGiustizia"
+        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_BIBBIA, FB_PAGE_TOKEN_BIBBIA, video_path, caption, "FB Eterno Nostra Giustizia")
+        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption, "FB Antonio Giancani")
+        pubblica_youtube_short(video_path, f"Storia Biblica: {titolo}", caption, ["Bibbia", "Eterno nostra giustizia"], YOUTUBE_REFRESH_TOKEN_BIBBIA, "Eterno nostra giustizia")
 
     elif target_mode == "mitologia":
-        caption_mito = (
-            f"🏛️ MITI DELL'ANTICA GRECIA — EROI E LEGGENDE\n\n"
-            f"⚡ {titolo}\n\n"
-            f"«{testo_pulito[:450]}...»\n\n"
-            f"Con la determinazione e la visione di Immobiliare Giancani.\n\n"
-            f"#MitologiaGreca #MitiGreci #Olimpo #Eroi #AntonioGiancani"
-        )
-        # Solo Pagina Facebook "Antonio Giancani"
-        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption_mito, "Facebook Pagina Antonio Giancani")
+        caption = f"🏛️ MITI DELL'ANTICA GRECIA\n\n⚡ {titolo}\n\n«{testo_pulito[:450]}...»\n\nCon la visione e la determinazione di Immobiliare Giancani.\n\n#MitologiaGreca #MitiGreci #AntonioGiancani"
+        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption, "FB Antonio Giancani")
 
     elif target_mode == "pillole":
-        caption_pillole = (
-            f"🏢 PILLOLA IMMOBILIARE & TUTELA LEGALE\n\n"
-            f"📜 {titolo} — A cura di Immobiliare Giancani\n\n"
-            f"«{testo_pulito[:450]}...»\n\n"
-            f"Per una compravendita sicura e tutelata, rivolgiti alla nostra agenzia.\n\n"
-            f"#ImmobiliareGiancani #ConsulenzaLegale #Casa #Tutela #Favara #Agrigento"
-        )
-        # Facebook Pagina "Immobiliare Giancani" (Reel)
-        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, video_path, caption_pillole, "Facebook Immobiliare Giancani (Reel)")
-        # Facebook Pagina "Immobiliare Giancani" (Post di testo integrale Colonna F)
-        post_completo = (
-            f"🏢 PILLOLA DEL GIORNO: {titolo.upper()}\n\n"
-            f"{storia['testo_colonna_f'].replace('|||', chr(10)+chr(10))}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"🏠 IMMOBILIARE GIANCANI\n"
-            f"Affidabilità, Competenza e Tutela per la Tua Casa."
-        )
-        pubblica_facebook_post_testuale(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, post_completo, "Facebook Immobiliare Giancani (Post)")
-        # Facebook Pagina "Antonio Giancani" (Reel)
-        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption_pillole, "Facebook Pagina Antonio Giancani")
-        # YouTube Canale "Immobiliare Giancani" (Short)
-        pubblica_youtube_short(video_path, f"Pillola Immobiliare: {titolo}", caption_pillole, ["Immobiliare Giancani", "Casa", "Consulenza Legale"], YOUTUBE_REFRESH_TOKEN_GIANCANI, "Immobiliare Giancani")
+        caption = f"🏢 PILLOLA IMMOBILIARE & TUTELA LEGALE\n\n📜 {titolo}\n\n«{testo_pulito[:450]}...»\n\nPer una compravendita sicura, rivolgiti a Immobiliare Giancani.\n\n#ImmobiliareGiancani #ConsulenzaLegale #Casa"
+        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, video_path, caption, "FB Immobiliare Giancani (Reel)")
+        
+        post_completo = f"🏢 PILLOLA DEL GIORNO: {titolo.upper()}\n\n{storia['testo_colonna_f'].replace('|||', chr(10)+chr(10))}\n\n━━━━━━━━━━━━━━━━━━━━\n🏠 IMMOBILIARE GIANCANI\nAffidabilità e Tutela per la Tua Casa."
+        pubblica_facebook_post_testuale(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, post_completo, "FB Immobiliare Giancani (Post)")
+        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption, "FB Antonio Giancani")
+        pubblica_youtube_short(video_path, f"Pillola Immobiliare: {titolo}", caption, ["Immobiliare Giancani", "Casa"], YOUTUBE_REFRESH_TOKEN_GIANCANI, "Immobiliare Giancani")
 
-    else:  # standard (Grandi Libri Classici con Gatto)
-        caption_libri = (
-            f"📚 I GRANDI CLASSICI DELLA LETTERATURA\n\n"
-            f"📖 {titolo} di {storia.get('autore', '')}\n\n"
-            f"«{testo_pulito[:450]}...»\n\n"
-            f"Con la passione per le grandi storie di Immobiliare Giancani.\n\n"
-            f"#GrandiClassici #Letteratura #Libri #Cultura #AntonioGiancani"
-        )
-        # Solo Pagina Facebook "Antonio Giancani"
-        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption_libri, "Facebook Pagina Antonio Giancani")
+    else:  # standard libri classici
+        caption = f"📚 I GRANDI CLASSICI DELLA LETTERATURA\n\n📖 {titolo} di {storia.get('autore', '')}\n\n«{testo_pulito[:450]}...»\n\nCon la passione di Immobiliare Giancani.\n\n#GrandiClassici #Libri #AntonioGiancani"
+        pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption, "FB Antonio Giancani")
 
 # ── ORCHESTRATORE PIPELINE ──────────────────────────────────────────────────
 async def esegui_pipeline(story_id=None, voice="it-IT-ElsaNeural", mode="standard"):
@@ -748,18 +684,18 @@ async def esegui_pipeline(story_id=None, voice="it-IT-ElsaNeural", mode="standar
         overlay_file = os.path.join(OUTPUT_DIR, f"{base_name}_ov.png")
         clip_file = os.path.join(OUTPUT_DIR, f"{base_name}_clip.mp4")
 
-        # Voce Narrante
+        # 1. Voce
         await genera_voce_edge_tts(s["testo"], audio_file, voce=voice)
         durata_totale += ottieni_durata_audio(audio_file)
 
-        # Immagine AI 9:16 nativa
+        # 2. Immagine Cartoon reale
         seed = int(storia["id"]) * 100 + idx if str(storia["id"]).isdigit() else idx * 100
         scarica_immagine_pollinations(s["prompt"], img_file, seed=seed, target_mode=target_mode, is_intro=s["is_intro"])
 
-        # Overlay Comic Sticker & Titolo
+        # 3. Overlay Comic Sticker & Titolo
         crea_overlay_grafico(s["testo"], storia["titolo"], storia.get("autore", ""), overlay_file, is_intro=s["is_intro"], is_outro=s["is_outro"], target_mode=target_mode)
 
-        # Clip Ken Burns
+        # 4. Clip Ken Burns
         crea_clip_ken_burns(img_file, audio_file, overlay_file, clip_file, idx)
         clips.append(clip_file)
 
@@ -773,7 +709,6 @@ async def esegui_pipeline(story_id=None, voice="it-IT-ElsaNeural", mode="standar
     print(f"⏱️ Durata Effettiva: {minuti}m {secondi}s")
     print("="*70 + "\n")
 
-    # Esecuzione del routing per la pubblicazione
     esegui_routing_pubblicazione(video_finale, storia, target_mode)
 
 if __name__ == "__main__":

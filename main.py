@@ -2,14 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 ==============================================================================
-  🎬 BOT REELS MULTI-MODALITÀ MASTER & SOCIAL DISPATCHER
-  - Generazione rapida (modello turbo/standard anti-timeout)
-  - Vero Stile Cartone Animato 2D Disegnato a Mano (No sfondi digitali generici)
-  - Varietà garantita: illustrazioni d'azione diverse per ogni scena
-  - Risoluzione 9:16 reale con Smart Crop-Fit (Zero deformazioni)
-  - Badge Titolo presente SOLO all'inizio per la prima scena (poi scompare)
-  - Sottotitoli Comic Pop ad altissima leggibilità
-  - Routing Social Completo (Telegram, YouTube x2, Facebook Pagine x3)
+  🎬 BOT REELS MULTI-MODALITÀ MASTER (BASE COLLAUDATA & VELOCE)
+  - Stile: Cartone Animato Illustrato 2D solare e colorato
+  - Immagini veloci senza timeout (chiamata snella e anti-cache)
+  - Immagini differenti per ogni scena (zero ripetizioni)
+  - Badge del titolo presente solo all'inizio (scena 1)
+  - Sottotitoli Comic Pop nitidi ad alto contrasto
+  - Routing Social (Telegram, YouTube, Pagine Facebook)
 ==============================================================================
 """
 
@@ -31,7 +30,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Patch aiohttp per ambienti CI e Runner
+# Patch aiohttp per runner CI
 try:
     import aiohttp
     orig_ws_connect = aiohttp.ClientSession.ws_connect
@@ -42,10 +41,10 @@ try:
 except Exception:
     pass
 
-# ── CONFIGURAZIONI GLOBALI & PATH ──────────────────────────────────────────
+# ── CONFIGURAZIONI GLOBALI ──────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "video_storie_output")
-CSV_CLASSICI_PATH = os.path.join(BASE_DIR, "database_storie_classici.csv")
+CSV_PATH = os.path.join(BASE_DIR, "database_storie_classici.csv")
 CSV_BIBBIA_PATH = os.path.join(BASE_DIR, "database_storie_bibliche.csv")
 CSV_MITOLOGIA_PATH = os.path.join(BASE_DIR, "database_storie_mitologia.csv")
 CSV_PILLOLE_PATH = os.path.join(BASE_DIR, "database_pillole_immobiliari_legali.csv")
@@ -58,7 +57,6 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")
 TELEGRAM_CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@immobiliaregiancani")
 
-# Pagine Facebook
 FB_PAGE_ID_ANTONIO = os.environ.get("FB_PAGE_ID", "108297671444008")
 FB_PAGE_TOKEN_ANTONIO = os.environ.get("FB_PAGE_TOKEN", "EAAZAH7q8wRZAEBSQbsAIPVhCwMvrhECfhs5UNWL8ZBIOrUbCXqWCQtsyntumIOAvDCRUcg2FsmJBNtiXOEOO2TROFJE9CBXrZBT4GPrZAZCjB73WZALCECi7Ik9ZCae5y01ZB5ZAV7VH7qHyNdeZCWZCG9xViT0gZCYwnV7MCSuQKS5ZA1ZCdw5nom0IH8uub3ZAwVsIGhNSDdkJWZCgCIzs1b8ia")
 
@@ -68,7 +66,6 @@ FB_PAGE_TOKEN_GIANCANI = os.environ.get("FB_PAGE_TOKEN_GIANCANI", FB_PAGE_TOKEN_
 FB_PAGE_ID_BIBBIA = os.environ.get("FB_PAGE_ID_BIBBIA", FB_PAGE_ID_ANTONIO)
 FB_PAGE_TOKEN_BIBBIA = os.environ.get("FB_PAGE_TOKEN_BIBBIA", FB_PAGE_TOKEN_ANTONIO)
 
-# YouTube OAuth API
 YOUTUBE_CLIENT_ID = os.environ.get("YOUTUBE_CLIENT_ID", "")
 YOUTUBE_CLIENT_SECRET = os.environ.get("YOUTUBE_CLIENT_SECRET", "")
 YOUTUBE_REFRESH_TOKEN_GIANCANI = os.environ.get("YOUTUBE_REFRESH_TOKEN_GIANCANI", "")
@@ -88,24 +85,23 @@ def get_ffmpeg_binary():
 
 FFMPEG_EXE = get_ffmpeg_binary()
 
-# ── STILI PROMPT: CARTONE ANIMATO 2D LEGGERI E VELOCI ───────────────────────
+# ── STILI MASTER: CARTONE ANIMATO ILLUSTRATO 2D (COMPATTO & VELOCE) ────────
 STYLE_HEADER = {
-    "mitologia": "2D classic colorful cartoon animation cel, bold clean ink outlines, Greek mythology fairytale, expressive characters in action, daylight, vertical 9:16",
-    "bibbia": "2D colorful cartoon storybook cel, clean outlines, bright warm colors, expressive characters in action, daylight, vertical 9:16",
-    "standard": "2D fairytale cartoon animation cel, clean outlines, rich warm colors, fairytale book aesthetic, vertical 9:16",
-    "pillole": "2D modern vector cartoon, clean outlines, bright real estate office, architectural plans, vertical 9:16"
+    "mitologia": "2D classic colorful cartoon animation cel, bold clean black outlines, vibrant Mediterranean fairytale, expressive characters in action, bright daylight",
+    "bibbia": "2D colorful cartoon storybook cel, clean ink outlines, bright warm colors, expressive characters in action, sunny daylight",
+    "standard": "2D fairytale cartoon animation cel, clean ink contours, colorful storybook illustration, rich warm colors",
+    "pillole": "2D modern vector cartoon, clean outlines, bright real estate office, architectural plans"
 }
 
 STYLE_NEGATIVES = (
-    "--no 3d render, cgi, photorealistic, realistic, oil painting, digital landscape, 3d game asset, "
-    "blurry, dark, gloomy, empty scenery without characters, photo, monochrome, black screen"
+    "--no 3d render, cgi, photorealistic, realistic, oil painting, dark, gloomy, empty scenery, photo, black screen"
 )
 
-# ── ESTRAZIONE RIGOROSA DA CSV ──────────────────────────────────────────────
+# ── ESTRAZIONE DATI CSV ──────────────────────────────────────────────────────
 def estrai_storia_colonna_f(id_richiesto=None, mode="standard"):
     mode = mode.lower()
     if mode in ["mitologia", "mito"]:
-        csv_file = CSV_MITOLOGIA_PATH if os.path.exists(CSV_MITOLOGIA_PATH) else CSV_CLASSICI_PATH
+        csv_file = CSV_MITOLOGIA_PATH if os.path.exists(CSV_MITOLOGIA_PATH) else CSV_PATH
         target_mode = "mitologia"
     elif mode in ["bibbia", "fede"]:
         csv_file = CSV_BIBBIA_PATH
@@ -114,7 +110,7 @@ def estrai_storia_colonna_f(id_richiesto=None, mode="standard"):
         csv_file = CSV_PILLOLE_PATH
         target_mode = "pillole"
     else:
-        csv_file = CSV_CLASSICI_PATH
+        csv_file = CSV_PATH
         target_mode = "standard"
 
     if not os.path.exists(csv_file):
@@ -247,9 +243,10 @@ def crea_struttura_scene(storia, target_mode):
         p_custom = prompts_raw[i] if i < len(prompts_raw) else ""
         clean_custom = p_custom.replace("pixar 3d style,", "").replace("vertical 9:16", "").strip(" ,.") if p_custom else frasi[i][:65]
 
+        # Ogni scena ha un'azione specifica per evitare immagini duplicate
         if target_mode == "standard":
             if i == 0:
-                full_p = f"{header_style}, cute smiling little orange tabby cat wearing blue sailor striped shirt, sitting on open book {STYLE_NEGATIVES}"
+                full_p = f"{header_style}, cute smiling little orange tabby cat wearing blue sailor striped shirt, reading open book {STYLE_NEGATIVES}"
             else:
                 full_p = f"{header_style}, action scene: {clean_custom}, dynamic characters {STYLE_NEGATIVES}"
         elif target_mode == "mitologia":
@@ -299,13 +296,13 @@ def ritaglia_e_adatta_9_16(sorgente_path, destinazione_path, target_size=(720, 1
         im_crop = ImageOps.fit(im_rgb, target_size, Image.Resampling.LANCZOS, centering=(0.5, 0.5))
         im_crop.save(destinazione_path, "JPEG", quality=95)
 
-# ── DOWNLOAD IMMAGINI OTTIMIZZATO (VELOCE, DIVERSO PER SCENA, STILE 2D) ─────
+# ── DOWNLOAD IMMAGINI RAPIDO E DIFFERENZIATO (ZERO TIMEOUT, STILE CARTOON) ──
 ULTIMA_IMMAGINE_VALIDA = None
 
 def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="standard", is_intro=False):
     global ULTIMA_IMMAGINE_VALIDA
 
-    # 1. Controllo cache valida
+    # 1. Controllo cache locale
     if os.path.exists(output_img) and os.path.getsize(output_img) > 15000:
         try:
             with Image.open(output_img) as im_chk:
@@ -315,7 +312,7 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
         except Exception:
             if os.path.exists(output_img): os.remove(output_img)
 
-    # 2. Master gatto solo per i Grandi Classici
+    # 2. Master gatto solo per i Grandi Classici (scena 1)
     assets_dir = os.path.join(BASE_DIR, "assets")
     if target_mode == "standard" and is_intro:
         cat_ref = os.path.join(assets_dir, "cat_master_reference.jpg")
@@ -327,13 +324,12 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
             except Exception:
                 pass
 
-    # 3. Prompt compatto e mirato per prevenire timeout da parsing
+    # 3. Prompt compatto e leggero (max 175 caratteri) per evitare che il server si incastri
     clean_p = prompt.replace("traditional 2D hand-drawn animated film cel,", "2D cartoon animation,")
-    clean_p = clean_p.replace("classic cartoon storybook illustration,", "storybook cel,")
     clean_p = clean_p.strip(" ,.")[:175]
     encoded = urllib.parse.quote(clean_p)
 
-    # 4. Strategia a risposta rapida (Timeout 16s su modelli leggeri)
+    # 4. Modelli veloci e leggeri con timeout contenuto (16 secondi)
     endpoints = [
         f"https://image.pollinations.ai/prompt/{encoded}?width=720&height=1280&nologo=true&seed={seed}&model=turbo",
         f"https://image.pollinations.ai/prompt/{encoded}?width=720&height=1280&nologo=true&seed={seed + 88}",
@@ -344,7 +340,7 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
         ts = int(time.time() * 1000)
         url_with_ts = f"{url}&ts={ts}"
         try:
-            print(f"  🎨 [Download Scena 2D] Tentativo {attempt}/3...", flush=True)
+            print(f"  🎨 [Download Scena Cartoon 2D] Tentativo {attempt}/3...", flush=True)
             resp = requests.get(url_with_ts, timeout=(6, 16), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             if resp.status_code == 200 and len(resp.content) > 10000:
                 tmp_file = f"{output_img}.tmp"
@@ -365,7 +361,7 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
             print(f"  ⚠️ Tentativo {attempt} fallito ({e_net.__class__.__name__}), cambio endpoint...")
         time.sleep(2)
 
-    # 5. Continuità visiva: riutilizzo ultima immagine valida solo come emergenza
+    # 5. Continuità visiva solo come estrema riserva
     if ULTIMA_IMMAGINE_VALIDA and os.path.exists(ULTIMA_IMMAGINE_VALIDA):
         print(f"  🔄 [Continuità Visiva] Riutilizzo ultima illustrazione cartoon...")
         ritaglia_e_adatta_9_16(ULTIMA_IMMAGINE_VALIDA, output_img)
@@ -676,7 +672,7 @@ def esegui_routing_pubblicazione(video_path, storia, target_mode):
         pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption, "FB Antonio Giancani")
         pubblica_youtube_short(video_path, f"Pillola Immobiliare: {titolo}", caption, ["Immobiliare Giancani", "Casa"], YOUTUBE_REFRESH_TOKEN_GIANCANI, "Immobiliare Giancani")
 
-    else:  # standard libri classici
+    else:  # standard (Grandi Libri Classici con Gatto)
         caption = f"📚 I GRANDI CLASSICI DELLA LETTERATURA\n\n📖 {titolo} di {storia.get('autore', '')}\n\n«{testo_pulito[:450]}...»\n\nCon la passione di Immobiliare Giancani.\n\n#GrandiClassici #Libri #AntonioGiancani"
         pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption, "FB Antonio Giancani")
 

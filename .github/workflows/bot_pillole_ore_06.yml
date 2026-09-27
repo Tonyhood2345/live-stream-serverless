@@ -1,0 +1,79 @@
+name: 🏢 Bot Pillole Immobiliari & Legali (Ore 06:00 Roma)
+
+on:
+  # Schedulazione giornaliera: ore 06:00 italiane (04:00 UTC)
+  schedule:
+    - cron: '0 4 * * *'
+
+  # Trigger manuale per test immediato
+  workflow_dispatch:
+    inputs:
+      story_id:
+        description: 'ID specifico della pillola (lascia vuoto per selezione progressiva automatica)'
+        required: false
+        default: ''
+      solo_telegram:
+        description: 'Invia solo ed esclusivamente su Telegram'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  genera_pillola:
+    runs-on: ubuntu-latest
+    name: 🏢 Genera Pillola Immobiliare e Invia su Telegram
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Configura Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 🎞️ Installa FFmpeg di sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: 📦 Installa dipendenze Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🚀 Esecuzione Bot Pillole Immobiliari (Ore 06:00)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          CMD="python main.py --mode pillole"
+          if [ -n "${{ github.event.inputs.story_id }}" ]; then
+            CMD="$CMD --id ${{ github.event.inputs.story_id }}"
+          fi
+          if [ "${{ github.event.inputs.solo_telegram }}" != "false" ]; then
+            CMD="$CMD --solo-telegram"
+          fi
+          echo "Esecuzione comando: $CMD"
+          $CMD
+
+      - name: 💾 Salva lo Stato di Rotazione Progressiva Pillole
+        if: always()
+        run: |
+          git config --global user.name "Giancani Bot Cloud"
+          git config --global user.email "bot@immobiliaregiancani.it"
+          git add stato_rotazione_pillole.json 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "Aggiornato stato rotazione progressiva pillole [skip ci]" && git push)
+
+      - name: 💾 Archivia Video come Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-pillola-generato
+          path: video_storie_output/*.mp4
+          retention-days: 7

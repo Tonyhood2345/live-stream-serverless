@@ -3,12 +3,12 @@
 """
 ==============================================================================
   🎬 BOT REELS MULTI-MODALITÀ MASTER & SOCIAL DISPATCHER
-  - Routing Multi-Canale (Telegram, YouTube x2, Facebook Pagine x3)
-  - Stile Cartone Animato 2D Cel-Shaded vivido e luminoso
-  - Formato verticale nativo 9:16 reale con smart center-crop (zero stiramenti)
-  - Durata 2:30 - 3:00 minuti con narrazione estesa
-  - Pausa 6 secondi su download immagini anti-ban Pollinations
-  - Badge Titolo d'impatto e Sottotitoli Comic Sticker 3D ad altissima visibilità
+  - Vero Stile Cartone Animato 2D Disegnato a Mano (No sfondi digitali generici)
+  - Varietà garantita: un'illustrazione d'azione diversa per ogni scena
+  - Risoluzione 9:16 reale con Smart Crop-Fit (Zero deformazioni)
+  - Badge Titolo presente SOLO all'inizio per 3 secondi (poi scompare)
+  - Sottotitoli Comic Pop ad altissima leggibilità
+  - Routing Social Completo (Telegram, YouTube, Pagine Facebook)
 ==============================================================================
 """
 
@@ -30,7 +30,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Patch aiohttp per certificati SSL in ambienti runner CI
+# Patch aiohttp per ambienti CI e Runner
 try:
     import aiohttp
     orig_ws_connect = aiohttp.ClientSession.ws_connect
@@ -57,7 +57,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")
 TELEGRAM_CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@immobiliaregiancani")
 
-# Facebook Pagine
+# Pagine Facebook
 FB_PAGE_ID_ANTONIO = os.environ.get("FB_PAGE_ID", "108297671444008")
 FB_PAGE_TOKEN_ANTONIO = os.environ.get("FB_PAGE_TOKEN", "EAAZAH7q8wRZAEBSQbsAIPVhCwMvrhECfhs5UNWL8ZBIOrUbCXqWCQtsyntumIOAvDCRUcg2FsmJBNtiXOEOO2TROFJE9CBXrZBT4GPrZAZCjB73WZALCECi7Ik9ZCae5y01ZB5ZAV7VH7qHyNdeZCWZCG9xViT0gZCYwnV7MCSuQKS5ZA1ZCdw5nom0IH8uub3ZAwVsIGhNSDdkJWZCgCIzs1b8ia")
 
@@ -87,30 +87,29 @@ def get_ffmpeg_binary():
 
 FFMPEG_EXE = get_ffmpeg_binary()
 
-# ── STILI PROMPT: CARTONE ANIMATO 2D ILLUSTRATO LUMINOSO ────────────────────
+# ── STILI PROMPT: CARTONE ANIMATO 2D DISEGNATO A MANO CON PERSONAGGI ──────
 STYLE_HEADER = {
     "mitologia": (
-        "bright vibrant 2D storybook cartoon animation cel art, colorful Greek mythology fairytale, "
-        "sunny Mediterranean atmosphere, lush nature, ancient marble temples, bold clean contours, vivid rich colors, "
-        "clear detailed expressive characters, animation cel masterpiece, vertical 9:16"
+        "traditional 2D hand-drawn animated film cel, classic cartoon storybook illustration, "
+        "bold clean black ink contour lines, vibrant flat gouache colors, expressive cartoon characters in foreground, "
+        "1990s animated movie style, Studio Ghibli and classic Disney animation aesthetic, sunny vibrant daylight, vertical 9:16"
     ),
     "bibbia": (
-        "bright beautiful 2D cartoon storybook illustration, glowing warm golden sunlight, "
-        "reverent expressive characters, clean lines, colorful cheerful palette, animated feature film style, vertical 9:16"
+        "traditional 2D hand-drawn animated cel art, colorful cartoon storybook, "
+        "bold clean ink outlines, bright warm colors, expressive heroic characters, animation movie style, vertical 9:16"
     ),
     "standard": (
-        "whimsical colorful fairytale cartoon animation cel art, storybook illustration, "
-        "charming detailed scenery, rich saturated colors, sunny daylight, masterclass animated cel, vertical 9:16"
+        "classic 2D fairytale cartoon animation, colorful storybook cel art, "
+        "bold ink outlines, warm gouache colors, hand-drawn vintage animation aesthetic, vertical 9:16"
     ),
     "pillole": (
-        "modern bright 2D vector cartoon illustration, sunny bright real estate office, "
-        "notary signing desk, architectural blueprints, warm cheerful daylight colors, vertical 9:16"
+        "bright flat vector cartoon illustration, 2D comic art style, clean outlines, colorful modern design, vertical 9:16"
     )
 }
 
 STYLE_NEGATIVES = (
-    "--no dark, gloomy, night, black screen, empty background, blurry, photo, realistic, photorealistic, "
-    "3d render, cgi, deformed, bad anatomy, monochrome"
+    "--no 3d render, cgi, photorealistic, realistic, oil painting, digital landscape, 3d game asset, "
+    "blurry, dark, gloomy, empty scenery without characters, photo, monochrome, black screen"
 )
 
 # ── ESTRAZIONE RIGOROSA DA CSV ──────────────────────────────────────────────
@@ -172,7 +171,7 @@ def estrai_storia_colonna_f(id_richiesto=None, mode="standard"):
             else:
                 if len(row) >= 6:
                     genere = row[4].strip() if len(row) > 4 else ""
-                    is_mito = any(k in (genere + " " + row[1]).lower() for k in ["mito", "greco", "olimp", "medusa", "perseo", "zeus", "atalanta", "odissea", "iliade"])
+                    is_mito = any(k in (genere + " " + row[1]).lower() for k in ["mito", "greco", "olimp", "medusa", "perseo", "zeus", "atalanta", "odissea", "iliade", "pan"])
                     cat_item = "mitologia" if is_mito else "standard"
                     storie.append({
                         "id": row[0].strip(),
@@ -237,7 +236,7 @@ def crea_struttura_scene(storia, target_mode):
         if not any(k in frasi[0].lower() for k in ["mito", "leggenda"]):
             frasi[0] = f"Oggi vi raccontiamo un mito leggendario: {storia['titolo']}. {frasi[0]}"
         if "Immobiliare Giancani" not in frasi[-1]:
-            frasi[-1] = frasi[-1].rstrip(".") + ". Grandi miti insegnano che determinazione e strategia superano ogni ostacolo. Per la tua casa, scegli la sicurezza di Immobiliare Giancani."
+            frasi[-1] = frasi[-1].rstrip(".") + ". Grandi miti insegnano che determinazione e armonia superano ogni ostacolo. Per la tua casa, scegli la sicurezza di Immobiliare Giancani."
     elif target_mode == "standard":
         if not any(k in frasi[0].lower() for k in ["classici", "gatto", "libro"]):
             frasi[0] = f"Il nostro gatto narratore vi racconta un grande classico: {storia['titolo']} di {storia['autore']}! {frasi[0]}"
@@ -259,17 +258,18 @@ def crea_struttura_scene(storia, target_mode):
         p_custom = prompts_raw[i] if i < len(prompts_raw) else ""
         clean_custom = p_custom.replace("pixar 3d style,", "").replace("vertical 9:16", "").strip(" ,.") if p_custom else frasi[i][:65]
 
+        # Forzatura personaggi in azione specifica per ciascuna scena (Stop al tempio ripetuto)
         if target_mode == "standard":
             if i == 0:
-                full_p = f"{header_style}, cute smiling little orange tabby cat wearing blue sailor striped shirt, reading open book under golden star {STYLE_NEGATIVES}"
+                full_p = f"{header_style}, cute smiling little orange tabby cat wearing blue sailor striped shirt, sitting on open book {STYLE_NEGATIVES}"
             else:
-                full_p = f"{header_style}, scene from {storia['titolo']}: {clean_custom} {STYLE_NEGATIVES}"
+                full_p = f"{header_style}, action scene illustrating: {clean_custom}, dynamic characters {STYLE_NEGATIVES}"
         elif target_mode == "mitologia":
-            full_p = f"{header_style}, scene of {storia['titolo']}: {clean_custom} {STYLE_NEGATIVES}, --no cat, kitten, animal pet"
+            full_p = f"{header_style}, myth of {storia['titolo']}, scene showing: {clean_custom}, expressive animated Greek mythological figures in action {STYLE_NEGATIVES}, --no cat, animal pet"
         elif target_mode == "pillole":
-            full_p = f"{header_style}, practical real estate guide on {storia['titolo']}: {clean_custom} {STYLE_NEGATIVES}, --no cat, animal"
+            full_p = f"{header_style}, practical real estate guide: {clean_custom} {STYLE_NEGATIVES}, --no cat, animal"
         else:
-            full_p = f"{header_style}, sacred Bible history on {storia['titolo']}: {clean_custom} {STYLE_NEGATIVES}, --no cat, animal"
+            full_p = f"{header_style}, sacred history {storia['titolo']}: {clean_custom}, expressive animated biblical characters {STYLE_NEGATIVES}, --no cat, animal"
 
         scene.append({
             "scena_id": i + 1,
@@ -311,13 +311,13 @@ def ritaglia_e_adatta_9_16(sorgente_path, destinazione_path, target_size=(720, 1
         im_crop = ImageOps.fit(im_rgb, target_size, Image.Resampling.LANCZOS, centering=(0.5, 0.5))
         im_crop.save(destinazione_path, "JPEG", quality=95)
 
-# ── DOWNLOAD IMMAGINI CON PAUSA 6 SECONDI (MAI SCHERMO NERO) ───────────────
+# ── DOWNLOAD IMMAGINI: FLUX NATIVO + VARIETÀ GARANTITA + PAUSA 6 SECONDI ────
 ULTIMA_IMMAGINE_VALIDA = None
 
 def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="standard", is_intro=False):
     global ULTIMA_IMMAGINE_VALIDA
 
-    # 1. Cache locale integra
+    # 1. Se già in cache integra, usala
     if os.path.exists(output_img) and os.path.getsize(output_img) > 15000:
         try:
             with Image.open(output_img) as im_chk:
@@ -339,24 +339,25 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
             except Exception:
                 pass
 
-    # 3. Pulizia prompt compatto
+    # 3. Pulizia prompt compatto ma espressivo
     clean_p = prompt.strip(" ,.")
-    if len(clean_p) > 230:
-        clean_p = clean_p[:200] + " --no photo, realistic, 3d, black screen"
+    if len(clean_p) > 235:
+        clean_p = clean_p[:205] + " --no photo, realistic, 3d render, dark"
 
     encoded = urllib.parse.quote(clean_p)
 
-    # 4. Fino a 4 tentativi con modelli diversi e pausa di 6 secondi
-    models_sequence = ["turbo", "flux", None, "turbo"]
+    # 4. Modello FLUX e TURBO alternati: FLUX eccelle nei cartoni illustrati 2D
+    models_sequence = ["flux", "turbo", None, "flux"]
     for attempt, model_choice in enumerate(models_sequence, start=1):
-        curr_seed = seed + (attempt * 31)
+        # Seed fortemente differenziato per scena e tentativo
+        curr_seed = seed + (attempt * 47) + random.randint(1, 999)
         model_param = f"&model={model_choice}" if model_choice else ""
-        ts = int(time.time() * 1000)
+        ts = int(time.time() * 1000) + random.randint(100, 9999)
         url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1344&nologo=true&seed={curr_seed}{model_param}&ts={ts}"
         
         try:
-            print(f"  🎨 [Download Scena Cartoon] Tentativo {attempt}/4 (Modello: {model_choice or 'default'})...", flush=True)
-            resp = requests.get(url, timeout=(12, 30), verify=False, headers={"User-Agent": "Mozilla/5.0"})
+            print(f"  🎨 [Download Scena Cartoon 2D] Tentativo {attempt}/4 (Modello: {model_choice or 'default'})...", flush=True)
+            resp = requests.get(url, timeout=(12, 35), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             if resp.status_code == 200 and len(resp.content) > 12000:
                 tmp_file = f"{output_img}.tmp"
                 with open(tmp_file, "wb") as f:
@@ -366,43 +367,43 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, target_mode="sta
                         valid_pil.verify()
                     ritaglia_e_adatta_9_16(tmp_file, output_img)
                     if os.path.exists(tmp_file): os.remove(tmp_file)
-                    print(f"  ✅ Illustrazione cartoon generata con successo!")
+                    print(f"  ✅ Illustrazione cartoon 2D generata con successo!")
                     ULTIMA_IMMAGINE_VALIDA = output_img
                     
-                    # Pausa di 6 secondi anti-ban
+                    # Pausa anti rate-limit
                     print("  ⏳ Attesa di 6 secondi prima della prossima scena...", flush=True)
                     time.sleep(6.0)
                     return True
                 except Exception:
                     if os.path.exists(tmp_file): os.remove(tmp_file)
         except Exception as e_net:
-            print(f"  ⚠️ Tentativo {attempt} fallito ({e_net}), riprovo tra 6 secondi...")
+            print(f"  ⚠️ Tentativo {attempt} fallito ({e_net}), riprovo...")
         
         time.sleep(6.0)
 
-    # 5. Continuità visiva: riutilizzo dell'ultima illustrazione valida per evitare il vuoto
+    # 5. Continuità visiva: riutilizzo solo come estrema riserva
     if ULTIMA_IMMAGINE_VALIDA and os.path.exists(ULTIMA_IMMAGINE_VALIDA):
-        print(f"  🔄 [Continuità Visiva] Riutilizzo ultima illustrazione cartoon valida...")
+        print(f"  🔄 [Continuità Visiva] Riutilizzo ultima illustrazione valida...")
         ritaglia_e_adatta_9_16(ULTIMA_IMMAGINE_VALIDA, output_img)
         return True
 
-    # 6. Fallback d'emergenza illustrato luminoso e solare (MAI nero o monocromatico vuoto)
+    # 6. Fallback illustrato d'emergenza luminoso (MAI nero o monocromatico vuoto)
     print(f"  🎨 [Emergenza] Creazione tavola illustrata solare...")
-    img = Image.new("RGB", (720, 1280), color=(30, 80, 140) if target_mode == "mitologia" else (40, 90, 160))
+    img = Image.new("RGB", (720, 1280), color=(40, 95, 170) if target_mode == "mitologia" else (50, 110, 180))
     draw = ImageDraw.Draw(img)
     for y in range(1280):
         ratio = y / 1280.0
-        r = int(50 + ratio * 80)
-        g = int(120 + ratio * 90)
-        b = int(190 + ratio * 50)
+        r = int(60 + ratio * 80)
+        g = int(130 + ratio * 85)
+        b = int(210 + ratio * 35)
         draw.line([(0, y), (720, y)], fill=(r, g, b))
-    draw.ellipse([260, 180, 460, 380], fill=(255, 220, 100))
+    draw.ellipse([260, 180, 460, 380], fill=(255, 225, 110))
     img.save(output_img, "JPEG", quality=95)
     ULTIMA_IMMAGINE_VALIDA = output_img
     return True
 
-# ── OVERLAY GRAFICO: BADGE TITOLO INTRO & SOTTOTITOLI 3D STICKER ────────────
-def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=False, is_outro=False, target_mode="standard"):
+# ── OVERLAY GRAFICO: BADGE TITOLO (SOLO SCENA 1) & SOTTOTITOLI 3D POP ───────
+def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=False, is_outro=False, target_mode="standard", idx=1):
     img = Image.new("RGBA", (720, 1280), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
@@ -428,8 +429,8 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=F
     font_sub = carica_font_comic(34)
     font_brand = carica_font_comic(30)
 
-    # 1. Badge Titolo nella prima scena
-    if is_intro:
+    # 1. BADGE TITOLO: PRESENTE RIGOROSAMENTE SOLO NELLA PRIMA SCENA (idx == 1)
+    if is_intro and idx == 1:
         if target_mode == "pillole":
             draw.rounded_rectangle([45, 55, 675, 135], radius=18, fill=(12, 18, 30, 225), outline=(235, 190, 85, 240), width=2)
             draw.text((360, 95), "PILLOLA IMMOBILIARE & LEGALE", fill=(255, 230, 150), font=font_category_badge, anchor="mm")
@@ -452,25 +453,25 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_intro=F
                 titolo_display = titolo_display[:23] + "..."
             draw.text((360, card_top + 84), titolo_display, fill=(255, 255, 255), font=font_title_badge, anchor="mm")
 
-    # 2. Sottotitoli Comic Sticker 3D
+    # 2. SOTTOTITOLI STILE CARTOON STICKER (Contorno spesso e ombra 3D, zero box ciechi)
     import textwrap
     lines = textwrap.wrap(testo, width=25)
     line_h = 48
     total_h = len(lines) * line_h
     start_y = 1040 - (total_h // 2)
 
-    for idx, line in enumerate(lines):
-        y_pos = start_y + (idx * line_h)
+    for l_idx, line in enumerate(lines):
+        y_pos = start_y + (l_idx * line_h)
         for offset in range(1, 6):
             draw.text((360 + offset, y_pos + offset), line, fill=(0, 0, 0, 255), font=font_sub, anchor="mm")
         for dx in range(-4, 5):
             for dy in range(-4, 5):
                 if dx != 0 or dy != 0:
                     draw.text((360 + dx, y_pos + dy), line, fill=(0, 0, 0, 255), font=font_sub, anchor="mm")
-        colore_faccia = (255, 255, 220) if idx % 2 == 0 else (255, 235, 120)
+        colore_faccia = (255, 255, 220) if l_idx % 2 == 0 else (255, 235, 120)
         draw.text((360, y_pos), line, fill=colore_faccia, font=font_sub, anchor="mm")
 
-    # 3. Outro Card
+    # 3. OUTRO CARD (Scena finale)
     if is_outro:
         draw.rounded_rectangle([45, 1090, 675, 1225], radius=18, fill=(10, 15, 25, 235), outline=(245, 195, 75, 245), width=2)
         draw.text((360, 1135), "IMMOBILIARE GIANCANI", fill=(245, 205, 85), font=font_brand, anchor="mm")
@@ -490,7 +491,7 @@ def ottieni_durata_audio(audio_path):
             return max(4.0, float(h)*3600 + float(m)*60 + float(s))
     return 8.0
 
-# ── MONTAGGIO CLIP CON PRE-SCALING 9:16 (NESSUN ALLARGAMENTO) ──────────────
+# ── MONTAGGIO CLIP: KEN BURNS CON PRE-SCALING 9:16 (NESSUN ALLARGAMENTO) ────
 def crea_clip_ken_burns(img_path, audio_path, overlay_path, clip_output, idx):
     durata = ottieni_durata_audio(audio_path) + 0.35
     num_frames = int(durata * 25)
@@ -671,7 +672,7 @@ def esegui_routing_pubblicazione(video_path, storia, target_mode):
     # 1. Telegram (Tutti)
     invia_su_telegram(video_path, storia, target_mode)
 
-    # 2. Routing specifico
+    # 2. Routing specifico per modalità
     if target_mode == "bibbia":
         caption = f"📖 STORIE DELLA BIBBIA — «ETERNO NOSTRA GIUSTIZIA»\n\n📜 {titolo}\n\n«{testo_pulito[:450]}...»\n\n#StorieBibliche #Bibbia #EternoNostraGiustizia"
         pubblica_facebook_reel_su_pagina(FB_PAGE_ID_BIBBIA, FB_PAGE_TOKEN_BIBBIA, video_path, caption, "FB Eterno Nostra Giustizia")
@@ -691,7 +692,7 @@ def esegui_routing_pubblicazione(video_path, storia, target_mode):
         pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption, "FB Antonio Giancani")
         pubblica_youtube_short(video_path, f"Pillola Immobiliare: {titolo}", caption, ["Immobiliare Giancani", "Casa"], YOUTUBE_REFRESH_TOKEN_GIANCANI, "Immobiliare Giancani")
 
-    else:  # standard libri classici
+    else:  # standard (Grandi Libri Classici con Gatto)
         caption = f"📚 I GRANDI CLASSICI DELLA LETTERATURA\n\n📖 {titolo} di {storia.get('autore', '')}\n\n«{testo_pulito[:450]}...»\n\nCon la passione di Immobiliare Giancani.\n\n#GrandiClassici #Libri #AntonioGiancani"
         pubblica_facebook_reel_su_pagina(FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, video_path, caption, "FB Antonio Giancani")
 
@@ -716,12 +717,12 @@ async def esegui_pipeline(story_id=None, voice="it-IT-ElsaNeural", mode="standar
         await genera_voce_edge_tts(s["testo"], audio_file, voce=voice)
         durata_totale += ottieni_durata_audio(audio_file)
 
-        # 2. Immagine Cartoon solare con pausa 6 secondi
+        # 2. Immagine Cartoon 2D con FLUX e pausa di 6 secondi
         seed = int(storia["id"]) * 100 + idx if str(storia["id"]).isdigit() else idx * 100
         scarica_immagine_pollinations(s["prompt"], img_file, seed=seed, target_mode=target_mode, is_intro=s["is_intro"])
 
-        # 3. Overlay Comic Pop & Titolo Badge
-        crea_overlay_grafico(s["testo"], storia["titolo"], storia.get("autore", ""), overlay_file, is_intro=s["is_intro"], is_outro=s["is_outro"], target_mode=target_mode)
+        # 3. Overlay Comic Pop (Badge Titolo presente SOLO su scena 1)
+        crea_overlay_grafico(s["testo"], storia["titolo"], storia.get("autore", ""), overlay_file, is_intro=s["is_intro"], is_outro=s["is_outro"], target_mode=target_mode, idx=idx)
 
         # 4. Clip Ken Burns
         crea_clip_ken_burns(img_file, audio_file, overlay_file, clip_file, idx)

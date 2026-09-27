@@ -35,11 +35,11 @@ on:
         default: ''
         type: choice
         options:
-          - ''
-          - it-IT-DiegoNeural
-          - it-IT-GiuseppeNeural
-          - it-IT-ElsaNeural
-          - it-IT-IsabellaNeural
+      solo_telegram:
+        description: 'Invia solo ed esclusivamente su Telegram (nessuna pubblicazione social)'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   genera_e_pubblica_video:
@@ -84,6 +84,9 @@ jobs:
           fi
           if [ -n "${{ github.event.inputs.voice }}" ]; then
             CMD="$CMD --voice ${{ github.event.inputs.voice }}"
+          fi
+          if [ "${{ github.event.inputs.solo_telegram }}" = "true" ]; then
+            CMD="$CMD --solo-telegram"
           fi
           echo "Esecuzione comando: $CMD"
           $CMD

@@ -45,6 +45,8 @@ jobs:
   genera_e_pubblica_video:
     runs-on: ubuntu-latest
     name: 🎬 Genera Video Verticale e Invia su Telegram
+    permissions:
+      contents: write
 
     steps:
       - name: 📥 Checkout repository
@@ -90,6 +92,14 @@ jobs:
           fi
           echo "Esecuzione comando: $CMD"
           $CMD
+
+      - name: 💾 Salva lo Stato di Rotazione Progressiva Storie
+        if: always()
+        run: |
+          git config --global user.name "Giancani Bot Cloud"
+          git config --global user.email "bot@immobiliaregiancani.it"
+          git add stato_rotazione_*.json 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "Aggiornato stato rotazione progressiva storie [skip ci]" && git push)
 
       - name: 💾 Archivia Video Generato come Artifact
         if: always()

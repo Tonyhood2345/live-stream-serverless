@@ -30,7 +30,7 @@ def main():
         description="Bot Reels 9:16 — Mitologia Greca — Invio Esclusivo Telegram"
     )
     parser.add_argument("--id", type=str, default=None, help="ID del mito greco (es. 1 per Perseo e Medusa, 2 per Dedalo e Icaro)")
-    parser.add_argument("--voice", type=str, default="it-IT-DiegoNeural", help="Voce Edge-TTS (default: it-IT-DiegoNeural)")
+    parser.add_argument("--voice", type=str, default=None, help="Voce Narrante (default: Gemini Narratore AI Charon / Diego Neural)")
     parser.add_argument("--json", action="store_true", help="Stampa solo lo schema JSON senza montare il video")
     parser.add_argument("--anche-social", action="store_true", help="Se abilitato pubblica anche sui social (default: SOLO TELEGRAM)")
     args = parser.parse_args()

@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 ================================================================================
-BOT REELS 9:16 — MITOLOGIA GRECA («MITI DELL'ANTICA GRECIA», ORE 11:00)
+BOT REELS 9:16 — MITOLOGIA GRECA («MITI DELL'ANTICA GRECIA», ORE 18:00)
 ================================================================================
-- Tema: Miti e Leggende degli Eroi dell'Antica Grecia (Perseo, Icaro, ecc.)
-- Stile Visivo: Cartone Animato 2D Cel Art con eroi e creature mitologiche, NO GATTO
-- Voce Neurale: it-IT-DiegoNeural (Maschile epico, narrativo e teatrale)
-- Destinazione per questo test: SOLO ED ESCLUSIVAMENTE TELEGRAM
+- Tema: Miti e Leggende degli Eroi dell'Antica Grecia (Perseo, Icaro, Dafne, ecc.)
+- Stile Visivo: Cartoon Cel Art Animato 2D & 3D Pixar, NO GATTO
+- Voce Neurale: Gemini Narratore AI (Charon) / it-IT-DiegoNeural
+- Orario In Onda: Ore 18:00
 - Regola Globale: Testi prelevati rigorosamente dalla Colonna F
 - Personal Branding Finale: IMMOBILIARE GIANCANI
 ================================================================================
@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from main import esegui_pipeline
+from bot_reels_master import esegui_pipeline
 
 def main():
     parser = argparse.ArgumentParser(

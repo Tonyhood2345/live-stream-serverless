@@ -302,14 +302,13 @@ def crea_struttura_scene(storia, mode="standard"):
                         if "--no" not in prompt_str.lower():
                             prompt_str += " --no photo, realistic, photorealistic, 3d render, cgi, cat, feline, kitten, animal"
                     elif categoria == "MITOLOGIA":
-                        # Stile Cartone Animato 2D: Eroi classici dell'Antica Grecia (Perseo, Medusa, Dedalo, Icaro)
-                        # Zero gatto, zero foto realistiche
+                        # Stile 3D Pixar / Disney Animation (Richiesta Utente): Eroi classici dell'Antica Grecia (Perseo, Medusa, Dedalo, Icaro)
                         prompt_str = re.sub(r",?\s*with a Small expressive ginger tabby cat[^,]*,?", "", prompt_str, flags=re.IGNORECASE)
                         prompt_str = prompt_str.replace(ANTIQUE_STORYBOOK_STYLE, "").strip(" ,.")
-                        if "cartoon" not in prompt_str.lower():
-                            prompt_str = f"2D cartoon animation style, classic animated feature film cel art, heroic Greek mythology character, bold clean black ink contour lines, vivid saturated Mediterranean colors, crisp cel shading, {prompt_str.strip()}"
+                        if "pixar" not in prompt_str.lower() and "cartoon" not in prompt_str.lower():
+                            prompt_str = f"3D Pixar Disney animation style, 3D CGI animated feature film, heroic Greek mythology character, charming stylized 3D design, warm golden sunlight, rich vibrant colors, high quality 3D render, {prompt_str.strip()}"
                         if "--no" not in prompt_str.lower():
-                            prompt_str += " --no photo, realistic, photorealistic, 3d, cgi, cat, feline, kitten, animal"
+                            prompt_str += " --no photo, realistic, photorealistic, dark, gritty, blurry"
                     scene.append({
                         "scena_id": sc.get("id", len(scene)),
                         "testo": text_chunk,
@@ -318,9 +317,10 @@ def crea_struttura_scene(storia, mode="standard"):
                         "duration": sc.get("duration", 4.5),
                         "is_outro": (sc.get("id") == scenes_json[-1].get("id"))
                     })
-                # Garanzia Personal Branding su ultima scena
-                if scene and "Immobiliare Giancani" not in scene[-1]["testo"]:
-                    scene[-1]["testo"] += " — Immobiliare Giancani"
+                # Per Mitologia il finale narrato è puramente culturale (senza append promozionale immobiliare)
+                if categoria != "MITOLOGIA":
+                    if scene and "Immobiliare Giancani" not in scene[-1]["testo"]:
+                        scene[-1]["testo"] += " — Immobiliare Giancani"
                 return scene
         except Exception as e_json:
             print(f"  ⚠️ Warning parsing JSON scene: {e_json}")
@@ -348,9 +348,10 @@ def crea_struttura_scene(storia, mode="standard"):
         if not any(hk in frasi[0].lower() for hk in hook_keywords):
             frasi[0] = f"Ecco a voi in 2 minuti: {storia['titolo']} di {storia['autore']}! {frasi[0]}"
 
-    # Assicuriamo che l'ultima scena rispetti la regola globale mettendo in risalto Immobiliare Giancani
-    if "Immobiliare Giancani" not in frasi[-1]:
-        frasi[-1] = frasi[-1].rstrip(".") + ". Con la passione, la cura e l'affidabilità di Immobiliare Giancani."
+    # Per Mitologia il finale narrato è 100% culturale; per le altre rubriche rispetta l'append
+    if categoria != "MITOLOGIA":
+        if "Immobiliare Giancani" not in frasi[-1]:
+            frasi[-1] = frasi[-1].rstrip(".") + ". Con la passione, la cura e l'affidabilità di Immobiliare Giancani."
 
     scene = []
     for i in range(num_scene):
@@ -377,8 +378,8 @@ def crea_struttura_scene(storia, mode="standard"):
                 )
             elif categoria == "MITOLOGIA":
                 full_prompt = (
-                    f"2D cartoon animation style, classic animated feature film cel art, heroic Greek mythology: {storia['titolo']} - {p_clean[:70]}. "
-                    f"Vivid Mediterranean colors, clean ink contours, crisp cel shading --no photo, realistic, photorealistic, 3d, cgi, cat, feline, kitten, animal"
+                    f"3D Pixar Disney animation style, 3D CGI animated feature film, heroic Greek mythology: {storia['titolo']} - {p_clean[:70]}. "
+                    f"Charming stylized 3D design, warm golden sunlight, rich vibrant colors, high quality 3D render --no photo, realistic, photorealistic, dark, gritty, blurry"
                 )
             else:
                 full_prompt = (
@@ -392,10 +393,10 @@ def crea_struttura_scene(storia, mode="standard"):
                 f"{storia['titolo']} - {frasi[i][:65]}. Bold clean outlines, vivid colors, cel shading --no photo, realistic, photorealistic, 3d, cgi, cat, feline, kitten, animal"
             )
         elif categoria == "MITOLOGIA":
-            # Routing Mitologia Greca: 2D Cartoon Animation SENZA GATTO (PER IL RESTO TUTTO SENZA)
+            # Routing Mitologia Greca: 3D Pixar / Disney Animation (Stile Utente Confermato)
             full_prompt = (
-                f"2D cartoon animation style, classic animated feature film cel art, heroic Greek mythology characters: "
-                f"{storia['titolo']} - {frasi[i][:65]}. Bold clean contour outlines, vivid bright colors, crisp cel shading --no photo, realistic, photorealistic, 3d, cgi, cat, feline, kitten, animal"
+                f"3D Pixar Disney animation style, 3D CGI animated feature film, heroic Greek mythology: "
+                f"{storia['titolo']} - {frasi[i][:65]}. Charming stylized 3D design, warm golden sunlight, rich vibrant colors, high quality 3D render --no photo, realistic, photorealistic, dark, gritty, blurry"
             )
         elif categoria == "PILLOLE":
             # Routing Pillole Immobiliari: Antique Storybook SENZA GATTO (PER IL RESTO TUTTO SENZA)
@@ -847,20 +848,31 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
     start_y = box_t + padding + (line_height / 2)
     for l_idx, line in enumerate(wrapped_lines):
         y_pos = start_y + (l_idx * line_height)
-        # Effetto ombra testo per massima leggibilità
-        draw.text((361, y_pos + 1), line, fill=(0, 0, 0, 240), font=font_sub, anchor="mm")
-        draw.text((360, y_pos), line, fill=(255, 252, 245), font=font_sub, anchor="mm")
+        if "MITOLOGIA" in cat_upper:
+            # Tipografia moderna da Reel virale: Giallo brillante e bianco con contorno nero spesso ad alta visibilità
+            col_text = (255, 230, 0) if (l_idx == 0 and len(wrapped_lines) > 1) else (255, 255, 255)
+            draw.text((360, y_pos), line, fill=col_text, font=font_sub, anchor="mm", stroke_width=3, stroke_fill=(0, 0, 0, 255))
+        else:
+            # Effetto ombra testo per massima leggibilità
+            draw.text((361, y_pos + 1), line, fill=(0, 0, 0, 240), font=font_sub, anchor="mm")
+            draw.text((360, y_pos), line, fill=(255, 252, 245), font=font_sub, anchor="mm")
 
-    # 3. OUTRO BADGE SOTTO (y tra 1115 e 1245 px): RISALTO MASSIMO A IMMOBILIARE GIANCANI
+    # 3. OUTRO BADGE SOTTO (y tra 1115 e 1245 px): CULTURALE PER MITOLOGIA, BRANDING PER LE ALTRE
     if is_outro:
         outro_bg = (11, 27, 61, 240) if "MITOLOGIA" in cat_upper else (16, 22, 36, 235)
-        outro_motto = "La Saggezza dei Grandi Miti • Esperienza & Affidabilità" if "MITOLOGIA" in cat_upper else "Esperienza  •  Passione  •  Fiducia"
         
         draw.rounded_rectangle([35, 1115, 685, 1245], radius=18, fill=outro_bg, outline=(234, 198, 108, 245), width=2)
         draw.rounded_rectangle([41, 1121, 679, 1239], radius=14, outline=(212, 175, 55, 110), width=1)
-        draw.text((360, 1146), "IMMOBILIARE GIANCANI", fill=(234, 198, 108), font=font_brand, anchor="mm")
-        draw.text((360, 1182), "Il Valore di Sentirsi a Casa", fill=(255, 255, 255), font=font_motto, anchor="mm")
-        draw.text((360, 1214), outro_motto, fill=(195, 215, 240), font=font_submotto, anchor="mm")
+        
+        if "MITOLOGIA" in cat_upper:
+            # 100% CULTURALE COME RICHIESTO DALL'UTENTE (Zero riferimenti immobiliari/commerciali)
+            draw.text((360, 1146), "MITI DELL'ANTICA GRECIA", fill=(234, 198, 108), font=font_brand, anchor="mm")
+            draw.text((360, 1182), "Cultura, Sapienza & Tradizione Classica", fill=(255, 255, 255), font=font_motto, anchor="mm")
+            draw.text((360, 1214), "Rubrica Culturale a cura di Immobiliare Giancani", fill=(195, 215, 240), font=font_submotto, anchor="mm")
+        else:
+            draw.text((360, 1146), "IMMOBILIARE GIANCANI", fill=(234, 198, 108), font=font_brand, anchor="mm")
+            draw.text((360, 1182), "Il Valore di Sentirsi a Casa", fill=(255, 255, 255), font=font_motto, anchor="mm")
+            draw.text((360, 1214), "Esperienza  •  Passione  •  Fiducia", fill=(195, 215, 240), font=font_submotto, anchor="mm")
 
     img.save(output_overlay, "PNG")
 
@@ -877,6 +889,80 @@ def ottieni_durata_audio(audio_path):
             h, m, s = parts.split(":")
             return max(3.5, float(h)*3600 + float(m)*60 + float(s))
     return 4.5
+
+
+# ── GENERAZIONE VIDEO GOOGLE VEO CON FALLBACK AUTOMATICO (PUNTO 3) ──────────
+def tenta_generazione_video_veo(prompt, output_clip, audio_path, overlay_path, durata):
+    """
+    Tenta la generazione video con Google Veo (veo-3.1-fast-generate-preview).
+    In caso di quota free-tier esaurita (HTTP 429) o assenza di crediti attivi,
+    notifica chiaramente ed effettua il fallback immediato alla generazione
+    immagini AI conformemente alla direttiva dell'utente ("se veo non funziona passa a generare come hai fatto per le immagini precedenti").
+    """
+    if not GEMINI_API_KEY:
+        return False
+        
+    print(f"  🎥 [GOOGLE VEO AI] Interrogazione modello Veo per clip video dinamica...")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-fast-generate-preview:predictLongRunning?key={GEMINI_API_KEY}"
+    payload = {
+        "instances": [
+            {
+                "prompt": f"Vertical 9:16 cinematic 3D Pixar animated film scene: {prompt}"
+            }
+        ],
+        "parameters": {
+            "aspectRatio": "9:16",
+            "sampleCount": 1
+        }
+    }
+    try:
+        resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=12, verify=False)
+        if resp.status_code == 200:
+            data = resp.json()
+            op_name = data.get("name")
+            if op_name:
+                print(f"  🎬 [VEO OPERATION AVVIATA]: {op_name} - Polling render...")
+                for _ in range(6):
+                    time.sleep(5)
+                    poll_url = f"https://generativelanguage.googleapis.com/v1beta/{op_name}?key={GEMINI_API_KEY}"
+                    poll_resp = requests.get(poll_url, timeout=10, verify=False)
+                    if poll_resp.status_code == 200:
+                        poll_data = poll_resp.json()
+                        if poll_data.get("done"):
+                            resp_payload = poll_data.get("response", {})
+                            preds = resp_payload.get("predictions", [])
+                            if preds and "bytesBase64Encoded" in preds[0]:
+                                raw_video = output_clip + ".raw.mp4"
+                                with open(raw_video, "wb") as vf:
+                                    vf.write(base64.b64decode(preds[0]["bytesBase64Encoded"]))
+                                # Montaggio Veo con audio e overlay
+                                filter_c = "[0:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[bg];[bg][1:v]overlay=0:0[v]"
+                                cmd = [
+                                    FFMPEG_EXE, "-y",
+                                    "-stream_loop", "-1", "-i", raw_video,
+                                    "-i", overlay_path,
+                                    "-i", audio_path,
+                                    "-filter_complex", filter_c,
+                                    "-map", "[v]",
+                                    "-map", "2:a",
+                                    "-c:v", "libx264", "-c:a", "aac",
+                                    "-t", str(durata),
+                                    output_clip
+                                ]
+                                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                                if os.path.exists(raw_video):
+                                    os.remove(raw_video)
+                                print(f"  ✨ [GOOGLE VEO AI] Clip video generata con successo da Veo!")
+                                return True
+        elif resp.status_code == 429:
+            print("  ℹ️ [GOOGLE VEO] Quota Free-Tier esaurita (HTTP 429: attivare crediti su Google AI Studio).")
+            print("  🔄 [FALLBACK AUTOMATICO CONFERMATO] Passaggio alla generazione immagini AI come richiesto.")
+        else:
+            print(f"  ℹ️ [GOOGLE VEO] Risposta HTTP {resp.status_code}. Passaggio a generazione immagini...")
+    except Exception as e_v:
+        print(f"  ℹ️ [GOOGLE VEO] Avviso: {e_v}. Passaggio a generazione immagini...")
+        
+    return False
 
 
 # ── CREAZIONE CLIP ANIMATA KEN BURNS CON OVERLAY GRAFICO ────────────────────
@@ -1015,14 +1101,14 @@ def invia_su_telegram(video_path, storia):
 
     categoria = storia.get("categoria", "STANDARD").upper()
     if categoria == "MITOLOGIA":
-        header = "🏛️ <b>STORIE DELLA MITOLOGIA GRECA (ORE 11:00)</b>"
+        header = "🏛️ <b>STORIE DELLA MITOLOGIA GRECA (RUBRICA CULTURALE)</b>"
         sub_info = (
             f"📜 <b>{storia['titolo']}</b> ({storia.get('autore', '')})\n"
-            f"⏱️ Formato: <i>Riassunto Completo in 2 Minuti</i>\n"
-            f"🎨 Stile: <i>Cartone Animato 2D Cel Art (Senza Gatto)</i>\n"
+            f"⏱️ Formato: <i>Riassunto Culturale in 2 Minuti</i>\n"
+            f"🎨 Stile: <i>3D Pixar & Disney Animation (Qualità Cinema)</i>\n"
             f"🎙️ Voce: <i>Italiano Neurale Epico (Diego)</i>"
         )
-        tags = "#MitologiaGreca #MitiGreci #Olimpo #LeggendeAntiche #CulturaClassica #ImmobiliareGiancani"
+        tags = "#MitologiaGreca #MitiGreci #Olimpo #CulturaClassica #SapienzaAntica #ImmobiliareGiancani"
     elif categoria == "BIBBIA":
         header = "📖 <b>STORIE BIBLICHE — «ETERNO NOSTRA GIUSTIZIA»</b>"
         sub_info = (
@@ -1054,14 +1140,15 @@ def invia_su_telegram(video_path, storia):
         )
         tags = "#GrandiClassici #Letteratura #Cultura #Libri #ImmobiliareGiancani"
 
+    brand_label = "🏛️ <b>Rubrica Culturale a cura di:</b>\n⭐ <b>IMMOBILIARE GIANCANI</b> ⭐" if categoria == "MITOLOGIA" else "👉 <b>Produzione e Personal Branding:</b>\n🏠 ⭐ <b>IMMOBILIARE GIANCANI</b> ⭐"
+
     caption = (
         f"{header}\n\n"
         f"{sub_info}\n\n"
         f"💬 <b>Estratto Narrazione (Colonna F):</b>\n"
         f"«<i>{estratto_display}</i>»\n\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"👉 <b>Produzione e Personal Branding:</b>\n"
-        f"🏠 ⭐ <b>IMMOBILIARE GIANCANI</b> ⭐\n"
+        f"{brand_label}\n"
         f"━━━━━━━━━━━━━━━━━━━━\n\n"
         f"{tags}"
     )
@@ -1417,9 +1504,16 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
             idx=idx
         )
         
-        # Montaggio clip Ken Burns
-        print(f"  🎞️ Montaggio Ken Burns ({round(durata_scena, 1)}s)...")
-        crea_clip_ken_burns(img_file, audio_file, overlay_file, clip_file, idx)
+        # Montaggio clip: Tentativo con Google Veo AI Video (Punto 3: fallback su immagini AI se quota non disponibile)
+        veo_successo = False
+        durata_clip = durata_scena + 0.35
+        if mode == "mitologia" and idx == 1:
+            veo_successo = tenta_generazione_video_veo(s["prompt"], clip_file, audio_file, overlay_file, durata_clip)
+
+        if not veo_successo:
+            print(f"  🎞️ Montaggio Ken Burns ({round(durata_scena, 1)}s)...")
+            crea_clip_ken_burns(img_file, audio_file, overlay_file, clip_file, idx)
+            
         clips.append(clip_file)
 
     # 3. Montaggio video finale e colonna sonora

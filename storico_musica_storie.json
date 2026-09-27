@@ -2,7 +2,7 @@
   "regola": "Nessuna musica uguale per oltre 10 storie consecutive",
   "totale_tracce_disponibili": 18,
   "buffer_anti_ripetizione": 10,
-  "ultimo_aggiornamento": "2026-09-27 10:29:25",
+  "ultimo_aggiornamento": "2026-09-27 15:36:37",
   "ultime_musiche": [
     "jazz_lounge_business_8",
     "jazz_eleganza_8",
@@ -17,6 +17,7 @@
     "sicilian_sunset",
     "back_road_town",
     "jazz_lounge_business_8",
-    "cinematic_emozione_6"
+    "cinematic_emozione_6",
+    "pianoforte_classico_3"
   ]
 }

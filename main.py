@@ -248,20 +248,36 @@ def estrai_storia_colonna_f(csv_file=None, id_richiesto=None, mode="standard"):
     if not storie:
         raise ValueError(f"Nessuna storia valida trovata nel database CSV: {csv_file}")
 
+    tracker_file = os.path.join(BASE_DIR, f"stato_rotazione_{mode}.json")
+
     if id_richiesto:
         trovate = [s for s in storie if str(s["id"]) == str(id_richiesto)]
         if trovate:
             storia = trovate[0]
         else:
-            print(f"⚠️ ID {id_richiesto} non trovato, selezione per rotazione...")
-            day_of_year = datetime.date.today().timetuple().tm_yday
-            storia = storie[(day_of_year - 1) % len(storie)]
+            print(f"⚠️ ID {id_richiesto} non trovato, selezione progressiva...")
+            storia = storie[0]
     else:
-        # Rotazione giornaliera deterministica (365 storie): una storia diversa per ogni giorno dell'anno
-        day_of_year = datetime.date.today().timetuple().tm_yday
-        storia_idx = (day_of_year - 1) % len(storie)
-        storia = storie[storia_idx]
-        print(f"📅 [ROTAZIONE GIORNALIERA] Giorno {day_of_year}/365 -> Selezionata Storia #{storia['id']}: «{storia['titolo']}»")
+        # SELEZIONE PROGRESSIVA RIGOROSA: Non accavalla mai le storie, avanza sequenzialmente
+        ultimo_id = 0
+        if os.path.exists(tracker_file):
+            try:
+                with open(tracker_file, "r", encoding="utf-8") as tf:
+                    tdata = json.load(tf)
+                    ultimo_id = int(tdata.get("ultimo_id", 0))
+            except Exception:
+                ultimo_id = 0
+
+        # Cerca la storia progressiva successiva in ordine di ID
+        candidati = [s for s in storie if int(s["id"]) > ultimo_id]
+        if candidati:
+            storia = candidati[0]
+        else:
+            # Se tutti gli episodi della serie sono stati completati, ricomincia progressivamente dal primo
+            print(f"🔄 Tutte le storie della serie sono state completate! Riavvio ciclo progressivo dal primo mito...")
+            storia = storie[0]
+
+        print(f"📈 [SELEZIONE PROGRESSIVA]: Selezionata Storia #{storia['id']}: «{storia['titolo']}» (Precedente completata: #{ultimo_id})")
 
     print("\n" + "="*70)
     print("📖 [ESTRAZIONE DATI] RIGOROSAMENTE DA COLONNA F")
@@ -429,16 +445,82 @@ def crea_struttura_scene(storia, mode="standard"):
     return scene
 
 
-# ── GENERAZIONE VOCE NARRANTE (EDGE-TTS + GTTS FALLBACK) ────────────────────
-async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-ElsaNeural"):
+# ── GENERATORE VOCE NARRATRICE GOOGLE GEMINI TTS (PUNTO 2) ───────────────────
+def genera_voce_gemini_tts(testo, file_audio, voice_name="Charon"):
     """
-    Sintesi vocale neurale italiana ad alta espressività con Edge-TTS (default: Elsa, calda e narrativa)
-    e fallback automatico su gTTS. Pacing rilassato (-2%) per narrazione fiabesca da libro d'epoca.
+    Sintesi vocale neurale avanzata con le API ufficiali di Google Gemini (gemini-2.5-flash-preview-tts).
+    Voce incredibilmente umana, cinematografica e narratrice (modello: Charon).
     """
+    if not GEMINI_API_KEY:
+        return False
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": testo}]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {
+                "voiceConfig": {
+                    "prebuiltVoiceConfig": {
+                        "voiceName": voice_name
+                    }
+                }
+            }
+        }
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            cands = data.get("candidates", [])
+            if cands:
+                parts = cands[0].get("content", {}).get("parts", [])
+                for p in parts:
+                    if "inlineData" in p and "data" in p["inlineData"]:
+                        pcm_bytes = base64.b64decode(p["inlineData"]["data"])
+                        raw_pcm = file_audio + ".raw.pcm"
+                        with open(raw_pcm, "wb") as pf:
+                            pf.write(pcm_bytes)
+                        # Conversione da PCM 24kHz ad alta fedeltà in MP3 192k tramite FFmpeg
+                        cmd = [
+                            FFMPEG_EXE, "-y",
+                            "-f", "s16le", "-ar", "24000", "-ac", "1",
+                            "-i", raw_pcm,
+                            "-c:a", "libmp3lame", "-b:a", "192k",
+                            file_audio
+                        ]
+                        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                        if os.path.exists(raw_pcm):
+                            os.remove(raw_pcm)
+                        print(f"  🎙️ [GEMINI NARRATORE AI] Voce umana ed espressiva generata con successo da Gemini ({voice_name})!")
+                        return True
+    except Exception as e_gem_tts:
+        print(f"  ⚠️ Avviso Gemini TTS ({e_gem_tts}), passaggio automatico a voce neurale Diego...")
+    return False
+
+
+# ── GENERAZIONE VOCE NARRANTE (GEMINI TTS + EDGE-TTS + GTTS FALLBACK) ───────
+async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
+    """
+    Sintesi vocale neurale italiana ad alta espressività con priorità a Gemini TTS
+    per narrazione calda e umana, con fallback su Edge-TTS e gTTS.
+    """
+    # 1. Tentativo prioritario con Google Gemini TTS se richiesto o per Mitologia
+    if "gemini" in str(voce).lower() or voce in ["Charon", "Fenrir", "Puck", "Aoede"] or "it-IT-DiegoNeural" in str(voce):
+        gem_voice = "Charon" if "diego" in str(voce).lower() else (voce.replace("gemini-", "") if "gemini" in str(voce).lower() else voce)
+        if genera_voce_gemini_tts(testo, file_audio, voice_name=gem_voice):
+            return True
+
+    # 2. Fallback su Edge-TTS Neurale
     success = False
+    voce_edge = "it-IT-DiegoNeural" if "gemini" in str(voce).lower() else voce
     try:
         import edge_tts
-        comm = edge_tts.Communicate(testo, voce, rate="-2%", pitch="+0Hz")
+        comm = edge_tts.Communicate(testo, voce_edge, rate="-2%", pitch="+0Hz")
         await asyncio.wait_for(comm.save(file_audio), timeout=15)
         if os.path.exists(file_audio) and os.path.getsize(file_audio) > 1000:
             success = True
@@ -797,12 +879,7 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
             draw.text((361, 126), titolo_libro.upper(), fill=(0, 0, 0, 240), font=font_hero_title, anchor="mm")
             draw.text((360, 125), titolo_libro.upper(), fill=(255, 255, 255), font=font_hero_title, anchor="mm")
             draw.text((360, 175), "⚡ Eroi e Leggende dell'Olimpo in 2 Minuti ⚡", fill=(215, 230, 255), font=font_autore, anchor="mm")
-        else:
-            draw.rounded_rectangle([40, 40, 680, 155], radius=16, fill=(11, 27, 61, 230), outline=(212, 175, 55, 235), width=2)
-            draw.rounded_rectangle([46, 46, 674, 149], radius=12, outline=(243, 229, 171, 120), width=1)
-            draw.text((360, 65), "🏛️ — MITI DELL'ANTICA GRECIA — 🏛️", fill=(245, 215, 110), font=font_kicker, anchor="mm")
-            draw.text((360, 98), titolo_libro.upper(), fill=(255, 255, 255), font=font_titolo, anchor="mm")
-            draw.text((360, 132), f"Epica Classica • {autore}", fill=(215, 230, 255), font=font_autore, anchor="mm")
+        # DOPO LA PRIMA IMMAGINE (idx > 1): IL TITOLO SUPERIORE SPARISCE COMPLETAMENTE COME RICHIESTO DALL'UTENTE
     elif "BIBBIA" in cat_upper:
         kicker_text = "— STORIE DELLA BIBBIA —"
         draw.rounded_rectangle([40, 40, 680, 155], radius=16, fill=(18, 24, 38, 225), outline=(212, 175, 55, 230), width=2)
@@ -825,35 +902,43 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
         draw.text((360, 98), titolo_libro.upper(), fill=(255, 252, 245), font=font_titolo, anchor="mm")
         draw.text((360, 132), f"di {autore}", fill=(210, 225, 245), font=font_autore, anchor="mm")
 
-    # 2. BOX SOTTOTITOLI DINAMICO NEL TERZO INFERIORE
+    # 2. SOTTOTITOLI NEL TERZO INFERIORE (SENZA CONTORNO QUADRATO PER MITOLOGIA)
     import textwrap
-    wrapped_lines = textwrap.wrap(testo, width=44)
-    line_height = 32
-    padding = 20
-    box_h = max(95, len(wrapped_lines) * line_height + padding * 2)
-    
-    if is_outro:
-        box_b = 1100
-        box_t = box_b - box_h
-    else:
-        box_t = 1040 - (box_h // 2)
-        box_b = box_t + box_h
+    if "MITOLOGIA" in cat_upper:
+        # SCRITTE PIÙ GRANDI SENZA CONTORNO QUADRATO (Direttiva Utente: nessun box rettangolare di sfondo)
+        font_sub_big = carica_font(cinzel_path, ["arialbd.ttf", "arial.ttf"], 35)
+        wrapped_lines = textwrap.wrap(testo, width=32)
+        line_height = 46
+        total_h = len(wrapped_lines) * line_height
+        start_y = (1050 if not is_outro else 980) - (total_h // 2)
         
-    sub_bg = (11, 27, 61, 230) if "MITOLOGIA" in cat_upper else (15, 20, 32, 220)
-    sub_outline = (212, 175, 55, 230) if "MITOLOGIA" in cat_upper else (212, 175, 55, 210)
-    
-    draw.rounded_rectangle([35, box_t, 685, box_b], radius=16, fill=sub_bg, outline=sub_outline, width=2)
-    draw.rounded_rectangle([41, box_t + 6, 679, box_b - 6], radius=12, outline=(212, 175, 55, 90), width=1)
-    
-    start_y = box_t + padding + (line_height / 2)
-    for l_idx, line in enumerate(wrapped_lines):
-        y_pos = start_y + (l_idx * line_height)
-        if "MITOLOGIA" in cat_upper:
-            # Tipografia moderna da Reel virale: Giallo brillante e bianco con contorno nero spesso ad alta visibilità
+        for l_idx, line in enumerate(wrapped_lines):
+            y_pos = start_y + (l_idx * line_height)
             col_text = (255, 230, 0) if (l_idx == 0 and len(wrapped_lines) > 1) else (255, 255, 255)
-            draw.text((360, y_pos), line, fill=col_text, font=font_sub, anchor="mm", stroke_width=3, stroke_fill=(0, 0, 0, 255))
+            # Nessun contorno quadrato/box di sfondo: solo testo grande con marcato contorno nero (stroke=4)
+            draw.text((360, y_pos), line, fill=col_text, font=font_sub_big, anchor="mm", stroke_width=4, stroke_fill=(0, 0, 0, 255))
+    else:
+        wrapped_lines = textwrap.wrap(testo, width=44)
+        line_height = 32
+        padding = 20
+        box_h = max(95, len(wrapped_lines) * line_height + padding * 2)
+        
+        if is_outro:
+            box_b = 1100
+            box_t = box_b - box_h
         else:
-            # Effetto ombra testo per massima leggibilità
+            box_t = 1040 - (box_h // 2)
+            box_b = box_t + box_h
+            
+        sub_bg = (15, 20, 32, 220)
+        sub_outline = (212, 175, 55, 210)
+        
+        draw.rounded_rectangle([35, box_t, 685, box_b], radius=16, fill=sub_bg, outline=sub_outline, width=2)
+        draw.rounded_rectangle([41, box_t + 6, 679, box_b - 6], radius=12, outline=(212, 175, 55, 90), width=1)
+        
+        start_y = box_t + padding + (line_height / 2)
+        for l_idx, line in enumerate(wrapped_lines):
+            y_pos = start_y + (l_idx * line_height)
             draw.text((361, y_pos + 1), line, fill=(0, 0, 0, 240), font=font_sub, anchor="mm")
             draw.text((360, y_pos), line, fill=(255, 252, 245), font=font_sub, anchor="mm")
 
@@ -1106,7 +1191,7 @@ def invia_su_telegram(video_path, storia):
             f"📜 <b>{storia['titolo']}</b> ({storia.get('autore', '')})\n"
             f"⏱️ Formato: <i>Riassunto Culturale in 2 Minuti</i>\n"
             f"🎨 Stile: <i>3D Pixar & Disney Animation (Qualità Cinema)</i>\n"
-            f"🎙️ Voce: <i>Italiano Neurale Epico (Diego)</i>"
+            f"🎙️ Voce: <i>Gemini Narratore AI (Charon) & Neurale Epico</i>"
         )
         tags = "#MitologiaGreca #MitiGreci #Olimpo #CulturaClassica #SapienzaAntica #ImmobiliareGiancani"
     elif categoria == "BIBBIA":
@@ -1150,7 +1235,8 @@ def invia_su_telegram(video_path, storia):
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"{brand_label}\n"
         f"━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"{tags}"
+        f"{tags}\n\n"
+        f"🌟 <i>Contenuto realizzato e curato da</i> <b>IMMOBILIARE GIANCANI</b>"
     )
     
     inline_keyboard = {
@@ -1526,6 +1612,20 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
 
     # 4. Invio Telegram Bot
     invia_su_telegram(video_finale, storia)
+
+    # 4b. Salvataggio stato di rotazione progressiva (evita sovrapposizioni e garantisce avanzamento sequenziale)
+    try:
+        tracker_file = os.path.join(BASE_DIR, f"stato_rotazione_{mode}.json")
+        id_num = int(storia["id"]) if str(storia["id"]).isdigit() else storia["id"]
+        with open(tracker_file, "w", encoding="utf-8") as tf:
+            json.dump({
+                "ultimo_id": id_num,
+                "titolo": storia["titolo"],
+                "data_completamento": time.strftime("%Y-%m-%d %H:%M:%S")
+            }, tf, indent=2, ensure_ascii=False)
+        print(f"📈 [ROTAZIONE PROGRESSIVA]: Stato aggiornato -> Ultimo ID completato: {storia['id']} («{storia['titolo']}»)")
+    except Exception as e_track:
+        print(f"⚠️ Avviso aggiornamento tracker rotazione: {e_track}")
 
     if not solo_telegram:
         # 5. Pubblicazione come Reel su Pagina Facebook di Antonio Giancani

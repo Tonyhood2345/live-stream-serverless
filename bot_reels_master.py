@@ -186,7 +186,11 @@ def estrai_storia_colonna_f(csv_file=None, id_richiesto=None, mode="standard"):
                 storie.append({
                     "id": row[0].strip(),
                     "titolo": row[1].strip(),
-                    "autore": row[2].strip(),
+                    "autore": row[2].strip() if len(row) > 2 else "Sacra Scrittura",
+                    "riferimento_biblico": row[2].strip() if len(row) > 2 else "",
+                    "personaggi": row[1].strip(),
+                    "ambientazione": row[3].strip() if len(row) > 3 else "Antico Testamento",
+                    "morale": row[4].strip() if len(row) > 4 else "",
                     "anno": "Antico Testamento",
                     "genere": "Bibbia",
                     "categoria": "BIBBIA",
@@ -199,7 +203,10 @@ def estrai_storia_colonna_f(csv_file=None, id_richiesto=None, mode="standard"):
                 storie.append({
                     "id": row[0].strip(),
                     "titolo": row[1].strip(),
+                    "personaggi": row[2].strip() if len(row) > 2 else "",
                     "autore": row[2].strip() if len(row) > 2 else "Miti dell'Antica Grecia",
+                    "ambientazione": row[3].strip() if len(row) > 3 else "Antica Grecia",
+                    "morale": row[4].strip() if len(row) > 4 else "",
                     "anno": "Epoca Classica",
                     "genere": "Mitologia Greca",
                     "categoria": "MITOLOGIA",
@@ -212,9 +219,11 @@ def estrai_storia_colonna_f(csv_file=None, id_richiesto=None, mode="standard"):
                 storie.append({
                     "id": row[0].strip(),
                     "titolo": row[2].strip() if len(row) > 2 else row[1].strip(),
-                    "autore": row[3].strip() if len(row) > 3 else "Immobiliare Giancani",
+                    "argomento": row[2].strip() if len(row) > 2 else "",
+                    "normativa": row[3].strip() if len(row) > 3 else "",
+                    "autore": "Antonio Giancani - Immobiliare Giancani",
                     "anno": "Normativa Vigente",
-                    "genere": "Pillola Immobiliare",
+                    "genere": row[1].strip() if len(row) > 1 else "Diritto Immobiliare",
                     "categoria": "PILLOLE",
                     "testo_colonna_f": col_f,
                     "prompts_g": "",
@@ -227,7 +236,7 @@ def estrai_storia_colonna_f(csv_file=None, id_richiesto=None, mode="standard"):
                         "titolo": row[1].strip(),
                         "autore": row[2].strip(),
                         "anno": row[3].strip() if len(row) > 3 else "",
-                        "genere": row[4].strip() if len(row) > 4 else "",
+                        "genere": row[4].strip() if len(row) > 4 else "Grande Classico",
                         "categoria": "STANDARD",
                         "testo_colonna_f": row[5].strip(),
                         "prompts_g": row[6].strip() if len(row) > 6 else ""
@@ -820,39 +829,115 @@ def monta_video_finale(clips, output_video, durata_totale):
 
 # ── FORMATTAZIONE DIDASCALIA SOCIAL PER IL PERSONAL BRANDING ────────────────
 def formatta_caption_social(storia):
-    """Formatta la didascalia rispettando rigorosamente Colonna F e il brand Immobiliare Giancani."""
-    testo_pulito = storia['testo_colonna_f'].replace('|||', ' ').strip()
-    estratto = testo_pulito[:450] + "..." if len(testo_pulito) > 450 else testo_pulito
+    """
+    Formatta la didascalia rispettando RIGOROSAMENTE Colonna F e il brand Immobiliare Giancani.
+    Genera testi ricchi, accattivanti e specificamente inerenti alla trama e ai personaggi del video.
+    """
+    testo_col_f = storia.get('testo_colonna_f', '').replace('|||', '\n\n').strip()
     cat = storia.get("categoria", "STANDARD").upper()
+    titolo = storia.get("titolo", "Racconto Epico")
+    personaggi = storia.get("personaggi", "")
+    ambientazione = storia.get("ambientazione", "")
+    morale = storia.get("morale", "")
+    normativa = storia.get("normativa", "")
 
     if cat == "MITOLOGIA":
-        header = "🏛️ STORIE DELLA MITOLOGIA GRECA (RUBRICA CULTURALE)"
-        sub_info = f"📜 {storia['titolo']} ({storia.get('autore', '')})\n⏱️ Riassunto Narrativo in 2 Minuti\n🎨 Stile: Cartoon Cel Art Animato 2D"
-        tags = "#MitologiaGreca #MitiGreci #Olimpo #CulturaClassica #AntonioGiancani #ImmobiliareGiancani"
+        header = f"🏛️ {titolo.upper()} — STORIE DELLA MITOLOGIA GRECA (IN 2 MINUTI) 🏛️"
+        sub_info = "📜 Rubrica Culturale Miti dell'Antica Grecia\n⏱️ Riassunto Narrativo Verticale 9:16\n🎨 Stile: Cartoon Animation Cel Art"
+        extra_meta = []
+        if personaggi:
+            extra_meta.append(f"👥 Protagonisti: {personaggi}")
+        if ambientazione:
+            extra_meta.append(f"📍 Luogo: {ambientazione}")
+        if morale:
+            extra_meta.append(f"💡 Morale & Insegnamento: {morale}")
+        meta_blocco = "\n".join(extra_meta) + "\n\n" if extra_meta else ""
+        cta = "💬 Qual è il mito greco che ti affascina di più? Condividi la tua opinione nei commenti e iscriviti per non perdere i prossimi episodi ogni giorno alle 18:00!"
+        tags = "#MitologiaGreca #MitiGreci #Olimpo #CulturaClassica #Reels #Shorts #AntonioGiancani #ImmobiliareGiancani"
+
     elif cat == "BIBBIA":
-        header = "📖 STORIE BIBLICHE — «ETERNO NOSTRA GIUSTIZIA»"
-        sub_info = f"📜 {storia['titolo']} ({storia.get('autore', '')})\n⏱️ Riassunto Narrativo in 2 Minuti\n🎨 Stile: Cartoon Cel Art Animato 2D"
-        tags = "#StorieBibliche #Bibbia #EternoNostraGiustizia #Fede #AntonioGiancani #ImmobiliareGiancani"
+        header = f"📖 {titolo.upper()} — STORIE DELLA BIBBIA («ETERNO NOSTRA GIUSTIZIA») 📖"
+        rif = storia.get("riferimento_biblico", storia.get("autore", "Antico Testamento"))
+        sub_info = f"📜 Riferimento: {rif}\n⏱️ Riassunto Narrativo in 2 Minuti\n🎨 Stile: Cartoon Cel Art Animato 2D"
+        extra_meta = []
+        if ambientazione:
+            extra_meta.append(f"📍 Ambientazione: {ambientazione}")
+        if morale:
+            extra_meta.append(f"💡 Insegnamento di Fede: {morale}")
+        meta_blocco = "\n".join(extra_meta) + "\n\n" if extra_meta else ""
+        cta = "🙏 Ti è piaciuta questa meditazione? Condividi questo messaggio di fede e speranza con chi ami e seguici ogni sera alle ore 20:00."
+        tags = "#StorieBibliche #Bibbia #EternoNostraGiustizia #Fede #ParolaDiDio #Reels #Shorts #AntonioGiancani #ImmobiliareGiancani"
+
     elif cat == "PILLOLE":
-        header = "🏢 PILLOLE IMMOBILIARI & LEGALI QUOTIDIANE"
-        sub_info = f"📜 {storia['titolo']} ({storia.get('autore', '')})\n⏱️ Consiglio Esperto in 2 Minuti\n👔 Rubrica: Guida Pratica Immobiliare"
-        tags = "#Immobiliare #DirittoImmobiliare #Normativa #ConsulenzaLegale #Casa #Favara #Agrigento #ImmobiliareGiancani"
+        header = f"🏢 {titolo.upper()} — PILLOLE IMMOBILIARI & LEGALI QUOTIDIANE 🏢"
+        sub_info = f"⚖️ Normativa: {normativa if normativa else 'Codice Civile e Normativa Vigente'}\n⏱️ Guida Pratica Rapida in 2 Minuti\n👤 A cura di Antonio Giancani"
+        meta_blocco = ""
+        cta = "💬 Hai dubbi o domande su compravendite, normative o mutui? Scrivici nei commenti o in privato per una consulenza su misura per il tuo immobile!"
+        tags = "#Immobiliare #DirittoImmobiliare #Normativa #ConsulenzaLegale #Casa #Favara #Agrigento #Reels #Shorts #ImmobiliareGiancani"
+
     else:
-        header = "📚 I GRANDI CLASSICI DELLA LETTERATURA"
-        sub_info = f"📖 {storia['titolo']} ({storia.get('anno', '')}) di {storia.get('autore', '')}\n⏱️ Riassunto Narrativo in 2 Minuti\n🎨 Stile: Antique Storybook Illustration"
-        tags = "#GrandiClassici #Letteratura #Cultura #Libri #AntonioGiancani #ImmobiliareGiancani"
+        autore = storia.get('autore', '')
+        anno = storia.get('anno', '')
+        header = f"📚 {titolo.upper()} — I GRANDI CLASSICI DELLA LETTERATURA 📚"
+        sub_info = f"📖 Opera di {autore} ({anno})\n⏱️ Riassunto Narrativo in 2 Minuti\n🎨 Stile: Antique Storybook Illustration"
+        meta_blocco = ""
+        cta = "📖 Hai mai letto questo capolavoro? Scrivi il tuo passaggio o libro preferito nei commenti!"
+        tags = "#GrandiClassici #Letteratura #Cultura #Libri #Reels #Shorts #AntonioGiancani #ImmobiliareGiancani"
 
     caption = (
         f"{header}\n\n"
         f"{sub_info}\n\n"
+        f"{meta_blocco}"
         f"💬 Narrazione Ufficiale (Colonna F):\n"
-        f"«{estratto}»\n\n"
+        f"«{testo_col_f}»\n\n"
+        f"{cta}\n\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"👉 Produzione e Personal Branding:\n"
+        f"👉 Produzione, Consulenza & Personal Branding:\n"
         f"⭐ IMMOBILIARE GIANCANI ⭐\n"
+        f"📍 Sede: Favara & Agrigento | Consulenza e Vendita Immobiliari di Prestigio\n"
+        f"🌐 Sito Web: https://immobiliaregiancani.it\n"
         f"━━━━━━━━━━━━━━━━━━━━\n\n"
         f"{tags}\n\n"
         f"🌟 Contenuto a cura di IMMOBILIARE GIANCANI"
+    )
+    return caption
+
+
+def formatta_caption_telegram(storia):
+    """Formatta la didascalia specifica per Telegram con tag HTML e limite caratteri a norma."""
+    testo_col_f = storia.get('testo_colonna_f', '').replace('|||', ' ').strip()
+    estratto = testo_col_f[:500] + "..." if len(testo_col_f) > 500 else testo_col_f
+    cat = storia.get("categoria", "STANDARD").upper()
+    titolo = storia.get("titolo", "Racconto Epico")
+
+    if cat == "MITOLOGIA":
+        icona = "🏛️"
+        sub = "Miti dell'Antica Grecia (Ore 18:00)"
+        tags = "#MitologiaGreca #Olimpo #Cultura #ImmobiliareGiancani"
+    elif cat == "BIBBIA":
+        icona = "📖"
+        sub = "Storie della Bibbia (Ore 20:00)"
+        tags = "#Bibbia #Fede #EternoNostraGiustizia #ImmobiliareGiancani"
+    elif cat == "PILLOLE":
+        icona = "🏢"
+        sub = "Pillole Immobiliari & Legali (Ore 06:00)"
+        tags = "#Immobiliare #Casa #Favara #Agrigento #ImmobiliareGiancani"
+    else:
+        icona = "📚"
+        sub = "I Grandi Classici della Letteratura"
+        tags = "#GrandiClassici #Libri #Cultura #ImmobiliareGiancani"
+
+    caption = (
+        f"{icona} <b>{titolo.upper()}</b>\n"
+        f"<i>{sub}</i>\n\n"
+        f"💬 <b>Narrazione (Colonna F):</b>\n"
+        f"«{estratto}»\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"⭐ <b>IMMOBILIARE GIANCANI</b> ⭐\n"
+        f"📍 Favara & Agrigento | https://immobiliaregiancani.it\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"{tags}\n\n"
+        f"🌟 Contenuto a cura di <b>IMMOBILIARE GIANCANI</b>"
     )
     return caption
 
@@ -866,7 +951,7 @@ def invia_su_telegram(video_path, storia):
         
     print("\n📲 [TELEGRAM] Invio video su Chat e Canale...")
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
-    caption = formatta_caption_social(storia)
+    caption = formatta_caption_telegram(storia)
     
     inline_keyboard = {
         "inline_keyboard": [
@@ -905,7 +990,7 @@ def invia_su_telegram(video_path, storia):
 
 # ── PUBBLICAZIONE REEL FACEBOOK GENERICA SU QUALSIASI PAGINA ────────────────
 def pubblica_reel_su_pagina_facebook(page_id, page_token, video_path, storia, nome_pagina="Facebook"):
-    """Pubblica un Reel su una specifica pagina Facebook."""
+    """Pubblica un Reel su una specifica pagina Facebook con descrizione ottimizzata da Colonna F."""
     if not page_id or not page_token:
         print(f"  ⚠️ Credenziali mancanti per Pagina Facebook '{nome_pagina}'. Salto.")
         return False
@@ -934,7 +1019,7 @@ def pubblica_reel_su_pagina_facebook(page_id, page_token, video_path, storia, no
         with open(video_path, "rb") as vf:
             video_bytes = vf.read()
             
-        print(f"  📤 Caricamento video ({round(file_size/(1024*1024), 2)} MB) su {nome_pagina}...")
+        print(f"  📤 Caricamento Reel ({round(file_size/(1024*1024), 2)} MB) su {nome_pagina}...")
         r2 = requests.post(up_url, data=video_bytes, headers=headers, verify=False, timeout=180)
         if r2.status_code != 200:
             print(f"  ❌ Errore upload binary Reel su {nome_pagina}: {r2.text}")
@@ -961,6 +1046,103 @@ def pubblica_reel_su_pagina_facebook(page_id, page_token, video_path, storia, no
         return False
 
 
+# ── PUBBLICAZIONE STORIA FACEBOOK (META GRAPH API VIDEO_STORIES) ────────────
+def pubblica_storia_facebook(page_id, page_token, video_path, nome_pagina="Facebook"):
+    """
+    Carica un video come Storia di Facebook via Meta Graph API v19.0 /video_stories.
+    Ideale per card video da 10-60 secondi con audio, grafica e musica.
+    """
+    if not page_id or not page_token:
+        print(f"  ⚠️ Credenziali mancanti per Storia Facebook '{nome_pagina}'. Salto.")
+        return False
+    if not os.path.exists(video_path):
+        print(f"  ⚠️ Video storia non trovato: {video_path}")
+        return False
+
+    file_size = os.path.getsize(video_path)
+    url_stories = f"https://graph.facebook.com/v19.0/{page_id}/video_stories"
+
+    try:
+        # Phase 1: Start
+        r1 = requests.post(url_stories, data={"upload_phase": "start", "access_token": page_token}, verify=False, timeout=25)
+        res1 = r1.json()
+        vid = res1.get("video_id")
+        up_url = res1.get("upload_url")
+        if not vid or not up_url:
+            print(f"  ⚠️ Errore start Storia Facebook su {nome_pagina}: {res1}")
+            return False
+
+        # Phase 2: Binary Upload
+        headers = {
+            "Authorization": f"OAuth {page_token}",
+            "offset": "0",
+            "file_size": str(file_size),
+            "Content-Type": "application/octet-stream"
+        }
+        with open(video_path, "rb") as vf:
+            v_bytes = vf.read()
+
+        r2 = requests.post(up_url, data=v_bytes, headers=headers, verify=False, timeout=120)
+        if r2.status_code != 200:
+            print(f"  ⚠️ Errore upload binary Storia su {nome_pagina}: {r2.text}")
+            return False
+
+        # Phase 3: Finish
+        r3 = requests.post(url_stories, data={
+            "upload_phase": "finish",
+            "access_token": page_token,
+            "video_id": vid,
+            "video_state": "PUBLISHED"
+        }, verify=False, timeout=30)
+        res3 = r3.json()
+        if res3.get("success", True):
+            print(f"  ✅ [FACEBOOK STORIA] Pubblicata con successo su '{nome_pagina}'! (Story Video ID: {vid})")
+            return True
+        else:
+            print(f"  ⚠️ Risposta Finish Storia su {nome_pagina}: {res3}")
+            return False
+    except Exception as e:
+        print(f"  ⚠️ Eccezione pubblicazione Storia Facebook su {nome_pagina}: {e}")
+        return False
+
+
+def dividi_e_pubblica_storie_facebook(video_path, clips, storia, page_id, page_token, nome_pagina="Facebook"):
+    """
+    Pubblica la storia su Facebook Stories:
+    1. Se presenti le clip delle scene, pubblica la prima clip (hook introduttivo da ~10-15s, perfetto per Stories)
+       e le clip narrative principali sequenziali.
+    2. Se il video finale è sotto i 60s, carica il video completo come Storia.
+    """
+    if not page_id or not page_token:
+        return False
+
+    print(f"\n📱 [FACEBOOK STORIE] Pubblicazione sequenziale su '{nome_pagina}' (ID: {page_id})...")
+    pubblicata = False
+
+    # 1. Pubblica la prima clip/hook (card introduttiva della storia con titolo)
+    if clips and len(clips) > 0 and os.path.exists(clips[0]):
+        clip_intro = clips[0]
+        print(f"  📤 Invio Card 1 (Intro Hook) come Storia Facebook...")
+        if pubblica_storia_facebook(page_id, page_token, clip_intro, nome_pagina):
+            pubblicata = True
+
+        # Se abbiamo almeno 3 clip, pubblichiamo anche la scena centrale e l'outro come card sequenziali
+        if len(clips) >= 3 and os.path.exists(clips[-1]):
+            time.sleep(2)
+            print(f"  📤 Invio Card 2 (Climax & Morale) come Storia Facebook...")
+            if pubblica_storia_facebook(page_id, page_token, clips[-1], nome_pagina):
+                pubblicata = True
+
+    # 2. Se non avevamo clips o come fallback, proviamo con il video principale
+    if not pubblicata and os.path.exists(video_path):
+        dur = ottieni_durata_audio(video_path) if os.path.exists(video_path) else 0
+        if dur <= 65:
+            print(f"  📤 Invio video completo ({round(dur, 1)}s) come Storia Facebook...")
+            pubblicata = pubblica_storia_facebook(page_id, page_token, video_path, nome_pagina)
+
+    return pubblicata
+
+
 # ── PUBBLICAZIONE POST TESTUALE FACEBOOK (COLONNA F) ────────────────────────
 def pubblica_post_testuale_facebook(page_id, page_token, storia, nome_pagina="Facebook"):
     """Pubblica un post testuale con testo estratto rigorosamente da Colonna F."""
@@ -969,10 +1151,10 @@ def pubblica_post_testuale_facebook(page_id, page_token, storia, nome_pagina="Fa
         
     print(f"\n📝 [FACEBOOK POST TESTUALE] Pubblicazione su '{nome_pagina}'...")
     url_feed = f"https://graph.facebook.com/v19.0/{page_id}/feed"
-    testo_col_f = storia['testo_colonna_f'].replace('|||', '\n\n').strip()
+    testo_col_f = storia.get('testo_colonna_f', '').replace('|||', '\n\n').strip()
     
     messaggio = (
-        f"🏢 {storia['titolo'].upper()}\n"
+        f"🏢 {storia.get('titolo', 'GUIDA PRATICA').upper()}\n"
         f"📜 Guida e Tutela Legale Quotidiana a cura di Antonio Giancani\n\n"
         f"{testo_col_f}\n\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -980,7 +1162,8 @@ def pubblica_post_testuale_facebook(page_id, page_token, storia, nome_pagina="Fa
         f"📍 Favara & Agrigento | Consulenza e Vendita Immobiliari di Prestigio\n"
         f"🌐 https://immobiliaregiancani.it\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"#ImmobiliareGiancani #AntonioGiancani #Favara #Agrigento #Casa #ConsulenzaImmobiliare"
+        f"#ImmobiliareGiancani #AntonioGiancani #Favara #Agrigento #Casa #ConsulenzaImmobiliare\n\n"
+        f"🌟 Contenuto a cura di IMMOBILIARE GIANCANI"
     )
     try:
         r = requests.post(url_feed, data={"message": messaggio, "access_token": page_token}, verify=False, timeout=25)
@@ -1013,18 +1196,19 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
     """
     Dispatcher centralizzato di pubblicazione multicanale:
     - TUTTI i contenuti -> Telegram (Chat e Canale @immobiliaregiancani)
-    - BIBBIA -> Pagina Facebook 'Eterno nostra giustizia', Pagina Facebook 'Antonio Giancani', Canale YouTube Shorts 'Eterno nostra giustizia'
-    - MITOLOGIA (Ore 18:00) -> Pagina Facebook 'Antonio Giancani'
-    - PILLOLE IMMOBILIARI (Ore 06:00) -> Pagina Facebook 'Immobiliare Giancani' (Reel + Post testuale Colonna F), Pagina Facebook 'Antonio Giancani', Canale YouTube Shorts 'Immobiliare Giancani'
-    - LIBRI (Grandi Classici) -> Pagina Facebook 'Antonio Giancani'
+    - BIBBIA (Ore 20:00) -> FB Reel & Storie 'Antonio Giancani', FB 'Eterno nostra giustizia', YT Shorts 'Eterno nostra giustizia'
+    - MITOLOGIA (Ore 18:00) -> FB Reel & Storie 'Antonio Giancani' (+ 'Immobiliare Giancani'), YT Shorts 'Storie della Mitologia Greca'
+    - PILLOLE (Ore 06:00) -> FB Reel & Storie & Post Colonna F 'Immobiliare Giancani', FB Reel & Storie 'Antonio Giancani', YT Shorts 'Immobiliare Giancani'
+    - LIBRI (Grandi Classici) -> FB Reel & Storie 'Antonio Giancani' (+ 'Immobiliare Giancani'), YT Shorts 'Immobiliare Giancani'
+    Tutti i post includono descrizioni ricche, contestuali e terminate con IMMOBILIARE GIANCANI.
     """
     mode_lower = mode.lower()
     print("\n" + "="*75)
-    print(f"📡 [ROUTING SOCIAL & PUBBLICAZIONE] Categoria: {mode.upper()}")
+    print(f"📡 [ROUTING SOCIAL & PUBBLICAZIONE MULTICANALE] Categoria: {mode.upper()}")
     print("⭐ Supervisione Strategica e Personal Branding: IMMOBILIARE GIANCANI ⭐")
     print("="*75)
 
-    # 1. Telegram (TUTTI i contenuti obbligatoriamente)
+    # 1. Telegram (TUTTI i contenuti obbligatoriamente su Chat e Canale Broadcast)
     invia_su_telegram(video_path, storia)
 
     if solo_telegram:
@@ -1034,14 +1218,16 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
 
     # 2. Routing multicanale in base al tema
     if "bibbia" in mode_lower:
-        # a) Pagina Facebook "Eterno nostra giustizia"
+        # a) Pagina Facebook "Eterno nostra giustizia" (Reel + Storie se configurato)
         if FB_PAGE_ID_ETERNO and FB_PAGE_TOKEN_ETERNO:
             pubblica_reel_su_pagina_facebook(FB_PAGE_ID_ETERNO, FB_PAGE_TOKEN_ETERNO, video_path, storia, "Eterno nostra giustizia")
+            dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ETERNO, FB_PAGE_TOKEN_ETERNO, "Eterno nostra giustizia")
         else:
             print("  ℹ️ [FB Eterno nostra giustizia]: Token non configurato. Aggiungi FB_PAGE_ACCESS_TOKEN_ETERNO e FB_PAGE_ID_ETERNO nei secret per attivare.")
 
-        # b) Pagina Facebook "Antonio Giancani"
+        # b) Pagina Facebook "Antonio Giancani" (Reel + Storie)
         pubblica_reel_facebook(video_path, storia)
+        dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, "Antonio Giancani")
 
         # c) Canale YouTube Shorts "Eterno nostra giustizia"
         if genera_metadati_youtube and pubblica_video_youtube:
@@ -1052,19 +1238,35 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
                 print(f"  ⚠️ Warning YouTube Bibbia: {e_yt}")
 
     elif "mitologia" in mode_lower:
-        # Mitologia Greca (Ore 18:00) -> Pagina Facebook "Antonio Giancani"
+        # a) Pagina Facebook "Antonio Giancani" (Reel + Storie)
         pubblica_reel_facebook(video_path, storia)
+        dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, "Antonio Giancani")
 
-    elif "pillole" in mode_lower:
-        # a) Pagina Facebook "Immobiliare Giancani" (Reel + Post testuale Colonna F)
+        # b) Cross-posting Pagina Facebook "Immobiliare Giancani" (Reel + Storie)
         if FB_PAGE_ID_GIANCANI and FB_PAGE_TOKEN_GIANCANI:
             pubblica_reel_su_pagina_facebook(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, video_path, storia, "Immobiliare Giancani")
+            dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, "Immobiliare Giancani")
+
+        # c) Canale YouTube Shorts "Storie della Mitologia Greca" (Ore 18:00)
+        if genera_metadati_youtube and pubblica_video_youtube:
+            try:
+                yt_payload, _ = genera_metadati_youtube(video_path, storia, mode="mitologia")
+                pubblica_video_youtube(video_path, yt_payload, mode="mitologia")
+            except Exception as e_yt:
+                print(f"  ⚠️ Warning YouTube Shorts Mitologia: {e_yt}")
+
+    elif "pillole" in mode_lower:
+        # a) Pagina Facebook "Immobiliare Giancani" (Reel + Storie + Post testuale Colonna F)
+        if FB_PAGE_ID_GIANCANI and FB_PAGE_TOKEN_GIANCANI:
+            pubblica_reel_su_pagina_facebook(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, video_path, storia, "Immobiliare Giancani")
+            dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, "Immobiliare Giancani")
             pubblica_post_testuale_facebook(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, storia, "Immobiliare Giancani")
         else:
             print("  ℹ️ [FB Immobiliare Giancani]: Token non configurato. Aggiungi FB_PAGE_ACCESS_TOKEN_GIANCANI nei secret per attivare.")
 
-        # b) Pagina Facebook "Antonio Giancani"
+        # b) Pagina Facebook "Antonio Giancani" (Reel + Storie)
         pubblica_reel_facebook(video_path, storia)
+        dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, "Antonio Giancani")
 
         # c) Canale YouTube Shorts "Immobiliare Giancani"
         if genera_metadati_youtube and pubblica_video_youtube:
@@ -1075,8 +1277,20 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
                 print(f"  ⚠️ Warning YouTube Giancani: {e_yt}")
 
     else:
-        # Libri (Grandi Classici) -> Pagina Facebook "Antonio Giancani"
+        # Grandi Classici (Standard) -> FB Antonio Giancani (Reel + Storie) + Cross-posting FB Giancani + YouTube Shorts
         pubblica_reel_facebook(video_path, storia)
+        dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, "Antonio Giancani")
+
+        if FB_PAGE_ID_GIANCANI and FB_PAGE_TOKEN_GIANCANI:
+            pubblica_reel_su_pagina_facebook(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, video_path, storia, "Immobiliare Giancani")
+            dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, "Immobiliare Giancani")
+
+        if genera_metadati_youtube and pubblica_video_youtube:
+            try:
+                yt_payload, _ = genera_metadati_youtube(video_path, storia, mode="standard")
+                pubblica_video_youtube(video_path, yt_payload, mode="giancani")
+            except Exception as e_yt:
+                print(f"  ⚠️ Warning YouTube Classici: {e_yt}")
 
 
 # ── ORCHESTRATORE PRINCIPALE (MAIN PIPELINE) ────────────────────────────────

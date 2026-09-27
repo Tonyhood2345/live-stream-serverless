@@ -1,22 +1,22 @@
-name: 🎬 Bot Reels Multi-Modalità (Mitologia 11:00, Bibbia 20:00, Grandi Classici, Pillole 06:00)
+name: 🎬 Bot Reels Multi-Modalità (Mitologia 18:00, Bibbia 20:00, Grandi Classici, Pillole 06:00)
 
 on:
   # Esecuzione automatica giornaliera:
   # - Ore 02:30 italiane (00:30 UTC): Generazione notturna a quote azzerate
   # - Ore 06:00 italiane (04:00 UTC): Pillole Immobiliari & Legali
-  # - Ore 11:00 italiane (09:00 UTC): Storie della Mitologia Greca
+  # - Ore 18:00 italiane (16:00 UTC): Storie della Mitologia Greca
   # - Ore 20:00 italiane (18:00 UTC): Storie della Bibbia & Grandi Classici
   schedule:
     - cron: '30 0 * * *'
     - cron: '0 4 * * *'
-    - cron: '0 9 * * *'
+    - cron: '0 16 * * *'
     - cron: '0 18 * * *'
 
   # Trigger manuale per test immediato dalla dashboard di GitHub o dalla Regia Generator
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Modalità bot (mitologia = 11:00 Miti Greci, bibbia = 20:00 Bibbia, standard = Libri, pillole = 06:00)'
+        description: 'Modalità bot (mitologia = 18:00 Miti Greci, bibbia = 20:00 Bibbia, standard = Libri, pillole = 06:00)'
         required: false
         default: 'mitologia'
         type: choice
@@ -73,11 +73,17 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ACCESS_TOKEN_ANTONIO: ${{ secrets.FB_PAGE_ACCESS_TOKEN_ANTONIO }}
+          FB_PAGE_ACCESS_TOKEN_GIANCANI: ${{ secrets.FB_PAGE_ACCESS_TOKEN_GIANCANI }}
+          FB_PAGE_ID_GIANCANI: ${{ secrets.FB_PAGE_ID_GIANCANI || '234931856561526' }}
+          FB_PAGE_ACCESS_TOKEN_ETERNO: ${{ secrets.FB_PAGE_ACCESS_TOKEN_ETERNO }}
+          FB_PAGE_ID_ETERNO: ${{ secrets.FB_PAGE_ID_ETERNO }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_TOKEN_MITOLOGIA_JSON: ${{ secrets.YOUTUBE_TOKEN_MITOLOGIA_JSON }}
           YOUTUBE_TOKEN_BIBBIA_JSON: ${{ secrets.YOUTUBE_TOKEN_BIBBIA_JSON }}
+          YOUTUBE_TOKEN_GIANCANI_JSON: ${{ secrets.YOUTUBE_TOKEN_GIANCANI_JSON }}
         run: |
-          CMD="python main.py"
+          CMD="python bot_reels_master.py"
           if [ -n "${{ github.event.inputs.mode }}" ]; then
             CMD="$CMD --mode ${{ github.event.inputs.mode }}"
           fi

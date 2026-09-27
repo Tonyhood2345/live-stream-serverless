@@ -50,14 +50,17 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ACCESS_TOKEN_ANTONIO: ${{ secrets.FB_PAGE_ACCESS_TOKEN_ANTONIO }}
+          FB_PAGE_ACCESS_TOKEN_ETERNO: ${{ secrets.FB_PAGE_ACCESS_TOKEN_ETERNO }}
+          FB_PAGE_ID_ETERNO: ${{ secrets.FB_PAGE_ID_ETERNO }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_TOKEN_BIBBIA_JSON: ${{ secrets.YOUTUBE_TOKEN_BIBBIA_JSON }}
         run: |
-          CMD="python main.py --mode bibbia"
+          CMD="python bot_reels_master.py --mode bibbia"
           if [ -n "${{ github.event.inputs.story_id }}" ]; then
             CMD="$CMD --id ${{ github.event.inputs.story_id }}"
           fi
-          if [ "${{ github.event.inputs.solo_telegram }}" != "false" ]; then
+          if [ "${{ github.event.inputs.solo_telegram }}" = "true" ]; then
             CMD="$CMD --solo-telegram"
           fi
           echo "Esecuzione comando: $CMD"

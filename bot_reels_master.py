@@ -637,6 +637,20 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
                 return ImageFont.truetype(fb, size)
             except Exception:
                 continue
+        # Fallback avanzato per ambienti Linux / GitHub Actions
+        linux_system_fonts = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        ]
+        for lsf in linux_system_fonts:
+            if os.path.exists(lsf):
+                try:
+                    return ImageFont.truetype(lsf, size)
+                except Exception:
+                    continue
         return ImageFont.load_default()
 
     font_kicker = carica_font(cinzel_path, ["georgiab.ttf", "pala.ttf", "arialbd.ttf"], 21)

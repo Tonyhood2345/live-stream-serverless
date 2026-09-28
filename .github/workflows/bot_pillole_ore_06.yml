@@ -35,10 +35,10 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: 🎞️ Installa FFmpeg di sistema
+      - name: 🎞️ Installa FFmpeg e Font di sistema
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg fonts-dejavu fonts-freefont-ttf fonts-liberation
 
       - name: 📦 Installa dipendenze Python
         run: |

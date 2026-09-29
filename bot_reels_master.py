@@ -148,9 +148,9 @@ def get_ffmpeg_binary():
 
 FFMPEG_EXE = get_ffmpeg_binary()
 
-# Stile Cartoon Cel Art Obbligatorio per Immagini Compatte
-CARTOON_STYLE_PREFIX = "2D classic colorful cartoon animation cel, bold clean ink outlines, expressive characters in action, daylight, vertical 9:16"
-MANDATORY_NEGATIVE_PROMPT = "--no 3d render, cgi, photorealistic, realistic, oil painting, dark, gloomy, empty scenery, photo, black screen"
+# Stile Disney/Pixar Obbligatorio — Alta Definizione 3D Animazione
+CARTOON_STYLE_PREFIX = "Pixar Disney 3D animation style, vibrant rich colors, expressive charming characters, cinematic lighting, detailed background, vertical 9:16"
+MANDATORY_NEGATIVE_PROMPT = "--no photo, realistic, dark, gloomy, ugly, flat, blurry, low quality, sketch, watermark"
 
 
 # ── REGOLA UTENTE GLOBALE: ESTRAZIONE RIGOROSA DA COLONNA F ─────────────────
@@ -432,24 +432,25 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT POLLINATIONS - PUNTO 2) ──
 def genera_prompt_compatto(raw_prompt):
     """
-    Formatta il prompt in modo compatto (max 175 caratteri per la parte positiva)
-    anteponendo SEMPRE lo stile cartoon e aggiungendo il negative prompt obbligatorio:
-    - Stile cartoon: "2D classic colorful cartoon animation cel, bold clean ink outlines, expressive characters in action, daylight, vertical 9:16"
-    - Negative: "--no 3d render, cgi, photorealistic, realistic, oil painting, dark, gloomy, empty scenery, photo, black screen"
+    Formatta il prompt in stile Disney/Pixar alta definizione (max 200 car. parte soggetto)
+    anteponendo SEMPRE lo stile Disney/Pixar 3D e il negative prompt obbligatorio.
+    - Stile: Pixar Disney 3D animation, vibrant colors, cinematic lighting
+    - Negative: no photo, realistic, dark, ugly, flat, low quality
     """
     clean = re.sub(r"--no.*", "", raw_prompt, flags=re.IGNORECASE)
     clean = clean.replace(CARTOON_STYLE_PREFIX, "")
-    clean = re.sub(r"2D cartoon animation style,?", "", clean, flags=re.IGNORECASE)
-    clean = re.sub(r"classic animated movie cel art,?", "", clean, flags=re.IGNORECASE)
-    clean = re.sub(r"3D Pixar Disney animation style,?", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"Pixar Disney 3D animation style,?\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"3D Pixar Disney animation style,?\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"2D cartoon animation style,?\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"classic animated movie cel art,?\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"high quality 3D render,?\s*", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"vertical 9:16,?\s*", "", clean, flags=re.IGNORECASE)
     clean = clean.strip(" ,.")
 
-    # Riserva lo spazio necessario per lo stile cartoon obbligatorio
-    max_subject_len = max(25, 175 - len(CARTOON_STYLE_PREFIX) - 2)
+    # Soggetto fino a 200 caratteri per massimizzare la qualità Disney
+    max_subject_len = max(30, 200 - len(CARTOON_STYLE_PREFIX) - 2)
     subject = clean[:max_subject_len].rstrip(" ,.")
     positive_compact = f"{CARTOON_STYLE_PREFIX}, {subject}".strip(" ,.")
-    if len(positive_compact) > 175:
-        positive_compact = positive_compact[:175].rstrip(" ,.")
 
     return f"{positive_compact} {MANDATORY_NEGATIVE_PROMPT}"
 
@@ -524,8 +525,8 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
     full_prompt = genera_prompt_compatto(prompt)
     encoded_prompt = urllib.parse.quote(full_prompt)
 
-    # Motori ammessi: solo 'turbo' o default (MAI 'flux' che causa saturazione e read timeout)
-    models_to_try = [None, "turbo"]
+    # Motori ammessi: 'turbo' prima (migliore qualità Disney/Pixar), poi default
+    models_to_try = ["turbo", None]
     max_retries = 2
 
     for attempt in range(1, max_retries + 1):

@@ -131,5 +131,12 @@
     "fonte": "Terreno 17.000 mq a 35.000€",
     "stanza": "Terreno vista drone dal terreno inzio strada principale",
     "fotoUrl": "https://lh3.googleusercontent.com/d/1XgsRgxUGybUL32mm7qjDZvukYuPUwHGw"
+  },
+  "default_residenza_aragona_villa": {
+    "timestamp": 1790704810.3924048,
+    "titolo": "Villa Padronale Immersa nel Verde",
+    "fonte": "Dimora di Prestigio Aragona",
+    "stanza": "",
+    "fotoUrl": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1200&auto=format&fit=crop"
   }
 }

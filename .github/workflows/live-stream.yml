@@ -1,8 +1,11 @@
 name: Serverless Multistream Live
 on:
   schedule:
-    # ⏰ Avvio automatico quotidiano serale: 18:00 UTC = 20:00 CEST (orario estivo italiano)
-    - cron: '0 18 * * *'
+    # ⏰ Avvio automatico serale al minuto 58 per azzerare le code GitHub Actions:
+    # 17:58 UTC = 19:58 CEST (Orario Estivo Italiano - 2 min prima delle 20:00)
+    # 18:58 UTC = 19:58 CET (Orario Invernale Italiano - 2 min prima delle 20:00)
+    - cron: '58 17 * * *'
+    - cron: '58 18 * * *'
   workflow_dispatch:
     inputs:
       video_url:
@@ -48,7 +51,32 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+      - name: Time-Guard Verifica Orario Italiano (Europe/Rome)
+        id: timeguard
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            ROME_HOUR=$(TZ='Europe/Rome' date +%H)
+            ROME_MIN=$(TZ='Europe/Rome' date +%M)
+            echo "⏰ [Time-Guard] Orario attuale a Roma: $ROME_HOUR:$ROME_MIN"
+            # Consenti l'avvio unicamente nella finestra delle 20:00 (19:50 - 20:30)
+            if [ "$ROME_HOUR" -ne 19 ] && [ "$ROME_HOUR" -ne 20 ]; then
+              echo "⚠️ AVVISO CRITICO: Workflow scatenato fuori orario ($ROME_HOUR:$ROME_MIN IT) per ritardo code GitHub."
+              echo "🛑 Annullamento immediato per impedire dirette notturne alle ore 00:00. — Immobiliare Giancani"
+              echo "should_run=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            if [ "$ROME_HOUR" -eq 19 ] && [ "$ROME_MIN" -lt 50 ]; then
+              echo "⚠️ Avvio anticipato non valido ($ROME_HOUR:$ROME_MIN IT). Annullamento."
+              echo "should_run=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "✅ Orario verificato per la diretta serale delle 20:00!"
+          else
+            echo "▶️ Avvio via workflow_dispatch da Google Apps Script o manuale (nessun vincolo di orario)."
+          fi
+          echo "should_run=true" >> $GITHUB_OUTPUT
       - name: Setup Headless Environment and Audio Engine
+        if: steps.timeguard.outputs.should_run == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core espeak-ng speech-dispatcher libespeak-ng1
@@ -60,6 +88,7 @@ jobs:
           google-chrome --version
           ffmpeg -version | head -1
       - name: Setup Playwright and Headless Automation Engines
+        if: steps.timeguard.outputs.should_run == 'true'
         run: |
           npm init -y
           npm install playwright
@@ -68,6 +97,7 @@ jobs:
           python3 -m pip install --no-cache-dir playwright requests pillow numpy edge-tts yt-dlp
           python3 -m playwright install --with-deps chromium || true
       - name: Launch Audio Engine, Browser and Start Multistream
+        if: steps.timeguard.outputs.should_run == 'true'
         run: |
           # 1. Configura PulseAudio con socket UNIX esplicito
           mkdir -p /tmp/pulse-config
@@ -299,10 +329,6 @@ jobs:
           # Seconda YT key rimossa (era scaduta/non necessaria)
           # --- 3. TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"
-          if [ -z "$TK_KEY" ] && [ -n "${{ secrets.TK_KEY }}" ]; then
-            TK_KEY="${{ secrets.TK_KEY }}"
-            echo "🎵 Endpoint TikTok RTMP recuperato da GitHub Secret TK_KEY"
-          fi
           if [ -z "$TK_KEY" ] && [ -f /tmp/tiktok_rtmp.txt ]; then
             TK_KEY=$(cat /tmp/tiktok_rtmp.txt | tr -d '\r\n')
             echo "🎵 Endpoint TikTok RTMP recuperato da adapter: $TK_KEY"

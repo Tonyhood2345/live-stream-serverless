@@ -3,7 +3,7 @@ name: 📖 Bot Storie Bibliche (Ore 20:00 Roma)
 on:
   # Schedulazione giornaliera: ore 20:00 italiane (18:00 UTC)
   schedule:
-    - cron: '10 18 * * *'
+    - cron: '0 18 * * *'
 
   # Trigger manuale per test immediato
   workflow_dispatch:
@@ -54,6 +54,8 @@ jobs:
           FB_PAGE_ACCESS_TOKEN_ETERNO: ${{ secrets.FB_PAGE_ACCESS_TOKEN_ETERNO }}
           FB_PAGE_ID_ETERNO: ${{ secrets.FB_PAGE_ID_ETERNO }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
           YOUTUBE_TOKEN_BIBBIA_JSON: ${{ secrets.YOUTUBE_TOKEN_BIBBIA_JSON }}
         run: |
           CMD="python bot_reels_master.py --mode bibbia"

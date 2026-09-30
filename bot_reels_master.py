@@ -512,52 +512,71 @@ def genera_immagine_replicate_sdxl(prompt, output_img):
     """
     if not REPLICATE_API_TOKEN:
         return False
-    url = "https://api.replicate.com/v1/models/stability-ai/sdxl/predictions"
+    # Prova prima FLUX.1-schnell (superiore e rapido), poi SDXL
+    clean_prompt = genera_prompt_compatto(prompt)
     headers = {
         "Authorization": f"Bearer {REPLICATE_API_TOKEN}",
         "Content-Type": "application/json",
         "Prefer": "wait"
     }
-    clean_prompt = genera_prompt_compatto(prompt)
-    payload = {
-        "input": {
-            "prompt": clean_prompt,
-            "negative_prompt": "ugly, low quality, dark, black background, deformed, blurry, realistic photo",
-            "width": 768,
-            "height": 1344,
-            "num_inference_steps": 25
-        }
-    }
-    try:
-        print(f"  ⚡ [REPLICATE SDXL] Avvio predizione SDXL...", flush=True)
-        r = requests.post(url, json=payload, headers=headers, timeout=50, verify=False)
-        if r.status_code in (200, 201):
-            pred = r.json()
-            output_urls = pred.get("output")
-            if not output_urls and pred.get("status") in ("starting", "processing"):
-                get_url = pred.get("urls", {}).get("get")
-                for _ in range(12):
-                    time.sleep(3)
-                    r_poll = requests.get(get_url, headers={"Authorization": f"Bearer {REPLICATE_API_TOKEN}"}, timeout=15, verify=False)
-                    if r_poll.status_code == 200:
-                        poll_data = r_poll.json()
-                        if poll_data.get("status") == "succeeded":
-                            output_urls = poll_data.get("output")
-                            break
-                        elif poll_data.get("status") == "failed":
-                            break
-            if output_urls:
-                img_url = output_urls[0] if isinstance(output_urls, list) else output_urls
-                r_img = requests.get(img_url, timeout=25, verify=False)
-                if r_img.status_code == 200:
-                    with Image.open(io.BytesIO(r_img.content)) as pil_img:
-                        adatta_immagine_9_16(pil_img).save(output_img, "JPEG", quality=95)
-                    print(f"  ✅ [REPLICATE SDXL] Immagine Disney generata con successo ({round(os.path.getsize(output_img)/1024, 1)} KB): {os.path.basename(output_img)}")
-                    return True
-        else:
-            print(f"  ⚠️ Replicate HTTP {r.status_code}: {r.text[:140]}")
-    except Exception as e:
-        print(f"  ⚠️ Errore Replicate: {e}")
+    
+    endpoints = [
+        (
+            "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
+            {
+                "input": {
+                    "prompt": clean_prompt,
+                    "aspect_ratio": "9:16",
+                    "output_format": "jpg"
+                }
+            }
+        ),
+        (
+            "https://api.replicate.com/v1/models/stability-ai/sdxl/versions/7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc/predictions",
+            {
+                "input": {
+                    "prompt": clean_prompt,
+                    "negative_prompt": "ugly, low quality, dark, black background, deformed, blurry, realistic photo",
+                    "width": 768,
+                    "height": 1344,
+                    "num_inference_steps": 25
+                }
+            }
+        )
+    ]
+    
+    for url, payload in endpoints:
+        try:
+            model_tag = "FLUX" if "flux" in url else "SDXL"
+            print(f"  ⚡ [REPLICATE {model_tag}] Avvio predizione...", flush=True)
+            r = requests.post(url, json=payload, headers=headers, timeout=50, verify=False)
+            if r.status_code in (200, 201):
+                pred = r.json()
+                output_urls = pred.get("output")
+                if not output_urls and pred.get("status") in ("starting", "processing"):
+                    get_url = pred.get("urls", {}).get("get")
+                    for _ in range(12):
+                        time.sleep(3)
+                        r_poll = requests.get(get_url, headers={"Authorization": f"Bearer {REPLICATE_API_TOKEN}"}, timeout=15, verify=False)
+                        if r_poll.status_code == 200:
+                            poll_data = r_poll.json()
+                            if poll_data.get("status") == "succeeded":
+                                output_urls = poll_data.get("output")
+                                break
+                            elif poll_data.get("status") == "failed":
+                                break
+                if output_urls:
+                    img_url = output_urls[0] if isinstance(output_urls, list) else output_urls
+                    r_img = requests.get(img_url, timeout=25, verify=False)
+                    if r_img.status_code == 200:
+                        with Image.open(io.BytesIO(r_img.content)) as pil_img:
+                            adatta_immagine_9_16(pil_img).save(output_img, "JPEG", quality=95)
+                        print(f"  ✅ [REPLICATE {model_tag}] Immagine Disney generata con successo ({round(os.path.getsize(output_img)/1024, 1)} KB): {os.path.basename(output_img)}")
+                        return True
+            else:
+                print(f"  ⚠️ Replicate {model_tag} HTTP {r.status_code}: {r.text[:140]}")
+        except Exception as e:
+            print(f"  ⚠️ Errore Replicate: {e}")
     return False
 
 

@@ -3,7 +3,7 @@ name: 📖 Bot Storie Bibliche (Ore 20:00 Roma)
 on:
   # Schedulazione giornaliera: ore 20:00 italiane (18:00 UTC)
   schedule:
-    - cron: '0 18 * * *'
+    - cron: '10 18 * * *'
 
   # Trigger manuale per test immediato
   workflow_dispatch:

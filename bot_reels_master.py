@@ -607,9 +607,71 @@ def crea_immagine_fallback(output_img, testo_descrittivo, categoria="STANDARD", 
         except Exception as e:
             print(f"  ⚠️ Errore caricamento master artwork: {e}")
 
-    # Fallback su gradiente pulito se nessun file è presente
-    img = Image.new("RGB", (720, 1280), (14, 24, 40))
+    # Fallback: gradiente colorato vivace variabile per scena (no sfondo nero!)
+    cat_upper_fb = str(categoria).upper()
+    idx_int = int(idx) if str(idx).isdigit() else 1
+
+    # Palette colori vibranti per categoria — stile Disney/Pixar
+    if "MITOLOGIA" in cat_upper_fb:
+        palettes = [
+            [(25, 85, 160), (80, 160, 230), (200, 230, 255)],  # Blu Egeo
+            [(140, 80, 20), (210, 150, 60), (255, 220, 140)],  # Oro antico
+            [(60, 20, 110), (130, 60, 180), (220, 170, 255)],  # Viola olimpico
+            [(20, 100, 60), (60, 170, 110), (170, 240, 200)],  # Verde bosco
+            [(160, 30, 30), (220, 80, 50), (255, 200, 150)],   # Rosso fuoco
+            [(20, 60, 120), (50, 130, 200), (180, 220, 255)],  # Azzurro mare
+        ]
+    elif "BIBBIA" in cat_upper_fb:
+        palettes = [
+            [(180, 130, 20), (230, 190, 80), (255, 245, 200)],  # Oro sacro
+            [(30, 70, 140), (70, 130, 200), (200, 225, 255)],   # Blu cielo
+            [(100, 40, 10), (170, 100, 40), (240, 200, 150)],   # Terra sacra
+            [(20, 80, 50), (60, 150, 90), (180, 240, 200)],     # Verde palma
+            [(120, 30, 30), (190, 80, 60), (255, 200, 170)],    # Porpora biblica
+            [(60, 40, 100), (120, 90, 170), (220, 200, 255)],   # Viola mistico
+        ]
+    elif "PILLOLE" in cat_upper_fb:
+        palettes = [
+            [(20, 70, 130), (50, 130, 200), (180, 220, 255)],  # Blu professionale
+            [(10, 90, 70), (30, 160, 120), (160, 230, 210)],   # Verde studio
+            [(100, 50, 10), (180, 110, 40), (240, 200, 150)],  # Marmo caldo
+            [(50, 20, 100), (110, 70, 170), (210, 190, 255)],  # Blu scuro elegante
+            [(130, 30, 20), (200, 80, 50), (255, 200, 180)],   # Rosso ufficio
+            [(20, 60, 90), (50, 120, 160), (180, 220, 250)],   # Grigio acciaio
+        ]
+    else:
+        palettes = [
+            [(40, 60, 100), (80, 120, 180), (200, 220, 255)],
+            [(80, 40, 20), (150, 90, 50), (240, 200, 160)],
+            [(20, 80, 60), (60, 150, 100), (180, 240, 210)],
+            [(100, 30, 80), (170, 80, 150), (240, 200, 230)],
+            [(40, 40, 40), (100, 100, 120), (200, 210, 220)],
+            [(60, 80, 20), (120, 160, 50), (210, 240, 160)],
+        ]
+
+    palette = palettes[(idx_int - 1) % len(palettes)]
+    c1, c2, c3 = palette
+
+    # Gradiente verticale a 3 colori
+    img = Image.new("RGB", (576, 1024))
+    pixels = img.load()
+    h = 1024
+    for y in range(h):
+        if y < h // 2:
+            t = y / (h // 2)
+            r = int(c1[0] + (c2[0] - c1[0]) * t)
+            g = int(c1[1] + (c2[1] - c1[1]) * t)
+            b = int(c1[2] + (c2[2] - c1[2]) * t)
+        else:
+            t = (y - h // 2) / (h // 2)
+            r = int(c2[0] + (c3[0] - c2[0]) * t)
+            g = int(c2[1] + (c3[1] - c2[1]) * t)
+            b = int(c2[2] + (c3[2] - c2[2]) * t)
+        for x in range(576):
+            pixels[x, y] = (r, g, b)
+
     img.save(output_img, "JPEG", quality=95)
+    print(f"  🌈 Sfondo gradiente colorato applicato (scena {idx}, palette {(idx_int-1)%len(palettes)+1})")
 
 
 # ── OVERLAY GRAFICO: TITOLO INTRO & SOTTOTITOLI COMIC STICKER (PUNTO 3) ─────

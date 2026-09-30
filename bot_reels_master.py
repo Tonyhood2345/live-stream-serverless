@@ -108,10 +108,11 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")
 TELEGRAM_CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@immobiliaregiancani")
 
-# Credenziali Google Gemini, Together AI (FLUX) e Replicate (SDXL)
+# Credenziali Google Gemini, Together AI, Replicate e Hugging Face (Serverless Free)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY", "")
 REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
+HF_TOKEN = os.environ.get("HF_TOKEN", os.environ.get("HUGGINGFACE_API_KEY", ""))
 
 env_local = os.path.join(BASE_DIR, ".env")
 if os.path.exists(env_local):
@@ -127,6 +128,8 @@ if os.path.exists(env_local):
                     TOGETHER_API_KEY = eline.split("=", 1)[1].strip().strip('"').strip("'")
                 elif eline.startswith("REPLICATE_API_TOKEN=") and not REPLICATE_API_TOKEN:
                     REPLICATE_API_TOKEN = eline.split("=", 1)[1].strip().strip('"').strip("'")
+                elif eline.startswith("HF_TOKEN=") and not HF_TOKEN:
+                    HF_TOKEN = eline.split("=", 1)[1].strip().strip('"').strip("'")
     except Exception:
         pass
 
@@ -464,6 +467,61 @@ def genera_prompt_compatto(raw_prompt):
     return f"{positive_compact} {MANDATORY_NEGATIVE_PROMPT}"
 
 
+def genera_immagine_huggingface(prompt, output_img):
+    """
+    Genera immagine in stile Disney/Pixar 3D tramite Hugging Face Serverless Inference (100% Free).
+    Modelli supportati: black-forest-labs/FLUX.1-schnell, ByteDance/SDXL-Lightning, stabilityai/stable-diffusion-xl-base-1.0
+    """
+    if not HF_TOKEN:
+        return False
+        
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    clean_prompt = genera_prompt_compatto(prompt)
+    
+    models = [
+        "black-forest-labs/FLUX.1-schnell",
+        "ByteDance/SDXL-Lightning",
+        "stabilityai/stable-diffusion-xl-base-1.0"
+    ]
+    
+    for m in models:
+        url = f"https://router.huggingface.co/hf-inference/models/{m}"
+        payload = {
+            "inputs": clean_prompt,
+            "parameters": {
+                "width": 576,
+                "height": 1024
+            }
+        }
+        try:
+            print(f"  ⚡ [HUGGING FACE FREE] Richiesta a {m}...", flush=True)
+            resp = requests.post(url, json=payload, headers=headers, timeout=40, verify=False)
+            if resp.status_code == 200 and len(resp.content) > 5000:
+                with Image.open(io.BytesIO(resp.content)) as pil_img:
+                    adatta_immagine_9_16(pil_img).save(output_img, "JPEG", quality=95)
+                print(f"  ✅ [HUGGING FACE] Immagine generata con successo da {m} ({round(os.path.getsize(output_img)/1024, 1)} KB)")
+                return True
+            elif resp.status_code == 503:
+                wait_time = resp.json().get("estimated_time", 15)
+                print(f"  ⏳ [HUGGING FACE] Modello {m} in caricamento su runner gratuito (attesa {int(wait_time)}s)...", flush=True)
+                time.sleep(min(wait_time, 20))
+                resp_retry = requests.post(url, json=payload, headers=headers, timeout=40, verify=False)
+                if resp_retry.status_code == 200 and len(resp_retry.content) > 5000:
+                    with Image.open(io.BytesIO(resp_retry.content)) as pil_img:
+                        adatta_immagine_9_16(pil_img).save(output_img, "JPEG", quality=95)
+                    print(f"  ✅ [HUGGING FACE] Immagine generata con successo dopo warmup da {m}!")
+                    return True
+            else:
+                print(f"  ⚠️ Hugging Face [{m}] HTTP {resp.status_code}: {resp.text[:130]}")
+        except Exception as e:
+            print(f"  ⚠️ Errore Hugging Face {m}: {e}")
+            
+    return False
+
+
 def genera_immagine_together_flux(prompt, output_img):
     """
     Genera immagine in stile Disney/Pixar 3D con Together AI (FLUX.1-schnell o FLUX.1-schnell-Free).
@@ -653,7 +711,12 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
             if os.path.exists(output_img):
                 os.remove(output_img)
 
-    # 4. Motore Primario A: Together AI (FLUX.1-schnell Disney/Pixar)
+    # 4. Motore Free Primario: Hugging Face Serverless Inference (FLUX.1-schnell & SDXL)
+    if HF_TOKEN:
+        if genera_immagine_huggingface(prompt, output_img):
+            return True
+
+    # 5. Motore Primario A: Together AI (FLUX.1-schnell Disney/Pixar)
     if TOGETHER_API_KEY:
         if genera_immagine_together_flux(prompt, output_img):
             return True

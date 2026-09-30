@@ -1194,11 +1194,11 @@ def pubblica_reel_su_pagina_facebook(page_id, page_token, video_path, storia, no
         print(f"  ⚠️ Credenziali mancanti per Pagina Facebook '{nome_pagina}'. Salto.")
         return False
 
-    # 🛡️ BLOCCO MANDATORIO BRAND: sulla Pagina Immobiliare Giancani sono ammessi SOLO contenuti immobiliari!
+    # 🛡️ REGOLA MANDATORIA: Mitologia, Versi della Bibbia e Capolavori pubblicano SOLO su Antonio Giancani (MAI su Immobiliare Giancani)!
     if str(page_id).strip() == str(FB_PAGE_ID_GIANCANI).strip():
         cat = (storia.get('categoria') or storia.get('genere') or '').upper()
-        if "PILLOLE" not in cat and "IMMOBIL" not in cat:
-            print(f"  🛑 [BLOCCO SICUREZZA BRAND] Rifiutata pubblicazione di '{cat}' sulla Pagina Immobiliare Giancani: la pagina è riservata esclusivamente ai contenuti immobiliari! — Immobiliare Giancani")
+        if any(escluso in cat for escluso in ["MITOLOGIA", "BIBBIA", "CLASSICI", "CAPOLAVORI"]):
+            print(f"  🛑 [POLICY BRAND] '{cat}' è riservato esclusivamente ad Antonio Giancani e non va sulla Pagina Immobiliare Giancani. — Immobiliare Giancani")
             return False
         
     print(f"\n🎥 [FACEBOOK REEL] Pubblicazione sulla pagina '{nome_pagina}' (ID: {page_id})...")
@@ -1322,11 +1322,11 @@ def dividi_e_pubblica_storie_facebook(video_path, clips, storia, page_id, page_t
     if not page_id or not page_token:
         return False
 
-    # 🛡️ BLOCCO MANDATORIO BRAND: sulla Pagina Immobiliare Giancani sono ammessi SOLO contenuti immobiliari!
+    # 🛡️ REGOLA MANDATORIA: Mitologia, Versi della Bibbia e Capolavori pubblicano SOLO su Antonio Giancani (MAI su Immobiliare Giancani)!
     if str(page_id).strip() == str(FB_PAGE_ID_GIANCANI).strip():
         cat = (storia.get('categoria') or storia.get('genere') or '').upper()
-        if "PILLOLE" not in cat and "IMMOBIL" not in cat:
-            print(f"  🛑 [BLOCCO SICUREZZA BRAND] Rifiutate Storie di '{cat}' sulla Pagina Immobiliare Giancani: la pagina è riservata esclusivamente ai contenuti immobiliari! — Immobiliare Giancani")
+        if any(escluso in cat for escluso in ["MITOLOGIA", "BIBBIA", "CLASSICI", "CAPOLAVORI"]):
+            print(f"  🛑 [POLICY BRAND] Storie di '{cat}' sono riservate esclusivamente ad Antonio Giancani e non vanno sulla Pagina Immobiliare Giancani. — Immobiliare Giancani")
             return False
 
     print(f"\n📱 [FACEBOOK STORIE] Pubblicazione sequenziale su '{nome_pagina}' (ID: {page_id})...")

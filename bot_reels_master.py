@@ -486,29 +486,35 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                 except Exception as ec:
                     print(f"  ⚠️ Errore caricamento immagine personalizzata {custom_name}: {ec}")
 
-    # 2. Asset pre-renderizzati per coerenza grafica immediata
-    if "MITOLOGIA" in cat_upper:
-        mitologia_cartoons_dir = os.path.join(assets_dir, "mitologia_scene_cartoons")
-        mpath = os.path.join(mitologia_cartoons_dir, f"mitologia_{story_id}_scena_{idx}.jpg")
-        if os.path.exists(mpath) and os.path.getsize(mpath) > 1000:
+    # 2. Asset pre-renderizzati Disney/Pixar — pool di varianti per massima varietà
+    if "MITOLOGIA" in cat_upper or "BIBBIA" in cat_upper:
+        prefix = "mitologia" if "MITOLOGIA" in cat_upper else "bibbia"
+        cartoons_dir = os.path.join(assets_dir, f"{prefix}_scene_cartoons")
+        
+        # Cerca le varianti disponibili v1/v2/v3 (pool Disney/Pixar)
+        varianti = []
+        for v in [1, 2, 3]:
+            vpath = os.path.join(cartoons_dir, f"{prefix}_{story_id}_scena_{idx}_v{v}.jpg")
+            if os.path.exists(vpath) and os.path.getsize(vpath) > 10000:
+                varianti.append(vpath)
+        
+        # Compatibilità retroattiva: cerca anche il file senza suffisso variante
+        old_path = os.path.join(cartoons_dir, f"{prefix}_{story_id}_scena_{idx}.jpg")
+        if not varianti and os.path.exists(old_path) and os.path.getsize(old_path) > 1000:
+            varianti.append(old_path)
+        
+        if varianti:
+            # Selezione casuale dalla pool → video sempre diverso ad ogni run!
+            chosen = random.choice(varianti)
             try:
-                with Image.open(mpath) as mim:
+                with Image.open(chosen) as mim:
                     adatta_immagine_9_16(mim).save(output_img, "JPEG", quality=95)
-                print(f"  🏛️ [CARTOON ASSET MITOLOGIA] Scena {idx} (Proporzioni Perfette): {os.path.basename(mpath)}")
+                variante_label = os.path.basename(chosen)
+                print(f"  🎨 [DISNEY ASSET {prefix.upper()}] Scena {idx} (variante casuale): {variante_label}")
                 return True
             except Exception as em:
-                print(f"  ⚠️ Avviso caricamento asset {os.path.basename(mpath)}: {em}")
-    elif "BIBBIA" in cat_upper:
-        bibbia_cartoons_dir = os.path.join(assets_dir, "bibbia_scene_cartoons")
-        bpath = os.path.join(bibbia_cartoons_dir, f"bibbia_{story_id}_scena_{idx}.jpg")
-        if os.path.exists(bpath) and os.path.getsize(bpath) > 1000:
-            try:
-                with Image.open(bpath) as bim:
-                    adatta_immagine_9_16(bim).save(output_img, "JPEG", quality=95)
-                print(f"  🎨 [CARTOON ASSET BIBBIA] Scena {idx}: {os.path.basename(bpath)}")
-                return True
-            except Exception as eb:
-                print(f"  ⚠️ Avviso caricamento asset biblico: {eb}")
+                print(f"  ⚠️ Avviso caricamento asset {os.path.basename(chosen)}: {em}")
+
 
     # 3. Verifica cache esistente valida
     if use_cache and os.path.exists(output_img) and os.path.getsize(output_img) > 10000:

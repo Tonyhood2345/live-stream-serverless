@@ -108,18 +108,27 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")
 TELEGRAM_CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@immobiliaregiancani")
 
-# Credenziali Google Gemini (TTS & Imagen)
+# Credenziali Google Gemini, Together AI (FLUX) e Replicate (SDXL)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-if not GEMINI_API_KEY:
-    env_local = os.path.join(BASE_DIR, ".env")
-    if os.path.exists(env_local):
-        try:
-            with open(env_local, "r", encoding="utf-8") as ef:
-                for eline in ef:
-                    if eline.startswith("GEMINI_API_KEY="):
-                        GEMINI_API_KEY = eline.split("=", 1)[1].strip()
-        except Exception:
-            pass
+TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY", "")
+REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
+
+env_local = os.path.join(BASE_DIR, ".env")
+if os.path.exists(env_local):
+    try:
+        with open(env_local, "r", encoding="utf-8") as ef:
+            for eline in ef:
+                eline = eline.strip()
+                if not eline or eline.startswith("#"):
+                    continue
+                if eline.startswith("GEMINI_API_KEY=") and not GEMINI_API_KEY:
+                    GEMINI_API_KEY = eline.split("=", 1)[1].strip().strip('"').strip("'")
+                elif eline.startswith("TOGETHER_API_KEY=") and not TOGETHER_API_KEY:
+                    TOGETHER_API_KEY = eline.split("=", 1)[1].strip().strip('"').strip("'")
+                elif eline.startswith("REPLICATE_API_TOKEN=") and not REPLICATE_API_TOKEN:
+                    REPLICATE_API_TOKEN = eline.split("=", 1)[1].strip().strip('"').strip("'")
+    except Exception:
+        pass
 
 # Credenziali Facebook Pages
 FB_PAGE_ID_ANTONIO = os.environ.get("FB_PAGE_ID_ANTONIO", os.environ.get("FB_PAGE_ID", "108297671444008"))
@@ -455,6 +464,104 @@ def genera_prompt_compatto(raw_prompt):
     return f"{positive_compact} {MANDATORY_NEGATIVE_PROMPT}"
 
 
+def genera_immagine_together_flux(prompt, output_img):
+    """
+    Genera immagine in stile Disney/Pixar 3D con Together AI (FLUX.1-schnell o FLUX.1-schnell-Free).
+    """
+    if not TOGETHER_API_KEY:
+        return False
+    url = "https://api.together.xyz/v1/images/generations"
+    headers = {
+        "Authorization": f"Bearer {TOGETHER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    clean_prompt = genera_prompt_compatto(prompt)
+    models = ["black-forest-labs/FLUX.1-schnell-Free", "black-forest-labs/FLUX.1-schnell"]
+    for m in models:
+        payload = {
+            "model": m,
+            "prompt": clean_prompt,
+            "width": 576,
+            "height": 1024,
+            "steps": 4,
+            "n": 1,
+            "response_format": "b64_json"
+        }
+        try:
+            print(f"  ⚡ [TOGETHER AI] Tentativo FLUX [{m}]...", flush=True)
+            r = requests.post(url, json=payload, headers=headers, timeout=28, verify=False)
+            if r.status_code == 200:
+                data = r.json()
+                b64_img = data.get("data", [{}])[0].get("b64_json")
+                if b64_img:
+                    raw_bytes = base64.b64decode(b64_img)
+                    with Image.open(io.BytesIO(raw_bytes)) as pil_img:
+                        adatta_immagine_9_16(pil_img).save(output_img, "JPEG", quality=95)
+                    print(f"  ✅ [TOGETHER FLUX] Immagine Disney generata con successo ({round(os.path.getsize(output_img)/1024, 1)} KB): {os.path.basename(output_img)}")
+                    return True
+            else:
+                print(f"  ⚠️ Together AI HTTP {r.status_code}: {r.text[:140]}")
+        except Exception as e:
+            print(f"  ⚠️ Errore Together AI: {e}")
+    return False
+
+
+def genera_immagine_replicate_sdxl(prompt, output_img):
+    """
+    Genera immagine in stile Disney/Pixar 3D con Replicate (Stability AI SDXL).
+    """
+    if not REPLICATE_API_TOKEN:
+        return False
+    url = "https://api.replicate.com/v1/models/stability-ai/sdxl/predictions"
+    headers = {
+        "Authorization": f"Bearer {REPLICATE_API_TOKEN}",
+        "Content-Type": "application/json",
+        "Prefer": "wait"
+    }
+    clean_prompt = genera_prompt_compatto(prompt)
+    payload = {
+        "input": {
+            "prompt": clean_prompt,
+            "negative_prompt": "ugly, low quality, dark, black background, deformed, blurry, realistic photo",
+            "width": 768,
+            "height": 1344,
+            "num_inference_steps": 25
+        }
+    }
+    try:
+        print(f"  ⚡ [REPLICATE SDXL] Avvio predizione SDXL...", flush=True)
+        r = requests.post(url, json=payload, headers=headers, timeout=50, verify=False)
+        if r.status_code in (200, 201):
+            pred = r.json()
+            output_urls = pred.get("output")
+            if not output_urls and pred.get("status") in ("starting", "processing"):
+                get_url = pred.get("urls", {}).get("get")
+                for _ in range(12):
+                    time.sleep(3)
+                    r_poll = requests.get(get_url, headers={"Authorization": f"Bearer {REPLICATE_API_TOKEN}"}, timeout=15, verify=False)
+                    if r_poll.status_code == 200:
+                        poll_data = r_poll.json()
+                        if poll_data.get("status") == "succeeded":
+                            output_urls = poll_data.get("output")
+                            break
+                        elif poll_data.get("status") == "failed":
+                            break
+            if output_urls:
+                img_url = output_urls[0] if isinstance(output_urls, list) else output_urls
+                r_img = requests.get(img_url, timeout=25, verify=False)
+                if r_img.status_code == 200:
+                    with Image.open(io.BytesIO(r_img.content)) as pil_img:
+                        adatta_immagine_9_16(pil_img).save(output_img, "JPEG", quality=95)
+                    print(f"  ✅ [REPLICATE SDXL] Immagine Disney generata con successo ({round(os.path.getsize(output_img)/1024, 1)} KB): {os.path.basename(output_img)}")
+                    return True
+        else:
+            print(f"  ⚠️ Replicate HTTP {r.status_code}: {r.text[:140]}")
+    except Exception as e:
+        print(f"  ⚠️ Errore Replicate: {e}")
+    return False
+
+
+
 def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, categoria="STANDARD", is_intro=False, idx=1, story_id="1"):
     """
     Gestisce la fornitura dell'immagine 9:16 con ottimizzazioni anti-timeout Pollinations:
@@ -527,7 +634,17 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
             if os.path.exists(output_img):
                 os.remove(output_img)
 
-    # 4. Formattazione Prompt Compatto (max 175 caratteri con stile cartoon obbligatorio)
+    # 4. Motore Primario A: Together AI (FLUX.1-schnell Disney/Pixar)
+    if TOGETHER_API_KEY:
+        if genera_immagine_together_flux(prompt, output_img):
+            return True
+
+    # 5. Motore Primario B: Replicate (Stability AI SDXL Disney/Pixar)
+    if REPLICATE_API_TOKEN:
+        if genera_immagine_replicate_sdxl(prompt, output_img):
+            return True
+
+    # 6. Motore Alternativo: Pollinations.ai (con stile Disney/Pixar)
     full_prompt = genera_prompt_compatto(prompt)
     encoded_prompt = urllib.parse.quote(full_prompt)
 

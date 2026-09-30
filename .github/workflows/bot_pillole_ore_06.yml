@@ -55,6 +55,8 @@ jobs:
           FB_PAGE_ID_GIANCANI: ${{ secrets.FB_PAGE_ID_GIANCANI || '234931856561526' }}
           YOUTUBE_TOKEN_GIANCANI_JSON: ${{ secrets.YOUTUBE_TOKEN_GIANCANI_JSON }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
         run: |
           CMD="python bot_reels_master.py --mode pillole"
           if [ -n "${{ github.event.inputs.story_id }}" ]; then

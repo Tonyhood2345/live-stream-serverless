@@ -1213,10 +1213,15 @@ def pubblica_reel_su_pagina_facebook(page_id, page_token, video_path, storia, no
         print(f"  ⚠️ Credenziali mancanti per Pagina Facebook '{nome_pagina}'. Salto.")
         return False
 
-    # 🛡️ REGOLA MANDATORIA: Mitologia, Versi della Bibbia e Capolavori pubblicano SOLO su Antonio Giancani (MAI su Immobiliare Giancani)!
+    cat = (storia.get('categoria') or storia.get('genere') or '').upper()
+    # 🏛️ REGOLA UTENTE: Storie della Mitologia Greca avviano solo ed esclusivamente su Telegram!
+    if "MITOLOGIA" in cat:
+        print(f"  🛑 [POLICY UTENTE] Storie della Mitologia Greca sono configurate per l'invio ESCLUSIVO su Telegram. Pubblicazione Facebook annullata. — Immobiliare Giancani")
+        return False
+
+    # 🛡️ REGOLA MANDATORIA: Versi della Bibbia e Capolavori pubblicano SOLO su Antonio Giancani (MAI su Immobiliare Giancani)!
     if str(page_id).strip() == str(FB_PAGE_ID_GIANCANI).strip():
-        cat = (storia.get('categoria') or storia.get('genere') or '').upper()
-        if any(escluso in cat for escluso in ["MITOLOGIA", "BIBBIA", "CLASSICI", "CAPOLAVORI"]):
+        if any(escluso in cat for escluso in ["BIBBIA", "CLASSICI", "CAPOLAVORI"]):
             print(f"  🛑 [POLICY BRAND] '{cat}' è riservato esclusivamente ad Antonio Giancani e non va sulla Pagina Immobiliare Giancani. — Immobiliare Giancani")
             return False
         
@@ -1341,10 +1346,15 @@ def dividi_e_pubblica_storie_facebook(video_path, clips, storia, page_id, page_t
     if not page_id or not page_token:
         return False
 
-    # 🛡️ REGOLA MANDATORIA: Mitologia, Versi della Bibbia e Capolavori pubblicano SOLO su Antonio Giancani (MAI su Immobiliare Giancani)!
+    cat = (storia.get('categoria') or storia.get('genere') or '').upper()
+    # 🏛️ REGOLA UTENTE: Storie della Mitologia Greca avviano solo ed esclusivamente su Telegram!
+    if "MITOLOGIA" in cat:
+        print(f"  🛑 [POLICY UTENTE] Storie della Mitologia Greca sono configurate per l'invio ESCLUSIVO su Telegram. Storie Facebook annullate. — Immobiliare Giancani")
+        return False
+
+    # 🛡️ REGOLA MANDATORIA: Versi della Bibbia e Capolavori pubblicano SOLO su Antonio Giancani (MAI su Immobiliare Giancani)!
     if str(page_id).strip() == str(FB_PAGE_ID_GIANCANI).strip():
-        cat = (storia.get('categoria') or storia.get('genere') or '').upper()
-        if any(escluso in cat for escluso in ["MITOLOGIA", "BIBBIA", "CLASSICI", "CAPOLAVORI"]):
+        if any(escluso in cat for escluso in ["BIBBIA", "CLASSICI", "CAPOLAVORI"]):
             print(f"  🛑 [POLICY BRAND] Storie di '{cat}' sono riservate esclusivamente ad Antonio Giancani e non vanno sulla Pagina Immobiliare Giancani. — Immobiliare Giancani")
             return False
 
@@ -1470,20 +1480,11 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
                 print(f"  ⚠️ Warning YouTube Bibbia: {e_yt}")
 
     elif "mitologia" in mode_lower:
-        # a) Pagina Facebook "Antonio Giancani" (Reel + Storie)
-        pubblica_reel_facebook(video_path, storia)
-        dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, "Antonio Giancani")
-
-        # b) Pagina Facebook "Immobiliare Giancani" -> ESCLUSA TASSATIVAMENTE DA MITOLOGIA
-        print("  🚫 [POLICY BRAND] Mitologia Greca esclusa dalla Pagina Immobiliare Giancani (riservata ai soli contenuti immobiliari). — Immobiliare Giancani")
-
-        # c) Canale YouTube Shorts "Storie della Mitologia Greca" (Ore 18:00)
-        if genera_metadati_youtube and pubblica_video_youtube:
-            try:
-                yt_payload, _ = genera_metadati_youtube(video_path, storia, mode="mitologia")
-                pubblica_video_youtube(video_path, yt_payload, mode="mitologia")
-            except Exception as e_yt:
-                print(f"  ⚠️ Warning YouTube Shorts Mitologia: {e_yt}")
+        # 🏛️ REGOLA UTENTE: Storie della Mitologia Greca avviano solo ed esclusivamente su Telegram!
+        print("  🏛️ [POLICY UTENTE] Storie della Mitologia Greca: avvio ed invio completati ESCLUSIVAMENTE su Telegram.")
+        print("  🚫 Nessuna pubblicazione social (Facebook / YouTube) per la Mitologia Greca.")
+        print("  ⭐ Realizzazione & Personal Branding: IMMOBILIARE GIANCANI ⭐\n")
+        return
 
     elif "pillole" in mode_lower:
         # a) Pagina Facebook "Immobiliare Giancani" (Reel + Storie + Post testuale Colonna F)
@@ -1529,8 +1530,12 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
     if not voice:
         voice = VOICES_BY_MODE.get(mode, "it-IT-ElsaNeural")
 
+    # 🏛️ REGOLA UTENTE: Storie della Mitologia Greca avviano solo ed esclusivamente su Telegram!
+    if mode == "mitologia":
+        solo_telegram = True
+
     mode_titles = {
-        "mitologia": "STORIE DELLA MITOLOGIA GRECA (ORE 18:00)",
+        "mitologia": "STORIE DELLA MITOLOGIA GRECA (SOLO TELEGRAM)",
         "bibbia": "STORIE BIBLICHE — «ETERNO NOSTRA GIUSTIZIA» (ORE 20:00)",
         "standard": "GRANDI CLASSICI DELLA LETTERATURA (RIASSUNTO 2 MINUTI)",
         "pillole": "PILLOLE IMMOBILIARI & LEGALI QUOTIDIANE (ORE 06:00)"

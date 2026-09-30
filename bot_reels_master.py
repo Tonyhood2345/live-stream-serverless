@@ -1188,12 +1188,18 @@ def invia_su_telegram(video_path, storia):
     return almeno_uno_inviato
 
 
-# ── PUBBLICAZIONE REEL FACEBOOK GENERICA SU QUALSIASI PAGINA ────────────────
 def pubblica_reel_su_pagina_facebook(page_id, page_token, video_path, storia, nome_pagina="Facebook"):
     """Pubblica un Reel su una specifica pagina Facebook con descrizione ottimizzata da Colonna F."""
     if not page_id or not page_token:
         print(f"  ⚠️ Credenziali mancanti per Pagina Facebook '{nome_pagina}'. Salto.")
         return False
+
+    # 🛡️ BLOCCO MANDATORIO BRAND: sulla Pagina Immobiliare Giancani sono ammessi SOLO contenuti immobiliari!
+    if str(page_id).strip() == str(FB_PAGE_ID_GIANCANI).strip():
+        cat = (storia.get('categoria') or storia.get('genere') or '').upper()
+        if "PILLOLE" not in cat and "IMMOBIL" not in cat:
+            print(f"  🛑 [BLOCCO SICUREZZA BRAND] Rifiutata pubblicazione di '{cat}' sulla Pagina Immobiliare Giancani: la pagina è riservata esclusivamente ai contenuti immobiliari! — Immobiliare Giancani")
+            return False
         
     print(f"\n🎥 [FACEBOOK REEL] Pubblicazione sulla pagina '{nome_pagina}' (ID: {page_id})...")
     url_reels = f"https://graph.facebook.com/v19.0/{page_id}/video_reels"
@@ -1315,6 +1321,13 @@ def dividi_e_pubblica_storie_facebook(video_path, clips, storia, page_id, page_t
     """
     if not page_id or not page_token:
         return False
+
+    # 🛡️ BLOCCO MANDATORIO BRAND: sulla Pagina Immobiliare Giancani sono ammessi SOLO contenuti immobiliari!
+    if str(page_id).strip() == str(FB_PAGE_ID_GIANCANI).strip():
+        cat = (storia.get('categoria') or storia.get('genere') or '').upper()
+        if "PILLOLE" not in cat and "IMMOBIL" not in cat:
+            print(f"  🛑 [BLOCCO SICUREZZA BRAND] Rifiutate Storie di '{cat}' sulla Pagina Immobiliare Giancani: la pagina è riservata esclusivamente ai contenuti immobiliari! — Immobiliare Giancani")
+            return False
 
     print(f"\n📱 [FACEBOOK STORIE] Pubblicazione sequenziale su '{nome_pagina}' (ID: {page_id})...")
     pubblicata = False
@@ -1442,10 +1455,8 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
         pubblica_reel_facebook(video_path, storia)
         dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, "Antonio Giancani")
 
-        # b) Cross-posting Pagina Facebook "Immobiliare Giancani" (Reel + Storie)
-        if FB_PAGE_ID_GIANCANI and FB_PAGE_TOKEN_GIANCANI:
-            pubblica_reel_su_pagina_facebook(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, video_path, storia, "Immobiliare Giancani")
-            dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, "Immobiliare Giancani")
+        # b) Pagina Facebook "Immobiliare Giancani" -> ESCLUSA TASSATIVAMENTE DA MITOLOGIA
+        print("  🚫 [POLICY BRAND] Mitologia Greca esclusa dalla Pagina Immobiliare Giancani (riservata ai soli contenuti immobiliari). — Immobiliare Giancani")
 
         # c) Canale YouTube Shorts "Storie della Mitologia Greca" (Ore 18:00)
         if genera_metadati_youtube and pubblica_video_youtube:
@@ -1477,13 +1488,12 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
                 print(f"  ⚠️ Warning YouTube Giancani: {e_yt}")
 
     else:
-        # Grandi Classici (Standard) -> FB Antonio Giancani (Reel + Storie) + Cross-posting FB Giancani + YouTube Shorts
+        # Grandi Classici (Standard) -> FB Antonio Giancani (Reel + Storie) + YouTube Shorts
         pubblica_reel_facebook(video_path, storia)
         dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, "Antonio Giancani")
 
-        if FB_PAGE_ID_GIANCANI and FB_PAGE_TOKEN_GIANCANI:
-            pubblica_reel_su_pagina_facebook(FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, video_path, storia, "Immobiliare Giancani")
-            dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_GIANCANI, FB_PAGE_TOKEN_GIANCANI, "Immobiliare Giancani")
+        # Pagina Facebook "Immobiliare Giancani" -> ESCLUSA TASSATIVAMENTE DA CONTENUTI NON IMMOBILIARI
+        print("  🚫 [POLICY BRAND] Grandi Classici / Libri esclusi dalla Pagina Immobiliare Giancani (riservata ai soli contenuti immobiliari). — Immobiliare Giancani")
 
         if genera_metadati_youtube and pubblica_video_youtube:
             try:

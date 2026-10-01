@@ -71,6 +71,17 @@ try:
 except Exception:
     pass
 
+# Patch httpx per evitare blocchi certificati SSL su Windows e Runner CI
+try:
+    import httpx
+    orig_httpx_init = httpx.Client.__init__
+    def patched_httpx_init(self, *args, **kwargs):
+        kwargs['verify'] = False
+        return orig_httpx_init(self, *args, **kwargs)
+    httpx.Client.__init__ = patched_httpx_init
+except Exception:
+    pass
+
 
 # ── MOTORE ANTI-DISTORSIONE: ADATTAMENTO 9:16 CON PROPORZIONI RIGOROSE ─────
 def adatta_immagine_9_16(im, target_w=720, target_h=1280):
@@ -441,84 +452,80 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
     return success
 
 
-# ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT POLLINATIONS - PUNTO 2) ──
+# ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 def genera_prompt_compatto(raw_prompt):
     """
-    Formatta il prompt in stile Disney/Pixar alta definizione (max 200 car. parte soggetto)
-    anteponendo SEMPRE lo stile Disney/Pixar 3D e il negative prompt obbligatorio.
-    - Stile: Pixar Disney 3D animation, vibrant colors, cinematic lighting
-    - Negative: no photo, realistic, dark, ugly, flat, low quality
+    Formatta il prompt garantendo SEMPRE personaggi Disney/Pixar 3D carini, sorridenti e luminosi.
+    Elimina alla radice mostri, facce deformi e atmosfere cupe.
     """
     clean = re.sub(r"--no.*", "", raw_prompt, flags=re.IGNORECASE)
     clean = clean.replace(CARTOON_STYLE_PREFIX, "")
-    clean = re.sub(r"Pixar Disney 3D animation style,?\s*", "", clean, flags=re.IGNORECASE)
-    clean = re.sub(r"3D Pixar Disney animation style,?\s*", "", clean, flags=re.IGNORECASE)
-    clean = re.sub(r"2D cartoon animation style,?\s*", "", clean, flags=re.IGNORECASE)
-    clean = re.sub(r"classic animated movie cel art,?\s*", "", clean, flags=re.IGNORECASE)
-    clean = re.sub(r"high quality 3D render,?\s*", "", clean, flags=re.IGNORECASE)
-    clean = re.sub(r"vertical 9:16,?\s*", "", clean, flags=re.IGNORECASE)
+    for noise in [
+        "Pixar Disney 3D animation style", "3D Pixar Disney animation style",
+        "2D cartoon animation style", "classic animated movie cel art",
+        "high quality 3D render", "vertical 9:16"
+    ]:
+        clean = re.sub(rf"{noise},?\s*", "", clean, flags=re.IGNORECASE)
+
+    # Anti-mostro / Anti-horror sanitizzazione
+    replacements = {
+        r"\bminaccioso\b": "friendly",
+        r"\bterrore\b": "wonder",
+        r"\bpaura\b": "courage",
+        r"\bmostro\b": "creature",
+        r"\bgigante\b": "tall champion",
+        r"\bserpenti\b": "golden ribbon hair",
+        r"\borribile\b": "legendary",
+        r"\bcaverna buia\b": "ancient stone temple",
+        r"\bspaventoso\b": "magical",
+        r"\bugly\b": "cute",
+        r"\bdark\b": "bright sunny",
+        r"\bgloomy\b": "colorful",
+        r"\bcreepy\b": "cheerful",
+        r"\bdeformed\b": "charming",
+        r"\bscary\b": "playful",
+        r"\bhorror\b": "fantasy"
+    }
+    for pat, rep in replacements.items():
+        clean = re.sub(pat, rep, clean, flags=re.IGNORECASE)
+
     clean = clean.strip(" ,.")
+    subject = clean[:140].rstrip(" ,.")
 
-    # Soggetto fino a 200 caratteri per massimizzare la qualità Disney
-    max_subject_len = max(30, 200 - len(CARTOON_STYLE_PREFIX) - 2)
-    subject = clean[:max_subject_len].rstrip(" ,.")
-    positive_compact = f"{CARTOON_STYLE_PREFIX}, {subject}".strip(" ,.")
-
-    return f"{positive_compact} {MANDATORY_NEGATIVE_PROMPT}"
+    return f"cute 3D cartoon {subject}, Pixar Disney 3D animation style, bright vivid colors, charming smiling characters, cinematic sunny lighting"
 
 
 def genera_immagine_huggingface(prompt, output_img):
     """
     Genera immagine in stile Disney/Pixar 3D tramite Hugging Face Serverless Inference (100% Free).
-    Modelli supportati: black-forest-labs/FLUX.1-schnell, ByteDance/SDXL-Lightning, stabilityai/stable-diffusion-xl-base-1.0
+    Utilizza InferenceClient di huggingface_hub con FLUX.1-schnell, dev o SDXL.
     """
     if not HF_TOKEN:
         return False
-        
-    headers = {
-        "Authorization": f"Bearer {HF_TOKEN}",
-        "Content-Type": "application/json"
-    }
+
     clean_prompt = genera_prompt_compatto(prompt)
-    
     models = [
         "black-forest-labs/FLUX.1-schnell",
-        "ByteDance/SDXL-Lightning",
+        "black-forest-labs/FLUX.1-dev",
         "stabilityai/stable-diffusion-xl-base-1.0"
     ]
-    
-    for m in models:
-        url = f"https://router.huggingface.co/hf-inference/models/{m}"
-        payload = {
-            "inputs": clean_prompt,
-            "parameters": {
-                "width": 576,
-                "height": 1024
-            }
-        }
-        try:
-            print(f"  ⚡ [HUGGING FACE FREE] Richiesta a {m}...", flush=True)
-            resp = requests.post(url, json=payload, headers=headers, timeout=40, verify=False)
-            if resp.status_code == 200 and len(resp.content) > 5000:
-                with Image.open(io.BytesIO(resp.content)) as pil_img:
+
+    try:
+        from huggingface_hub import InferenceClient
+        client = InferenceClient(api_key=HF_TOKEN)
+        for m in models:
+            try:
+                print(f"  ⚡ [HUGGING FACE FREE] Generazione Disney con {m}...", flush=True)
+                pil_img = client.text_to_image(prompt=clean_prompt, model=m)
+                if pil_img:
                     adatta_immagine_9_16(pil_img).save(output_img, "JPEG", quality=95)
-                print(f"  ✅ [HUGGING FACE] Immagine generata con successo da {m} ({round(os.path.getsize(output_img)/1024, 1)} KB)")
-                return True
-            elif resp.status_code == 503:
-                wait_time = resp.json().get("estimated_time", 15)
-                print(f"  ⏳ [HUGGING FACE] Modello {m} in caricamento su runner gratuito (attesa {int(wait_time)}s)...", flush=True)
-                time.sleep(min(wait_time, 20))
-                resp_retry = requests.post(url, json=payload, headers=headers, timeout=40, verify=False)
-                if resp_retry.status_code == 200 and len(resp_retry.content) > 5000:
-                    with Image.open(io.BytesIO(resp_retry.content)) as pil_img:
-                        adatta_immagine_9_16(pil_img).save(output_img, "JPEG", quality=95)
-                    print(f"  ✅ [HUGGING FACE] Immagine generata con successo dopo warmup da {m}!")
+                    print(f"  ✅ [HUGGING FACE] Immagine generata con successo da {m} ({round(os.path.getsize(output_img)/1024, 1)} KB)")
                     return True
-            else:
-                print(f"  ⚠️ Hugging Face [{m}] HTTP {resp.status_code}: {resp.text[:130]}")
-        except Exception as e:
-            print(f"  ⚠️ Errore Hugging Face {m}: {e}")
-            
+            except Exception as em:
+                print(f"  ⚠️ Hugging Face [{m}] avviso: {em}")
+    except Exception as e:
+        print(f"  ⚠️ Errore caricamento client Hugging Face: {e}")
+
     return False
 
 
@@ -728,10 +735,12 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
 
     # 6. Motore Alternativo: Pollinations.ai (con stile Disney/Pixar)
     full_prompt = genera_prompt_compatto(prompt)
-    encoded_prompt = urllib.parse.quote(full_prompt)
+    poll_subject = re.sub(r"[^a-zA-Z0-9\s]", " ", prompt).strip()
+    poll_prompt = f"cute 3d cartoon {poll_subject[:35]}, colorful storybook art, sunny day"
+    encoded_prompt = urllib.parse.quote(poll_prompt)
 
-    # Motori ammessi: 'turbo' prima (migliore qualità Disney/Pixar), poi default
-    models_to_try = ["turbo", None]
+    # Motori ammessi: 'sana' o default (MAI 'turbo' che generava mostri)
+    models_to_try = ["sana", None]
     max_retries = 2
 
     for attempt in range(1, max_retries + 1):

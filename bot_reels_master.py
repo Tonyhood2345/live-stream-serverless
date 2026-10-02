@@ -734,13 +734,25 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
             return True
 
     # 6. Motore Alternativo: Pollinations.ai (con stile Disney/Pixar)
-    full_prompt = genera_prompt_compatto(prompt)
-    poll_subject = re.sub(r"[^a-zA-Z0-9\s]", " ", prompt).strip()
-    poll_prompt = f"cute 3d cartoon {poll_subject[:35]}, colorful storybook art, sunny day"
+    s = prompt
+    s = re.sub(r'--no\s+.*$', '', s, flags=re.IGNORECASE)
+    s = re.sub(r',?\s*action part \d+.*$', '', s, flags=re.IGNORECASE)
+    s = re.sub(r'^.*?inspiring cartoon scene for .*? in [^,]+,?\s*', '', s, flags=re.IGNORECASE)
+    for noise in [
+        "cute 3D cartoon", "3D cartoon", "cute cartoon", "Pixar Disney 3D animation style", "3D Pixar Disney animation style",
+        "2D cartoon animation style", "classic animated movie cel art",
+        "bright vivid colors", "charming smiling characters", "cinematic sunny lighting",
+        "high quality 3D render", "vertical 9:16"
+    ]:
+        s = re.sub(rf"{noise},?\s*", "", s, flags=re.IGNORECASE)
+    s = re.sub(r"[^a-zA-Z0-9\s,]", " ", s).strip(" ,")
+    clean_subj = " ".join(s.split())
+    clean_subj = clean_subj[:80].strip(" ,")
+    poll_prompt = f"cute 3d cartoon {clean_subj}, storybook art"
     encoded_prompt = urllib.parse.quote(poll_prompt)
 
-    # Motori ammessi: 'sana' o default (MAI 'turbo' che generava mostri)
-    models_to_try = ["sana", None]
+    # Motori ammessi: default o sana (MAI 'turbo' che generava mostri)
+    models_to_try = [None, "sana"]
     max_retries = 2
 
     for attempt in range(1, max_retries + 1):

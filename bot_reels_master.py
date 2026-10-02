@@ -753,7 +753,7 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
 
     # Motori ammessi: default o sana (MAI 'turbo' che generava mostri)
     models_to_try = [None, "sana"]
-    max_retries = 2
+    max_retries = 4
 
     for attempt in range(1, max_retries + 1):
         model_choice = models_to_try[(attempt - 1) % len(models_to_try)]
@@ -764,9 +764,9 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=576&height=1024&nologo=true&seed={seed}{model_param}&ts={ts_val}"
         
         try:
-            print(f"  🎨 Download Immagine Cartoon [Modello: {model_choice or 'default'}, Seed: {seed}] (Tentativo {attempt}/{max_retries}, Timeout: 16s)...", flush=True)
-            # Timeout rigoroso a 16 secondi
-            resp = requests.get(url, timeout=(4, 16), verify=False, headers={"User-Agent": "Mozilla/5.0"})
+            print(f"  🎨 Download Immagine Cartoon [Modello: {model_choice or 'default'}, Seed: {seed}] (Tentativo {attempt}/{max_retries}, Timeout: 18s)...", flush=True)
+            # Timeout rigoroso a 18 secondi
+            resp = requests.get(url, timeout=(4, 18), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             
             if resp.status_code == 200 and len(resp.content) > 10000:
                 temp_file = f"{output_img}.tmp"
@@ -782,30 +782,58 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                         os.remove(temp_file)
                     print(f"  ✅ Immagine scaricata e adattata 9:16 ({round(os.path.getsize(output_img)/1024, 1)} KB): {os.path.basename(output_img)}")
                     
-                    # Pausa obbligatoria di 3 secondi tra i download andati a buon fine
-                    print("  ⏳ Pausa di 3 secondi tra i download...", flush=True)
-                    time.sleep(3)
+                    # Pausa di 14 secondi tra i download per ricarica completa crediti gratuiti (evita 402 al 100%)
+                    print("  ⏳ Pausa di 14s tra le scene per ricarica crediti gratuiti...", flush=True)
+                    time.sleep(14)
                     return True
                 except Exception as verify_err:
                     print(f"  ⚠️ Tentativo {attempt}: Immagine scaricata non valida ({verify_err})")
                     if os.path.exists(temp_file):
                         os.remove(temp_file)
+            elif resp.status_code in [402, 429]:
+                print(f"  ⏳ [RICARICA CREDITI GRATUITI] Limite temporaneo (HTTP {resp.status_code}). Attesa ricarica crediti di 16 secondi (Tentativo {attempt}/{max_retries})...", flush=True)
+                time.sleep(16)
             else:
                 print(f"  ⚠️ Tentativo {attempt} fallito (Status HTTP {resp.status_code})")
+                time.sleep(3)
         except Exception as conn_err:
             print(f"  ⚠️ Errore connessione tentativo {attempt} ({model_choice}): {conn_err}")
+            time.sleep(3)
 
-        if attempt < max_retries:
-            time.sleep(2)
-
-    # 5. Fallback su Master Artwork corrispondente
-    print(f"  🎨 Applicazione Master Artwork di riserva per {cat_upper}...")
+    # 5. Fallback rigorosamente in contesto
+    print(f"  🎨 Applicazione continuità coerente per {cat_upper} (Scena {idx})...")
     crea_immagine_fallback(output_img, prompt, categoria=categoria, idx=idx, story_id=story_id)
     return True
 
 
 def crea_immagine_fallback(output_img, testo_descrittivo, categoria="STANDARD", idx=1, story_id="1"):
-    """Applica il master artwork di riserva mantenendo proporzioni perfette."""
+    """
+    Applica un fallback rigorosamente IN CONTESTO:
+    1. Se idx > 1, riutilizza l'immagine cartoon della scena precedente di questa storia (bibbia_365_scena_X.jpg),
+       così la narrazione visiva mantiene gli stessi personaggi ed evita categoricamente immagini standard fuori contesto!
+    2. Se nessuna scena precedente esiste, applica il master artwork corrispondente.
+    """
+    out_dir = os.path.dirname(output_img)
+    prefix = "bibbia" if "BIBBIA" in str(categoria).upper() else ("mitologia" if "MITOLOGIA" in str(categoria).upper() else ("pillole" if "PILLOLE" in str(categoria).upper() else "reels"))
+    
+    # 1. Priorità massima: riutilizzo scena cartoon precedente della stessa storia per continuità visiva coerente
+    try:
+        idx_num = int(idx)
+    except Exception:
+        idx_num = 1
+
+    if idx_num > 1:
+        for prev_i in range(idx_num - 1, 0, -1):
+            prev_cand = os.path.join(out_dir, f"{prefix}_{story_id}_scena_{prev_i}.jpg")
+            if os.path.exists(prev_cand) and os.path.getsize(prev_cand) > 10000:
+                try:
+                    with Image.open(prev_cand) as prev_pil:
+                        adatta_immagine_9_16(prev_pil).save(output_img, "JPEG", quality=95)
+                    print(f"  🖼️ [CONTINUITÀ COERENTE] Applicata immagine cartoon della Scena {prev_i} in contesto: {os.path.basename(prev_cand)}")
+                    return
+                except Exception as ep:
+                    print(f"  ⚠️ Errore riutilizzo scena precedente {prev_cand}: {ep}")
+
     assets_dir = os.path.join(BASE_DIR, "assets")
     cat_upper = str(categoria).upper()
     

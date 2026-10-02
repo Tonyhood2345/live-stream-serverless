@@ -2,7 +2,7 @@
   "regola": "Nessuna musica uguale per oltre 10 storie consecutive",
   "totale_tracce_disponibili": 18,
   "buffer_anti_ripetizione": 10,
-  "ultimo_aggiornamento": "2026-10-02 11:00:27",
+  "ultimo_aggiornamento": "2026-10-02 16:36:55",
   "ultime_musiche": [
     "jazz_lounge_business_8",
     "jazz_eleganza_8",
@@ -28,6 +28,7 @@
     "ambient_profondo_3",
     "back_road_town",
     "jazz_lounge_business_7",
-    "ambient_calma_2"
+    "ambient_calma_2",
+    "jazz_lounge_business_8"
   ]
 }

@@ -453,46 +453,79 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
+LOCKED_STYLE = ("Pixar Disney 3D animation style, cute expressive characters, ancient biblical Middle East, "
+                "warm golden cinematic light, vibrant colors, children's storybook illustration")
+LOCKED_NEGATIVE = "photo, realistic, monster, scary, horror, deformed, ugly, text, watermark, logo, blurry"
+
+# Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
+DISABLED_ENGINES = set()
+
+# Azioni/inquadrature alternative per scene con prompt generici → varietà senza uscire dal contesto
+SCENE_VARIATIONS = [
+    "wide establishing shot", "characters walking together", "close-up of smiling faces",
+    "characters praying with hope", "group talking warmly", "night scene with glowing lights",
+    "characters helping each other", "joyful celebration", "peaceful moment of reflection",
+    "characters looking at the starry sky", "warm sunrise scene", "happy ending group portrait",
+]
+
+_STYLE_NOISE = [
+    r"cute 3D cartoon", r"3D cartoon", r"cute cartoon", r"Pixar Disney 3D animation style",
+    r"3D Pixar Disney animation style", r"2D cartoon animation style", r"classic animated movie cel art",
+    r"bright vivid colors", r"charming smiling characters", r"cinematic sunny lighting",
+    r"high quality 3D render", r"vertical 9:16", r"storybook art", r"Disney animation style",
+]
+
+
+def costruisci_prompt_scena(raw_prompt, idx=1):
+    """Ricava il soggetto visivo della scena dalla Colonna G e applica SEMPRE lo stesso stile bloccato."""
+    s = re.sub(r"--no.*$", "", raw_prompt or "", flags=re.IGNORECASE | re.DOTALL)
+    generico = bool(re.search(r"action part \d+|inspiring cartoon scene for", s, flags=re.IGNORECASE))
+    s = re.sub(r",?\s*action part \d+", "", s, flags=re.IGNORECASE)
+    s = re.sub(r"inspiring cartoon scene for [^,]*?( in [^,]+)?,", "", s, flags=re.IGNORECASE)
+    for noise in _STYLE_NOISE:
+        s = re.sub(rf"{noise},?\s*", "", s, flags=re.IGNORECASE)
+    for pat, rep in {r"\bgiant\b": "very tall warrior", r"\bmonster\b": "creature", r"\bscary\b": "dramatic",
+                     r"\bdark\b": "dusk", r"\bterrified\b": "worried", r"\bfierce\b": "majestic",
+                     r"\bchariots?\b": "ancient wooden horse-drawn chariots", r"\bcars?\b": "ancient horse carts",
+                     r"\bark\b": "big wooden boat ark"}.items():
+        s = re.sub(pat, rep, s, flags=re.IGNORECASE)
+    s = re.sub(r"[^a-zA-Z0-9\s,']", " ", s)
+    subject = " ".join(s.split()).strip(" ,")[:220].rstrip(" ,")
+    if not subject:
+        subject = "biblical characters in ancient village"
+    if generico:
+        subject = f"{subject}, {SCENE_VARIATIONS[(int(idx) - 1) % len(SCENE_VARIATIONS)]}"
+    return f"{subject}, {LOCKED_STYLE}"
+
+
 def genera_prompt_compatto(raw_prompt):
-    """
-    Formatta il prompt garantendo SEMPRE personaggi Disney/Pixar 3D carini, sorridenti e luminosi.
-    Elimina alla radice mostri, facce deformi e atmosfere cupe.
-    """
-    clean = re.sub(r"--no.*", "", raw_prompt, flags=re.IGNORECASE)
-    clean = clean.replace(CARTOON_STYLE_PREFIX, "")
-    for noise in [
-        "Pixar Disney 3D animation style", "3D Pixar Disney animation style",
-        "2D cartoon animation style", "classic animated movie cel art",
-        "high quality 3D render", "vertical 9:16"
-    ]:
-        clean = re.sub(rf"{noise},?\s*", "", clean, flags=re.IGNORECASE)
+    """Compatibilità: se il prompt ha già lo stile bloccato lo restituisce invariato."""
+    if LOCKED_STYLE in (raw_prompt or ""):
+        return raw_prompt
+    return costruisci_prompt_scena(raw_prompt)
 
-    # Anti-mostro / Anti-horror sanitizzazione
-    replacements = {
-        r"\bminaccioso\b": "friendly",
-        r"\bterrore\b": "wonder",
-        r"\bpaura\b": "courage",
-        r"\bmostro\b": "creature",
-        r"\bgigante\b": "tall champion",
-        r"\bserpenti\b": "golden ribbon hair",
-        r"\borribile\b": "legendary",
-        r"\bcaverna buia\b": "ancient stone temple",
-        r"\bspaventoso\b": "magical",
-        r"\bugly\b": "cute",
-        r"\bdark\b": "bright sunny",
-        r"\bgloomy\b": "colorful",
-        r"\bcreepy\b": "cheerful",
-        r"\bdeformed\b": "charming",
-        r"\bscary\b": "playful",
-        r"\bhorror\b": "fantasy"
-    }
-    for pat, rep in replacements.items():
-        clean = re.sub(pat, rep, clean, flags=re.IGNORECASE)
 
-    clean = clean.strip(" ,.")
-    subject = clean[:140].rstrip(" ,.")
+def immagine_valida(path, min_kb=15):
+    """Scarta file troppo piccoli, corrotti o quasi monocolore (immagini 'vuote')."""
+    try:
+        if not os.path.exists(path) or os.path.getsize(path) < min_kb * 1024:
+            return False
+        with Image.open(path) as im:
+            im.verify()
+        from PIL import ImageStat
+        with Image.open(path) as im:
+            stat = ImageStat.Stat(im.convert("L").resize((64, 64)))
+            return stat.stddev[0] > 18
+    except Exception:
+        return False
 
-    return f"cute 3D cartoon {subject}, Pixar Disney 3D animation style, bright vivid colors, charming smiling characters, cinematic sunny lighting"
+
+def _disattiva_se_crediti(engine, err_text):
+    t = str(err_text)
+    if any(k in t for k in ["402", "401", "Payment Required", "Invalid API key", "Insufficient credit", "depleted"]):
+        if engine not in DISABLED_ENGINES:
+            print(f"  🚫 Motore {engine} disattivato per questa run (crediti/chiave non disponibili).")
+        DISABLED_ENGINES.add(engine)
 
 
 def genera_immagine_huggingface(prompt, output_img):
@@ -514,15 +547,18 @@ def genera_immagine_huggingface(prompt, output_img):
         from huggingface_hub import InferenceClient
         client = InferenceClient(api_key=HF_TOKEN)
         for m in models:
+            if "HF" in DISABLED_ENGINES:
+                break
             try:
                 print(f"  ⚡ [HUGGING FACE FREE] Generazione Disney con {m}...", flush=True)
-                pil_img = client.text_to_image(prompt=clean_prompt, model=m)
+                pil_img = client.text_to_image(prompt=clean_prompt, model=m, negative_prompt=LOCKED_NEGATIVE) if "xl" in m else client.text_to_image(prompt=clean_prompt, model=m)
                 if pil_img:
                     adatta_immagine_9_16(pil_img).save(output_img, "JPEG", quality=95)
                     print(f"  ✅ [HUGGING FACE] Immagine generata con successo da {m} ({round(os.path.getsize(output_img)/1024, 1)} KB)")
                     return True
             except Exception as em:
-                print(f"  ⚠️ Hugging Face [{m}] avviso: {em}")
+                print(f"  ⚠️ Hugging Face [{m}] avviso: {str(em)[:160]}")
+                _disattiva_se_crediti("HF", em)
     except Exception as e:
         print(f"  ⚠️ Errore caricamento client Hugging Face: {e}")
 
@@ -566,6 +602,9 @@ def genera_immagine_together_flux(prompt, output_img):
                     return True
             else:
                 print(f"  ⚠️ Together AI HTTP {r.status_code}: {r.text[:140]}")
+                _disattiva_se_crediti("TOGETHER", f"{r.status_code} {r.text[:200]}")
+                if "TOGETHER" in DISABLED_ENGINES:
+                    return False
         except Exception as e:
             print(f"  ⚠️ Errore Together AI: {e}")
     return False
@@ -640,6 +679,9 @@ def genera_immagine_replicate_sdxl(prompt, output_img):
                         return True
             else:
                 print(f"  ⚠️ Replicate {model_tag} HTTP {r.status_code}: {r.text[:140]}")
+                _disattiva_se_crediti("REPLICATE", f"{r.status_code} {r.text[:200]}")
+                if "REPLICATE" in DISABLED_ENGINES:
+                    return False
         except Exception as e:
             print(f"  ⚠️ Errore Replicate: {e}")
     return False
@@ -678,7 +720,7 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                     print(f"  ⚠️ Errore caricamento immagine personalizzata {custom_name}: {ec}")
 
     # 2. Asset pre-renderizzati Disney/Pixar — pool di varianti per massima varietà
-    if "MITOLOGIA" in cat_upper or "BIBBIA" in cat_upper:
+    if "MITOLOGIA" in cat_upper:
         prefix = "mitologia" if "MITOLOGIA" in cat_upper else "bibbia"
         cartoons_dir = os.path.join(assets_dir, f"{prefix}_scene_cartoons")
         
@@ -707,103 +749,71 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                 print(f"  ⚠️ Avviso caricamento asset {os.path.basename(chosen)}: {em}")
 
 
-    # 3. Verifica cache esistente valida
-    if use_cache and os.path.exists(output_img) and os.path.getsize(output_img) > 10000:
-        try:
-            with Image.open(output_img) as test_img:
-                test_img.verify()
-            print(f"  ⚡ Immagine in cache verificata ({round(os.path.getsize(output_img)/1024, 1)} KB): {os.path.basename(output_img)}")
-            return True
-        except Exception:
-            if os.path.exists(output_img):
-                os.remove(output_img)
+    # 3. Cache valida (solo se richiesta)
+    if use_cache and immagine_valida(output_img):
+        print(f"  ⚡ Immagine in cache verificata: {os.path.basename(output_img)}")
+        return True
+    if os.path.exists(output_img):
+        os.remove(output_img)
 
-    # 4. Motore Free Primario: Hugging Face Serverless Inference (FLUX.1-schnell & SDXL)
-    if HF_TOKEN:
-        if genera_immagine_huggingface(prompt, output_img):
-            return True
+    # Prompt unico con stile BLOCCATO (uguale per tutti i motori → niente scene fuori stile)
+    final_prompt = costruisci_prompt_scena(prompt, idx)
+    print(f"  🧭 Prompt scena {idx}: {final_prompt[:150]}...", flush=True)
 
-    # 5. Motore Primario A: Together AI (FLUX.1-schnell Disney/Pixar)
-    if TOGETHER_API_KEY:
-        if genera_immagine_together_flux(prompt, output_img):
+    # 4. Motori con chiave (saltati automaticamente se senza crediti)
+    if HF_TOKEN and "HF" not in DISABLED_ENGINES:
+        if genera_immagine_huggingface(final_prompt, output_img) and immagine_valida(output_img):
             return True
-
-    # 5. Motore Primario B: Replicate (Stability AI SDXL Disney/Pixar)
-    if REPLICATE_API_TOKEN:
-        if genera_immagine_replicate_sdxl(prompt, output_img):
+    if TOGETHER_API_KEY and "TOGETHER" not in DISABLED_ENGINES:
+        if genera_immagine_together_flux(final_prompt, output_img) and immagine_valida(output_img):
+            return True
+    if REPLICATE_API_TOKEN and "REPLICATE" not in DISABLED_ENGINES:
+        if genera_immagine_replicate_sdxl(final_prompt, output_img) and immagine_valida(output_img):
             return True
 
-    # 6. Motore Alternativo: Pollinations.ai (con stile Disney/Pixar)
-    s = prompt
-    s = re.sub(r'--no\s+.*$', '', s, flags=re.IGNORECASE)
-    s = re.sub(r',?\s*action part \d+.*$', '', s, flags=re.IGNORECASE)
-    s = re.sub(r'^.*?inspiring cartoon scene for .*? in [^,]+,?\s*', '', s, flags=re.IGNORECASE)
-    for noise in [
-        "cute 3D cartoon", "3D cartoon", "cute cartoon", "Pixar Disney 3D animation style", "3D Pixar Disney animation style",
-        "2D cartoon animation style", "classic animated movie cel art",
-        "bright vivid colors", "charming smiling characters", "cinematic sunny lighting",
-        "high quality 3D render", "vertical 9:16"
-    ]:
-        s = re.sub(rf"{noise},?\s*", "", s, flags=re.IGNORECASE)
-    s = re.sub(r"[^a-zA-Z0-9\s,]", " ", s).strip(" ,")
-    clean_subj = " ".join(s.split())
-    clean_subj = clean_subj[:80].strip(" ,")
-    poll_prompt = f"cute 3d cartoon {clean_subj}, storybook art"
+    # 5. Pollinations gratuito: prompt compatto ma con soggetto completo + stile bloccato breve
+    subject = final_prompt.replace(", " + LOCKED_STYLE, "")[:170].rstrip(" ,")
+    poll_prompt = f"{subject}, Pixar 3D animation, biblical ancient setting, warm golden light, cute storybook"
     encoded_prompt = urllib.parse.quote(poll_prompt)
+    encoded_neg = urllib.parse.quote(LOCKED_NEGATIVE)
 
-    # Motori ammessi: default o sana (MAI 'turbo' che generava mostri)
-    models_to_try = [None, "sana"]
-    max_retries = 4
-
+    max_retries = 6
     for attempt in range(1, max_retries + 1):
-        model_choice = models_to_try[(attempt - 1) % len(models_to_try)]
-        model_param = f"&model={model_choice}" if model_choice else ""
-        
-        # Parametro dinamico anti-cache &ts= con timestamp in ms e seed variabile per garantire varietà
         ts_val = int(time.time() * 1000)
-        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=576&height=1024&nologo=true&seed={seed}{model_param}&ts={ts_val}"
-        
+        url = (f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=576&height=1024&nologo=true"
+               f"&seed={seed}&negative={encoded_neg}&ts={ts_val}")
         try:
-            print(f"  🎨 Download Immagine Cartoon [Modello: {model_choice or 'default'}, Seed: {seed}] (Tentativo {attempt}/{max_retries}, Timeout: 18s)...", flush=True)
-            # Timeout rigoroso a 18 secondi
-            resp = requests.get(url, timeout=(4, 18), verify=False, headers={"User-Agent": "Mozilla/5.0"})
-            
+            print(f"  🎨 Pollinations [seed {seed}] tentativo {attempt}/{max_retries}...", flush=True)
+            resp = requests.get(url, timeout=(5, 40), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             if resp.status_code == 200 and len(resp.content) > 10000:
                 temp_file = f"{output_img}.tmp"
                 with open(temp_file, "wb") as f:
                     f.write(resp.content)
-                
                 try:
-                    with Image.open(temp_file) as test_pil:
-                        test_pil.verify()
                     with Image.open(temp_file) as valid_pil:
                         adatta_immagine_9_16(valid_pil).save(output_img, "JPEG", quality=95)
+                finally:
                     if os.path.exists(temp_file):
                         os.remove(temp_file)
-                    print(f"  ✅ Immagine scaricata e adattata 9:16 ({round(os.path.getsize(output_img)/1024, 1)} KB): {os.path.basename(output_img)}")
-                    
-                    # Pausa di 14 secondi tra i download per ricarica completa crediti gratuiti (evita 402 al 100%)
-                    print("  ⏳ Pausa di 14s tra le scene per ricarica crediti gratuiti...", flush=True)
-                    time.sleep(14)
+                if immagine_valida(output_img):
+                    print(f"  ✅ Immagine valida ({round(os.path.getsize(output_img)/1024, 1)} KB): {os.path.basename(output_img)}")
+                    time.sleep(15)  # rispetta il limite gratuito tra una scena e l'altra
                     return True
-                except Exception as verify_err:
-                    print(f"  ⚠️ Tentativo {attempt}: Immagine scaricata non valida ({verify_err})")
-                    if os.path.exists(temp_file):
-                        os.remove(temp_file)
-            elif resp.status_code in [402, 429]:
-                print(f"  ⏳ [RICARICA CREDITI GRATUITI] Limite temporaneo (HTTP {resp.status_code}). Attesa ricarica crediti di 16 secondi (Tentativo {attempt}/{max_retries})...", flush=True)
+                print("  ⚠️ Immagine scartata (vuota/monocolore), nuovo tentativo...")
+                os.remove(output_img)
+                time.sleep(16)
+            elif resp.status_code in (402, 429):
+                print(f"  ⏳ Limite gratuito (HTTP {resp.status_code}): attendo 16s...", flush=True)
                 time.sleep(16)
             else:
-                print(f"  ⚠️ Tentativo {attempt} fallito (Status HTTP {resp.status_code})")
-                time.sleep(3)
+                print(f"  ⚠️ HTTP {resp.status_code}, riprovo...")
+                time.sleep(5)
         except Exception as conn_err:
-            print(f"  ⚠️ Errore connessione tentativo {attempt} ({model_choice}): {conn_err}")
-            time.sleep(3)
+            print(f"  ⚠️ Errore connessione tentativo {attempt}: {conn_err}")
+            time.sleep(5)
 
-    # 5. Fallback rigorosamente in contesto
-    print(f"  🎨 Applicazione continuità coerente per {cat_upper} (Scena {idx})...")
-    crea_immagine_fallback(output_img, prompt, categoria=categoria, idx=idx, story_id=story_id)
-    return True
+    print(f"  ❌ Scena {idx}: nessuna immagine valida generata (verrà riempita con una scena della stessa storia).")
+    return False
 
 
 def crea_immagine_fallback(output_img, testo_descrittivo, categoria="STANDARD", idx=1, story_id="1"):
@@ -1685,48 +1695,61 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
     clips = []
     durata_totale = 0.0
     
-    # 2. Creazione delle scene del riassunto (2 minuti)
+    # 2a. PRE-GENERAZIONE IMMAGINI: tutte le scene prima del montaggio, con validazione
+    story_id_int = int(storia["id"]) if str(storia["id"]).isdigit() else 1
+    img_files = []
+    esiti = []
+    print(f"\n🖼️ Pre-generazione di {len(scene)} immagini in stile unico (Pixar 3D biblico)...")
+    for idx, s in enumerate(scene, start=1):
+        img_file = os.path.join(OUTPUT_DIR, f"{mode}_{storia['id']}_scena_{idx}.jpg")
+        if os.path.exists(img_file):
+            os.remove(img_file)  # niente immagini vecchie di altre run
+        print(f"\n--- 🖼️ [IMMAGINE {idx}/{len(scene)}] ---")
+        ok = scarica_immagine_pollinations(
+            s["prompt"], img_file, seed=story_id_int * 1000 + idx, use_cache=False,
+            categoria=storia.get("categoria", mode), is_intro=(idx == 1), idx=idx, story_id=storia["id"]
+        )
+        img_files.append(img_file)
+        esiti.append(bool(ok) and immagine_valida(img_file))
+
+    validi = [i for i, e in enumerate(esiti) if e]
+    print(f"\n📊 Immagini valide: {len(validi)}/{len(scene)}")
+    for i, e in enumerate(esiti):
+        if e:
+            continue
+        if validi:
+            # Riempimento SOLO con una scena della stessa storia (la più vicina), con inquadratura diversa
+            j = min(validi, key=lambda v: abs(v - i))
+            with Image.open(img_files[j]) as src:
+                w, h = src.size
+                crop = src.crop((int(w * 0.08), int(h * 0.08), int(w * 0.92), int(h * 0.92)))
+                if i % 2:
+                    crop = crop.transpose(Image.FLIP_LEFT_RIGHT)
+                adatta_immagine_9_16(crop).save(img_files[i], "JPEG", quality=95)
+            print(f"  🔁 Scena {i+1}: riempita con la scena {j+1} della stessa storia (variante inquadratura).")
+        else:
+            crea_immagine_fallback(img_files[i], scene[i]["prompt"], categoria=storia.get("categoria", mode), idx=i + 1, story_id=storia["id"])
+
+    # 2b. Voce + overlay + montaggio per ogni scena
     for idx, s in enumerate(scene, start=1):
         print(f"\n--- 🎬 [SCENA {idx}/{len(scene)}] {storia['titolo']} ---")
         base_name = f"{mode}_{storia['id']}_scena_{idx}"
         audio_file = os.path.join(OUTPUT_DIR, f"{base_name}.mp3")
-        img_file = os.path.join(OUTPUT_DIR, f"{base_name}.jpg")
+        img_file = img_files[idx - 1]
         overlay_file = os.path.join(OUTPUT_DIR, f"{base_name}_overlay.png")
         clip_file = os.path.join(OUTPUT_DIR, f"{base_name}_clip.mp4")
-        
-        # Voce Narrante Neurale
+
         text_voce = s["testo"] if s["testo"] else f"{storia['titolo']}, in due minuti."
         print(f"  🎙️ Sintesi vocale: \"{text_voce[:45]}...\"")
         await genera_voce_edge_tts(text_voce, audio_file, voce=voice)
         durata_scena = ottieni_durata_audio(audio_file)
         durata_totale += durata_scena
-        
-        # Download Immagine con ottimizzazione anti-timeout
-        story_id_int = int(storia["id"]) if str(storia["id"]).isdigit() else 1
-        scene_seed = story_id_int * 100 + idx
-        scarica_immagine_pollinations(
-            s["prompt"],
-            img_file,
-            seed=scene_seed,
-            categoria=storia.get("categoria", mode),
-            is_intro=(idx == 1),
-            idx=idx,
-            story_id=storia["id"]
-        )
-        
-        # Overlay: Titolo badge solo scena 1, sottotitoli Comic Sticker
+
         crea_overlay_grafico(
-            s["testo"], 
-            storia["titolo"], 
-            storia["autore"], 
-            overlay_file, 
-            is_outro=s["is_outro"], 
-            categoria=storia.get("categoria", mode),
-            idx=idx,
-            is_intro=(idx == 1)
+            s["testo"], storia["titolo"], storia["autore"], overlay_file,
+            is_outro=s["is_outro"], categoria=storia.get("categoria", mode), idx=idx, is_intro=(idx == 1)
         )
-        
-        # Montaggio Ken Burns della scena
+
         print(f"  🎞️ Montaggio Ken Burns ({round(durata_scena, 1)}s)...")
         crea_clip_ken_burns(img_file, audio_file, overlay_file, clip_file, idx)
         clips.append(clip_file)

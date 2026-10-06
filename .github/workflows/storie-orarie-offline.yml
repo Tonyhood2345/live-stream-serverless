@@ -135,4 +135,5 @@ jobs:
           git add -A *.json scripts/*.json assets/ scripts/assets/ || true
           git commit -m "Auto-update: storico rotazione musica e storie [skip ci]" || echo "Nessun aggiornamento storico da committare"
           git pull --rebase origin main || true
-          git push origin main || echo "Push non necessario o completato"
+          git pull --rebase origin main || true
+          git push origin main || echo "Push completato"

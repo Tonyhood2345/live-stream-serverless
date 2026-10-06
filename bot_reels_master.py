@@ -453,9 +453,15 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
-LOCKED_STYLE = ("Pixar Disney 3D animation style, cute expressive characters, ancient biblical Middle East, "
-                "warm golden cinematic light, vibrant colors, children's storybook illustration")
-LOCKED_NEGATIVE = "photo, realistic, monster, scary, horror, deformed, ugly, text, watermark, logo, blurry"
+LOCKED_STYLE = (
+    "Pixar Disney 3D animation style, 3D CGI animated character, stylized 3D render, "
+    "Pixar character design, beautiful volumetric lighting, smooth 3D textures, "
+    "vibrant Disney colors, cinematic 3D movie still, vertical 9:16"
+)
+LOCKED_NEGATIVE = (
+    "2D illustration, drawing, painting, sketch, flat, photorealistic human, real photo, "
+    "monster, scary, horror, deformed, ugly, dark, blurry, watermark, logo, text, low quality"
+)
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
 DISABLED_ENGINES = set()
@@ -476,8 +482,62 @@ _STYLE_NOISE = [
 ]
 
 
-def costruisci_prompt_scena(raw_prompt, idx=1):
-    """Ricava il soggetto visivo della scena dalla Colonna G e applica SEMPRE lo stesso stile bloccato."""
+def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
+    """
+    Restituisce un profilo descrittivo dettagliato e costante del protagonista principale
+    in puro stile 3D CGI Pixar/Disney, per garantire continuità fisionomica e costume identico
+    in tutte le scene dell'episodio.
+    """
+    sid = str(story_id).strip()
+    tit = (titolo or "").lower()
+    cat = (categoria or "").upper()
+
+    # Mappatura Storie Bibliche
+    if sid == "1" or "davide" in tit or "golia" in tit:
+        return "cute 3D Pixar cartoon boy shepherd David with curly brown hair, beige tunic, friendly smiling face"
+    elif sid == "2" or "mosè" in tit or "mose" in tit or "mar rosso" in tit:
+        return "cute 3D Pixar cartoon elderly prophet Moses with long white beard, kind expressive eyes, blue and cream robes, holding wooden shepherd staff"
+    elif sid == "3" or "salomone" in tit or "sapienza" in tit:
+        return "cute 3D Pixar cartoon young King Solomon with golden crown, royal blue and gold robes, gentle wise expression"
+    elif sid == "4" or "noè" in tit or "noe" in tit or "arca" in tit:
+        return "cute 3D Pixar cartoon kind elderly Noah with warm smile, gray beard, rustic tunic, friendly cute 3D animals"
+    elif sid == "5" or "daniele" in tit or "leoni" in tit:
+        return "cute 3D Pixar cartoon faithful young Daniel with brown hair, serene peaceful smile, fine biblical robes, cute friendly fluffy lions"
+    elif sid == "365" or "vergini" in tit or "dieci vergini" in tit:
+        return "cute 3D Pixar cartoon young girls with joyful smiling faces, colorful biblical dresses, holding warm glowing golden oil lamps"
+    elif "giona" in tit:
+        return "cute 3D Pixar cartoon prophet Jonah with simple blue tunic, expressive friendly face"
+    elif "giuseppe" in tit:
+        return "cute 3D Pixar cartoon young Joseph with vibrant multicolored coat, cheerful expressive face, brown hair"
+    elif "rut" in tit:
+        return "cute 3D Pixar cartoon gentle young woman Ruth in warm earth-toned biblical dress, kind smiling face"
+    elif "samuele" in tit:
+        return "cute 3D Pixar cartoon young boy prophet Samuel in simple white linen tunic, bright curious eyes"
+    elif "elia" in tit:
+        return "cute 3D Pixar cartoon wise prophet Elijah with gray beard, rustic cloak, inspiring warm expression"
+    elif "abramo" in tit:
+        return "cute 3D Pixar cartoon faithful elderly Abraham with gray beard, nomadic traveling robes, kind eyes"
+    elif "gesù" in tit or "gesu" in tit:
+        return "cute 3D Pixar cartoon loving Jesus with gentle warm smile, compassionate eyes, white tunic and red mantle"
+
+    # Mappatura Mitologia
+    if "MITOLOGIA" in cat:
+        if "perseo" in tit or "medusa" in tit:
+            return "cute 3D Pixar cartoon young Greek hero Perseus with bronze helmet, shining shield, courageous smile"
+        elif "dedalo" in tit or "icaro" in tit:
+            return "cute 3D Pixar cartoon boy Icarus with feathered wings, Greek chiton tunic, joyful expression"
+        elif "ulisse" in tit or "odisseo" in tit:
+            return "cute 3D Pixar cartoon adventurous Greek hero Odysseus with curly hair, traveler chiton"
+        elif "ercole" in tit or "eracle" in tit:
+            return "cute 3D Pixar cartoon cheerful strong young hero Hercules with lion pelt cape, friendly smile"
+        return "cute 3D Pixar cartoon heroic character in Ancient Greece mythology, vibrant colors, expressive smile"
+
+    # Fallback per storie generiche
+    return "cute 3D Pixar cartoon biblical characters with friendly expressive faces in ancient colorful tunics"
+
+
+def costruisci_prompt_scena(raw_prompt, idx=1, story_id="", titolo="", categoria="BIBBIA"):
+    """Ricava il soggetto visivo della scena dalla Colonna G, inietta l'ancora del protagonista e applica SEMPRE lo stile Pixar 3D bloccato."""
     s = re.sub(r"--no.*$", "", raw_prompt or "", flags=re.IGNORECASE | re.DOTALL)
     generico = bool(re.search(r"action part \d+|inspiring cartoon scene for", s, flags=re.IGNORECASE))
     s = re.sub(r",?\s*action part \d+", "", s, flags=re.IGNORECASE)
@@ -490,19 +550,22 @@ def costruisci_prompt_scena(raw_prompt, idx=1):
                      r"\bark\b": "big wooden boat ark"}.items():
         s = re.sub(pat, rep, s, flags=re.IGNORECASE)
     s = re.sub(r"[^a-zA-Z0-9\s,']", " ", s)
-    subject = " ".join(s.split()).strip(" ,")[:220].rstrip(" ,")
+    subject = " ".join(s.split()).strip(" ,")[:180].rstrip(" ,")
     if not subject:
-        subject = "biblical characters in ancient village"
+        subject = "biblical characters in ancient setting"
     if generico:
         subject = f"{subject}, {SCENE_VARIATIONS[(int(idx) - 1) % len(SCENE_VARIATIONS)]}"
-    return f"{subject}, {LOCKED_STYLE}"
+
+    # Iniezione ancora del protagonista per garantire coerenza assoluta fisionomica e di abito
+    anchor = ottieni_ancora_personaggio(story_id=str(story_id), titolo=titolo, categoria=categoria)
+    return f"{anchor}, {subject}, {LOCKED_STYLE}"
 
 
-def genera_prompt_compatto(raw_prompt):
+def genera_prompt_compatto(raw_prompt, idx=1, story_id="", titolo="", categoria="BIBBIA"):
     """Compatibilità: se il prompt ha già lo stile bloccato lo restituisce invariato."""
     if LOCKED_STYLE in (raw_prompt or ""):
         return raw_prompt
-    return costruisci_prompt_scena(raw_prompt)
+    return costruisci_prompt_scena(raw_prompt, idx=idx, story_id=story_id, titolo=titolo, categoria=categoria)
 
 
 def immagine_valida(path, min_kb=15):
@@ -688,7 +751,7 @@ def genera_immagine_replicate_sdxl(prompt, output_img):
 
 
 
-def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, categoria="STANDARD", is_intro=False, idx=1, story_id="1"):
+def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, categoria="STANDARD", is_intro=False, idx=1, story_id="1", titolo=""):
     """
     Gestisce la fornitura dell'immagine 9:16 con ottimizzazioni anti-timeout Pollinations:
     1. Priorità massima: Asset personalizzati o pre-renderizzati per continuità
@@ -757,7 +820,7 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         os.remove(output_img)
 
     # Prompt unico con stile BLOCCATO (uguale per tutti i motori → niente scene fuori stile)
-    final_prompt = costruisci_prompt_scena(prompt, idx)
+    final_prompt = costruisci_prompt_scena(prompt, idx=idx, story_id=story_id, titolo=titolo, categoria=categoria)
     print(f"  🧭 Prompt scena {idx}: {final_prompt[:150]}...", flush=True)
 
     # 4. Motori con chiave (saltati automaticamente se senza crediti)
@@ -771,9 +834,11 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         if genera_immagine_replicate_sdxl(final_prompt, output_img) and immagine_valida(output_img):
             return True
 
-    # 5. Pollinations gratuito: prompt compatto ma con soggetto completo + stile bloccato breve
-    subject = final_prompt.replace(", " + LOCKED_STYLE, "")[:170].rstrip(" ,")
-    poll_prompt = f"{subject}, Pixar 3D animation, biblical ancient setting, warm golden light, cute storybook"
+    # 5. Pollinations gratuito: prompt compatto con ancora personaggio + stile Pixar 3D puro
+    clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
+    poll_prompt = f"{clean_sub}, Pixar Disney 3D animation style, 3D CGI character, cinematic lighting"
+    if len(poll_prompt) > 280:
+        poll_prompt = poll_prompt[:280].rstrip(" ,")
     encoded_prompt = urllib.parse.quote(poll_prompt)
     encoded_neg = urllib.parse.quote(LOCKED_NEGATIVE)
 
@@ -784,7 +849,7 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                f"&seed={seed}&negative={encoded_neg}&ts={ts_val}")
         try:
             print(f"  🎨 Pollinations [seed {seed}] tentativo {attempt}/{max_retries}...", flush=True)
-            resp = requests.get(url, timeout=(5, 40), verify=False, headers={"User-Agent": "Mozilla/5.0"})
+            resp = requests.get(url, timeout=(5, 55), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             if resp.status_code == 200 and len(resp.content) > 10000:
                 temp_file = f"{output_img}.tmp"
                 with open(temp_file, "wb") as f:
@@ -1706,8 +1771,9 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
             os.remove(img_file)  # niente immagini vecchie di altre run
         print(f"\n--- 🖼️ [IMMAGINE {idx}/{len(scene)}] ---")
         ok = scarica_immagine_pollinations(
-            s["prompt"], img_file, seed=story_id_int * 1000 + idx, use_cache=False,
-            categoria=storia.get("categoria", mode), is_intro=(idx == 1), idx=idx, story_id=storia["id"]
+            s["prompt"], img_file, seed=story_id_int * 1000, use_cache=False,
+            categoria=storia.get("categoria", mode), is_intro=(idx == 1), idx=idx, story_id=storia["id"],
+            titolo=storia.get("titolo", "")
         )
         img_files.append(img_file)
         esiti.append(bool(ok) and immagine_valida(img_file))

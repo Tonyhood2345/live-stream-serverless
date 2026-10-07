@@ -1,17 +1,13 @@
 name: Serverless Multistream Live
 on:
   schedule:
-    # ⏰ Avvio automatico serale al minuto 58 per azzerare le code GitHub Actions:
-    # 17:58 UTC = 19:58 CEST (Orario Estivo Italiano - 2 min prima delle 20:00)
+    # ⏰ Avvio automatico serale ore 19:00 / 20:00 Europe/Rome:
+    # 16:58 UTC = 18:58 CEST (Orario Estivo Italiano - 2 min prima delle 19:00)
+    # 17:58 UTC = 18:58 CET (Orario Invernale Italiano - 2 min prima delle 19:00) / 19:58 CEST
     # 18:58 UTC = 19:58 CET (Orario Invernale Italiano - 2 min prima delle 20:00)
+    - cron: '58 16 * * *'
     - cron: '58 17 * * *'
     - cron: '58 18 * * *'
-    # 🧪 Finestra di test programmato orario diurno odierno (UTC 09:50 - 10:30 = CEST 11:50 - 12:30):
-    - cron: '50 9 * * *'
-    - cron: '55 9 * * *'
-    - cron: '0 10 * * *'
-    - cron: '15 10 * * *'
-    - cron: '30 10 * * *'
   workflow_dispatch:
     inputs:
       video_url:
@@ -64,19 +60,24 @@ jobs:
             ROME_HOUR=$(TZ='Europe/Rome' date +%H)
             ROME_MIN=$(TZ='Europe/Rome' date +%M)
             echo "⏰ [Time-Guard] Orario attuale a Roma: $ROME_HOUR:$ROME_MIN"
-            # Consenti l'avvio nella finestra serale delle 20:00 (19:50 - 20:30) OPPURE nella finestra di test autorizzata (11:00 - 13:00)
-            if [ "$ROME_HOUR" -ne 19 ] && [ "$ROME_HOUR" -ne 20 ] && [ "$ROME_HOUR" -ne 11 ] && [ "$ROME_HOUR" -ne 12 ]; then
+            # Consenti l'avvio unicamente nella fascia serale delle 19:00 / 20:00 (18:50 - 20:30 Rome time)
+            if [ "$ROME_HOUR" -ne 18 ] && [ "$ROME_HOUR" -ne 19 ] && [ "$ROME_HOUR" -ne 20 ]; then
               echo "⚠️ AVVISO CRITICO: Workflow scatenato fuori orario ($ROME_HOUR:$ROME_MIN IT) per ritardo code GitHub."
-              echo "🛑 Annullamento immediato per impedire dirette non autorizzate. — Immobiliare Giancani"
+              echo "🛑 Annullamento immediato per impedire dirette non autorizzate o notturne. — Immobiliare Giancani"
               echo "should_run=false" >> $GITHUB_OUTPUT
               exit 0
             fi
-            if [ "$ROME_HOUR" -eq 19 ] && [ "$ROME_MIN" -lt 50 ]; then
+            if [ "$ROME_HOUR" -eq 18 ] && [ "$ROME_MIN" -lt 50 ]; then
               echo "⚠️ Avvio anticipato non valido ($ROME_HOUR:$ROME_MIN IT). Annullamento."
               echo "should_run=false" >> $GITHUB_OUTPUT
               exit 0
             fi
-            echo "✅ Orario verificato per la trasmissione ($ROME_HOUR:$ROME_MIN Europe/Rome)!"
+            if [ "$ROME_HOUR" -eq 20 ] && [ "$ROME_MIN" -gt 30 ]; then
+              echo "⚠️ Troppo tardi per la diretta serale ($ROME_HOUR:$ROME_MIN IT). Annullamento."
+              echo "should_run=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "✅ Orario verificato per la trasmissione serale delle 19:00 ($ROME_HOUR:$ROME_MIN Europe/Rome)!"
           else
             echo "▶️ Avvio via workflow_dispatch da Google Apps Script o manuale (nessun vincolo di orario)."
           fi

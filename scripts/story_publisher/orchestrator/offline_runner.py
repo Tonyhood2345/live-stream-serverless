@@ -47,7 +47,7 @@ DEFAULT_REAL_IMMOBILI = [
         "tabName": "Cannero_Riviera_lago_Maggiore_",
         "fonte": "Cannero Riviera Lago Maggiore",
         "titolo": "Cannero Riviera Lago Maggiore",
-        "prezzo": "€ 15.000",
+        "prezzo": "€ 150.000",
         "mq": "90 metri quadri",
         "stanza": "Camera da Letto Rifinita",
         "fotoUrl": "https://lh3.googleusercontent.com/d/1ySiRhbdekzjRk4wqrmQdYQmb-mM3BtUZ",
@@ -121,6 +121,14 @@ DEFAULT_REAL_IMMOBILI = [
     }
 ]
 
+def normalizza_prezzo(prezzo_val, tab_name=""):
+    p = str(prezzo_val or '').strip()
+    if "cannero" in tab_name.lower() and (p in ["15000", "€ 15000", "€ 15.000", "15.000", "€15000", "15000 €", "€ 15000.0"]):
+        return "€ 150.000"
+    if p.isdigit():
+        return f"€ {int(p):,}".replace(",", ".")
+    return p
+
 def _carica_catalogo_cache():
     """Tenta di caricare il catalogo salvato in locale."""
     paths = [
@@ -191,7 +199,7 @@ def fetch_all_property_candidates(sheet_filter=None, room_filter=None):
                     "fonte": nome,
                     "titolo": nome,
                     "stanza": imm.get('primaStanza', 'Panoramica'),
-                    "prezzo": str(imm.get('prezzo', 'Trattativa Riservata')).strip(),
+                    "prezzo": normalizza_prezzo(imm.get('prezzo', 'Trattativa Riservata'), tab),
                     "mq": normalize_mq(imm.get('mq', '120 metri quadri')),
                     "fotoUrl": normalizza_foto_url(foto),
                     "totFoto": imm.get('totFoto', 1),
@@ -217,7 +225,7 @@ def fetch_all_property_candidates(sheet_filter=None, room_filter=None):
                     "fonte": item.get('fonte') or item.get('titolo'),
                     "titolo": item.get('titolo'),
                     "stanza": item.get('stanza', 'Panoramica'),
-                    "prezzo": item.get('prezzo', 'Trattativa Riservata'),
+                    "prezzo": normalizza_prezzo(item.get('prezzo', 'Trattativa Riservata'), item.get('tabName', '')),
                     "mq": normalize_mq(item.get('mq', '120 metri quadri')),
                     "fotoUrl": normalizza_foto_url(item.get('fotoUrl')),
                     "totFoto": item.get('totFoto', 1),

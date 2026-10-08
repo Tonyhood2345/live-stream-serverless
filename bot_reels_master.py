@@ -454,13 +454,12 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "Pixar Disney 3D animation style, 3D CGI animated character, stylized 3D render, "
-    "Pixar character design, beautiful volumetric lighting, smooth 3D textures, "
-    "vibrant Disney colors, cinematic 3D movie still, vertical 9:16"
+    "Disney Pixar animated movie still, cute 3D cartoon style, stylized 3D character design by Pixar Disney animation studios, "
+    "vibrant Disney cartoon colors, smooth 3D animation render, volumetric sunny lighting, vertical 9:16"
 )
 LOCKED_NEGATIVE = (
-    "2D illustration, drawing, painting, sketch, flat, photorealistic human, real photo, "
-    "monster, scary, horror, deformed, ugly, dark, blurry, watermark, logo, text, low quality"
+    "anime, manga, photorealism, realistic photo, real human, hyperrealistic skin, "
+    "2D illustration, flat drawing, sketch, dark, scary, horror, deformed, ugly, blurry, watermark, text"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
@@ -492,19 +491,19 @@ def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
     tit = (titolo or "").lower()
     cat = (categoria or "").upper()
 
-    # Mappatura Storie Bibliche
+    # Mappatura Storie Bibliche — Stile Disney Pixar Cartone Animato+
     if sid == "1" or "davide" in tit or "golia" in tit:
-        return "cute 3D Pixar cartoon boy shepherd David with curly brown hair, beige tunic, friendly smiling face"
+        return "cute little 3D cartoon boy shepherd David, big expressive eyes, curly brown clay hair, simple beige tunic, cheerful friendly smiling face"
     elif sid == "2" or "mosè" in tit or "mose" in tit or "mar rosso" in tit:
-        return "cute 3D Pixar cartoon elderly prophet Moses with long white beard, kind expressive eyes, blue and cream robes, holding wooden shepherd staff"
+        return "kind little 3D cartoon elderly prophet Moses, big expressive eyes, fluffy white cartoon beard, blue and cream robes, holding wooden shepherd staff, friendly warm smile"
     elif sid == "3" or "salomone" in tit or "sapienza" in tit:
-        return "cute 3D Pixar cartoon young King Solomon with golden crown, royal blue and gold robes, gentle wise expression"
+        return "cheerful little 3D cartoon young King Solomon, golden cartoon crown, royal blue and gold robes, gentle wise smiling face"
     elif sid == "4" or "noè" in tit or "noe" in tit or "arca" in tit:
-        return "cute 3D Pixar cartoon kind elderly Noah with warm smile, gray beard, rustic tunic, friendly cute 3D animals"
+        return "kind little 3D cartoon elderly Noah, warm friendly smile, fluffy gray cartoon beard, rustic tunic, cute stylized 3D animals"
     elif sid == "5" or "daniele" in tit or "leoni" in tit:
-        return "cute 3D Pixar cartoon faithful young Daniel with brown hair, serene peaceful smile, fine biblical robes, cute friendly fluffy lions"
+        return "faithful little 3D cartoon young Daniel, brown hair, peaceful smiling face, fine colorful biblical robes, cute friendly fluffy cartoon lions"
     elif sid == "365" or "vergini" in tit or "dieci vergini" in tit:
-        return "cute 3D Pixar cartoon young girls with joyful smiling faces, colorful biblical dresses, holding warm glowing golden oil lamps"
+        return "cute little 3D cartoon young girls, joyful smiling faces, colorful biblical dresses, holding warm glowing golden cartoon oil lamps"
     elif "giona" in tit:
         return "cute 3D Pixar cartoon prophet Jonah with simple blue tunic, expressive friendly face"
     elif "giuseppe" in tit:

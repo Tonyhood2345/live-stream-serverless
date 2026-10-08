@@ -454,12 +454,14 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "2D cartoon animation style, distinct black pencil outline contour, bold black ink line art, "
-    "charming Disney Pixar cartoon character design, vibrant rich colors, classic 2D animated movie cel still, vertical 9:16"
+    "classic 2D animated feature film still, charming Disney Pixar 2D character design, "
+    "natural balanced cartoon proportions, not elongated, not vertically stretched, clean distinct black ink line art contour, "
+    "rich detailed contextual background fully in sharp focus, deep focus throughout entire environment, zero motion blur, zero depth of field blur, "
+    "vibrant hand-painted colors, crisp sharp details, vertical 9:16"
 )
 LOCKED_NEGATIVE = (
-    "3D realistic CGI render, photorealistic, realistic photo, real human, hyperrealistic skin, "
-    "blurry lines, messy sketch, dark, scary, horror, deformed, ugly, watermark, text"
+    "elongated, vertically stretched, tall torso, long neck, thin stretched limbs, plain background, white background, "
+    "blurry, out of focus, bokeh, depth of field blur, motion blur, soft focus, hazy, photorealistic, 3D CGI render, dark, horror, deformed"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
@@ -493,43 +495,43 @@ def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
 
     # Mappatura Storie Bibliche — Stile Cartone Animato 2D con Contorno Matita Nero
     if sid == "1" or "davide" in tit or "golia" in tit:
-        return "cute 2D cartoon boy shepherd David, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, big expressive cartoon eyes, curly brown hair, simple beige tunic"
+        return "cute flat 2D cartoon boy shepherd David, distinct black pencil outline contour, bold black ink line art, expressive cartoon eyes, curly brown hair, simple beige tunic"
     elif sid == "2" or "mosè" in tit or "mose" in tit or "mar rosso" in tit:
-        return "kind 2D cartoon elderly prophet Moses, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, fluffy white beard, blue and cream robes holding wooden staff"
+        return "kind flat 2D cartoon elderly prophet Moses, distinct black pencil outline contour, bold black ink line art, fluffy white beard, terracotta and cream robes holding wooden staff"
     elif sid == "3" or "salomone" in tit or "sapienza" in tit:
-        return "cheerful 2D cartoon young King Solomon, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, golden crown, royal blue and gold robes"
+        return "cheerful flat 2D cartoon young King Solomon, distinct black pencil outline contour, bold black ink line art, golden crown, royal purple and gold robes"
     elif sid == "4" or "noè" in tit or "noe" in tit or "arca" in tit:
-        return "kind 2D cartoon elderly Noah, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, gray beard, rustic tunic, cute 2D animals"
+        return "kind flat 2D cartoon elderly Noah, distinct black pencil outline contour, bold black ink line art, gray beard, rustic brown tunic, cute 2D cartoon animals"
     elif sid == "5" or "daniele" in tit or "leoni" in tit:
-        return "faithful 2D cartoon young Daniel, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, brown hair, peaceful smile, fine robes, cute fluffy lions"
+        return "faithful flat 2D cartoon young Daniel, distinct black pencil outline contour, bold black ink line art, brown hair, peaceful smile, warm colorful robes, cute friendly lions"
     elif sid == "365" or "vergini" in tit or "dieci vergini" in tit:
-        return "cute 2D cartoon young girls, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon faces, joyful smiles, holding warm golden oil lamps"
+        return "cute flat 2D cartoon young girls, distinct black pencil outline contour, bold black ink line art, joyful smiles, holding warm golden oil lamps"
     elif "giona" in tit:
-        return "cute 3D Pixar cartoon prophet Jonah with simple blue tunic, expressive friendly face"
+        return "cute flat 2D cartoon prophet Jonah with simple earth-tone tunic, distinct black pencil outline, expressive friendly face"
     elif "giuseppe" in tit:
-        return "cute 3D Pixar cartoon young Joseph with vibrant multicolored coat, cheerful expressive face, brown hair"
+        return "cute flat 2D cartoon young Joseph with vibrant multicolored coat, distinct black pencil outline, cheerful expressive face, brown hair"
     elif "rut" in tit:
-        return "cute 3D Pixar cartoon gentle young woman Ruth in warm earth-toned biblical dress, kind smiling face"
+        return "cute flat 2D cartoon gentle young woman Ruth in warm earth-toned dress, distinct black pencil outline, kind smiling face"
     elif "samuele" in tit:
-        return "cute 3D Pixar cartoon young boy prophet Samuel in simple white linen tunic, bright curious eyes"
+        return "cute flat 2D cartoon young boy prophet Samuel in simple white linen tunic, distinct black pencil outline, bright curious eyes"
     elif "elia" in tit:
-        return "cute 3D Pixar cartoon wise prophet Elijah with gray beard, rustic cloak, inspiring warm expression"
+        return "cute flat 2D cartoon wise prophet Elijah with gray beard, rustic cloak, distinct black pencil outline, inspiring warm expression"
     elif "abramo" in tit:
-        return "cute 3D Pixar cartoon faithful elderly Abraham with gray beard, nomadic traveling robes, kind eyes"
+        return "cute flat 2D cartoon faithful elderly Abraham with gray beard, nomadic traveling robes, distinct black pencil outline, kind eyes"
     elif "gesù" in tit or "gesu" in tit:
-        return "cute 3D Pixar cartoon loving Jesus with gentle warm smile, compassionate eyes, white tunic and red mantle"
+        return "cute flat 2D cartoon loving Jesus with gentle warm smile, compassionate eyes, white tunic and red mantle, distinct black pencil outline"
 
     # Mappatura Mitologia
     if "MITOLOGIA" in cat:
         if "perseo" in tit or "medusa" in tit:
-            return "cute 3D Pixar cartoon young Greek hero Perseus with bronze helmet, shining shield, courageous smile"
+            return "cute flat 2D cartoon young Greek hero Perseus with bronze helmet, shining shield, distinct black pencil outline, courageous smile"
         elif "dedalo" in tit or "icaro" in tit:
-            return "cute 3D Pixar cartoon boy Icarus with feathered wings, Greek chiton tunic, joyful expression"
+            return "cute flat 2D cartoon boy Icarus with feathered wings, Greek chiton tunic, distinct black pencil outline, joyful expression"
         elif "ulisse" in tit or "odisseo" in tit:
-            return "cute 3D Pixar cartoon adventurous Greek hero Odysseus with curly hair, traveler chiton"
+            return "cute flat 2D cartoon adventurous Greek hero Odysseus with curly hair, traveler chiton, distinct black pencil outline"
         elif "ercole" in tit or "eracle" in tit:
-            return "cute 3D Pixar cartoon cheerful strong young hero Hercules with lion pelt cape, friendly smile"
-        return "cute 3D Pixar cartoon heroic character in Ancient Greece mythology, vibrant colors, expressive smile"
+            return "cute flat 2D cartoon cheerful strong young hero Hercules with lion pelt cape, distinct black pencil outline, friendly smile"
+        return "cute flat 2D cartoon heroic character in Ancient Greece mythology, distinct black pencil outline, vibrant flat colors, expressive smile"
 
     # Mappatura Pillole Immobiliari & Legali (Corporate Elegante, Consulenza & Architettura)
     if "PILLOLE" in cat:
@@ -617,7 +619,7 @@ def genera_immagine_gemini_banana(prompt, output_img):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={GEMINI_API_KEY}"
         payload = {
             "contents": [{
-                "parts": [{"text": f"Generate vertical 9:16 high quality 3D Pixar Disney style render: {prompt}"}]
+                "parts": [{"text": f"Generate vertical 9:16 flat 2D cartoon animation style with bold black pencil outline contour, clean hand-drawn cel art: {prompt}"}]
             }]
         }
         try:
@@ -909,9 +911,9 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         if genera_immagine_replicate_sdxl(final_prompt, output_img) and immagine_valida(output_img):
             return True
 
-    # 5. Pollinations gratuito: prompt compatto con ancora personaggio + stile Pixar 3D puro
+    # 5. Pollinations gratuito: prompt compatto con ancora personaggio + stile Cartone 2D Piatto con Contorno Matita Nero
     clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
-    poll_prompt = f"{clean_sub}, Pixar Disney 3D animation style, 3D CGI character, cinematic lighting"
+    poll_prompt = f"{clean_sub}, flat 2D cartoon illustration, distinct black pencil outline contour, bold black ink line art, clean cel art, no 3D"
     if len(poll_prompt) > 280:
         poll_prompt = poll_prompt[:280].rstrip(" ,")
     encoded_prompt = urllib.parse.quote(poll_prompt)
@@ -923,7 +925,7 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         # Primo tentativo con FLUX.1 (massima qualità), poi fallback su turbo
         cur_model = "flux" if attempt <= 2 else "turbo"
         ts_val = int(time.time() * 1000)
-        url = (f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=576&height=1024&nologo=true"
+        url = (f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&nologo=true"
                f"&seed={seed}&model={cur_model}&negative={encoded_neg}&ts={ts_val}")
         try:
             print(f"  🎨 Pollinations [{cur_model.upper()} - seed {seed}] tentativo {attempt}/{max_retries}...", flush=True)

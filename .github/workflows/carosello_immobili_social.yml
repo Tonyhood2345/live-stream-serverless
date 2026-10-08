@@ -65,6 +65,8 @@ jobs:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
           IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
           APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           EXTRA_ARGS=""
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
@@ -80,8 +82,9 @@ jobs:
         run: |
           git config --global user.name "Giancani Social Bot"
           git config --global user.email "bot@immobiliaregiancani.it"
-          if [ -f "immobili_pubblicati_history.json" ]; then
-            git add immobili_pubblicati_history.json
-            git commit -m "chore: aggiorna storico pubblicazioni carosello [skip ci]" || echo "Nessuna modifica allo storico"
-            git push || echo "Push non necessario o non autorizzato"
-          fi
+          git add -A immobili_pubblicati_history.json scripts/immobili_pubblicati_history.json || true
+          git commit -m "chore: aggiorna storico pubblicazioni carosello [skip ci]" || echo "Nessuna modifica allo storico"
+          for i in 1 2 3; do
+            git pull --rebase origin main || true
+            git push origin main && break || sleep 2
+          done

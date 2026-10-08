@@ -454,13 +454,15 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "charming children animated cartoon series style, adorable anthropomorphic cute animal characters standing upright on two feet, "
-    "wearing cute colorful clothes, big round expressive shiny eyes, sweet friendly smiles, warm cozy pastel colors, "
-    "soft smooth storybook art, bright clean detailed cartoon background, vertical 9:16"
+    "classic 2D hand-drawn animated cartoon style, traditional cel animation, "
+    "bold clean black ink outline contour, vibrant flat colors, "
+    "adorable anthropomorphic cute animal characters standing upright on two feet, "
+    "wearing cute colorful clothes, sweet friendly cartoon smiles, completely non-realistic, "
+    "charming children storybook illustration, zero 3D, zero CGI, vertical 9:16"
 )
 LOCKED_NEGATIVE = (
-    "real human, human face, realistic animal, real animal fur photo, photorealistic, realistic photo, "
-    "quadruped, walking on four legs, dark, scary, aggressive, ugly, deformed, blurry"
+    "3D, CGI, 3D model, 3D render, volumetric 3D shading, octane render, realistic photo, "
+    "photorealistic, real animal, real fur photo, real human, realistic face, dark, scary, horror, deformed, ugly"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)

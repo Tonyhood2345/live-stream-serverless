@@ -454,14 +454,13 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "classic 2D animated movie cel art, traditional hand-drawn 2D cartoon style, "
-    "clean bold black ink outline contour, flat vibrant color fills, "
-    "charming 2D storybook character design, hand-painted 2D background, "
-    "absolutely no 3D, zero CGI, flat 2D animation aesthetic, vertical 9:16"
+    "charming children animated cartoon series style, adorable anthropomorphic cute animal characters standing upright on two feet, "
+    "wearing cute colorful clothes, big round expressive shiny eyes, sweet friendly smiles, warm cozy pastel colors, "
+    "soft smooth storybook art, bright clean detailed cartoon background, vertical 9:16"
 )
 LOCKED_NEGATIVE = (
-    "3D, CGI, 3D model, 3D render, Pixar 3D, blender, octane render, 3D character, "
-    "volumetric 3D shading, 3D lighting, claymation, photorealistic, realistic photo, real human, realistic skin, dark, horror"
+    "real human, human face, realistic animal, real animal fur photo, photorealistic, realistic photo, "
+    "quadruped, walking on four legs, dark, scary, aggressive, ugly, deformed, blurry"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
@@ -486,45 +485,45 @@ _STYLE_NOISE = [
 def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
     """
     Restituisce un profilo descrittivo dettagliato e costante del protagonista principale
-    in puro stile 3D CGI Pixar/Disney, per garantire continuità fisionomica e costume identico
-    in tutte le scene dell'episodio.
+    in stile cartone animato per bambini con simpatici animali antropomorfi in piedi vestiti,
+    per garantire continuità e massima tenerezza nelle scene.
     """
     sid = str(story_id).strip()
     tit = (titolo or "").lower()
     cat = (categoria or "").upper()
 
-    # Mappatura Storie Bibliche — 100% Puro Cartone Animato 2D Disegnato a Mano
+    # Mappatura Storie Bibliche — Cartoni Animati per Bambini con Animali Antropomorfi
     if sid == "1" or "davide" in tit or "golia" in tit:
-        return "charming 2D cartoon boy shepherd David, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, big expressive 2D cartoon eyes, cheerful smile, curly brown hair, beige tunic"
+        return "adorable anthropomorphic orange tabby kitten boy shepherd David standing upright on two feet, wearing a blue and white striped t-shirt and brown shorts, big round green eyes, cheerful smile, holding small wooden slingshot in cute paws, charming children cartoon style"
     elif sid == "2" or "mosè" in tit or "mose" in tit or "mar rosso" in tit:
-        return "charming kind elderly 2D cartoon prophet Moses, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, round friendly 2D face, fluffy white cartoon beard, light blue robes holding wooden staff"
+        return "wise grandfatherly anthropomorphic lion prophet Moses standing upright on two feet, fluffy white cartoon beard, wearing sky-blue robe, holding wooden staff in paws, warm gentle expression, charming children cartoon style"
     elif sid == "3" or "salomone" in tit or "sapienza" in tit:
-        return "cheerful 2D cartoon young King Solomon, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, smiling 2D face, golden crown, royal blue and gold robes"
+        return "cheerful young anthropomorphic golden lion cub King Solomon standing on two feet, tiny golden crown, royal blue and gold robe, happy smiling expression, charming children cartoon style"
     elif sid == "4" or "noè" in tit or "noe" in tit or "arca" in tit:
-        return "kind 2D cartoon grandfather Noah, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, warm smile, fluffy white beard, rustic tunic, cute friendly 2D cartoon animals"
+        return "kind grandfatherly anthropomorphic brown bear Noah standing upright on two feet, cozy rustic tunic, friendly warm smile, surrounded by tiny happy animal cartoon friends, charming children cartoon style"
     elif sid == "5" or "daniele" in tit or "leoni" in tit:
-        return "faithful 2D cartoon boy Daniel, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, peaceful smile, colorful robes, cute 2D cartoon lions"
+        return "cute anthropomorphic bunny boy Daniel standing upright on two feet, colorful tunic, peaceful happy smile, surrounded by cute sleepy cartoon lions, charming children cartoon style"
     elif sid == "365" or "vergini" in tit or "dieci vergini" in tit:
-        return "cute 2D cartoon young girls, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, joyful smiles, colorful dresses, holding glowing 2D cartoon oil lamps"
+        return "cute anthropomorphic kitten and bunny girls standing upright on two feet, colorful dresses, joyful smiles, holding glowing warm golden lanterns in paws, charming children cartoon style"
 
     # Mappatura Mitologia
     if "MITOLOGIA" in cat:
         if "perseo" in tit or "medusa" in tit:
-            return "cute flat 2D cartoon young Greek hero Perseus with bronze helmet, shining shield, distinct black pencil outline, courageous smile"
+            return "cute anthropomorphic fox hero Perseus standing on two feet with tiny bronze helmet and shining shield, charming children cartoon style"
         elif "dedalo" in tit or "icaro" in tit:
-            return "cute flat 2D cartoon boy Icarus with feathered wings, Greek chiton tunic, distinct black pencil outline, joyful expression"
+            return "cute anthropomorphic bird boy Icarus standing on two feet with feathered wings, Greek tunic, cheerful expression, charming children cartoon style"
         elif "ulisse" in tit or "odisseo" in tit:
-            return "cute flat 2D cartoon adventurous Greek hero Odysseus with curly hair, traveler chiton, distinct black pencil outline"
+            return "cute anthropomorphic otter traveler Odysseus standing on two feet with backpack and sailor hat, charming children cartoon style"
         elif "ercole" in tit or "eracle" in tit:
-            return "cute flat 2D cartoon cheerful strong young hero Hercules with lion pelt cape, distinct black pencil outline, friendly smile"
-        return "cute flat 2D cartoon heroic character in Ancient Greece mythology, distinct black pencil outline, vibrant flat colors, expressive smile"
+            return "cute friendly strong anthropomorphic bear cub Hercules standing on two feet with tiny cape, charming children cartoon style"
+        return "cute anthropomorphic animal hero in ancient Greece, standing on two feet with colorful tunic, charming children cartoon style"
 
     # Mappatura Pillole Immobiliari & Legali (Corporate Elegante, Consulenza & Architettura)
     if "PILLOLE" in cat:
         return "elegant high-end Italian real estate setting, luxury modern villa architecture, notary office interior, warm sunlight, sophisticated architectural design"
 
     # Fallback per storie generiche
-    return "cute 3D Pixar cartoon biblical characters with friendly expressive faces in ancient colorful tunics"
+    return "adorable anthropomorphic cute animal characters standing on two feet in colorful clothes, charming children cartoon style"
 
 
 def costruisci_prompt_scena(raw_prompt, idx=1, story_id="", titolo="", categoria="BIBBIA"):

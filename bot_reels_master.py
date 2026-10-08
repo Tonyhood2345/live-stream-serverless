@@ -1315,7 +1315,7 @@ def crea_clip_ken_burns(img_path, audio_path, overlay_path, output_clip, idx):
         "-filter_complex", vf,
         "-map", "[v]",
         "-map", "2:a",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "22", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "26", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k",
         "-t", str(round(durata, 2)),
         output_clip
@@ -1354,6 +1354,7 @@ def monta_video_finale(clips, output_video, durata_totale):
             f"[1:a]volume=0.11,afade=t=out:st={max(1, durata_totale-2)}:d=2[bg];[0:a][bg]amix=inputs=2:duration=first[a]",
             "-map", "0:v", "-map", "[a]",
             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+            "-movflags", "+faststart",
             "-shortest",
             output_video
         ]
@@ -1517,7 +1518,7 @@ def invia_su_telegram(video_path, storia):
                     "supports_streaming": True,
                     "reply_markup": json.dumps(inline_keyboard)
                 }
-                resp = requests.post(url, data=data, files=files, verify=False, timeout=90)
+                resp = requests.post(url, data=data, files=files, verify=False, timeout=(15, 300))
                 rdata = resp.json()
                 if rdata.get("ok"):
                     print(f"  ✅ Video inviato con successo a {chat_target}!")

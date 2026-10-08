@@ -330,6 +330,29 @@ def crea_struttura_scene(storia, mode="standard"):
         except Exception as e:
             print(f"⚠️ Errore parsing prompts_g JSON: {e}")
 
+    # Scene predefinite separate da '|||' (utilizzate nel database Grandi Classici della Letteratura)
+    elif storia.get("prompts_g") and "|||" in storia["prompts_g"]:
+        raw_prompts = [p.strip() for p in storia["prompts_g"].split("|||") if p.strip()]
+        frasi = [f.strip() for f in re.split(r'(?<=[.!?])\s+', storia["testo_colonna_f"]) if f.strip()]
+        if not frasi:
+            frasi = [storia["testo_colonna_f"]]
+        n_scenes = max(len(raw_prompts), len(frasi))
+        scene = []
+        for i in range(n_scenes):
+            p_scena = raw_prompts[i % len(raw_prompts)]
+            t_scena = frasi[i] if i < len(frasi) else (frasi[-1] if frasi else "")
+            if i == 0:
+                t_scena = f"{storia['titolo'].upper()} in 2 minuti. {t_scena}"
+            scene.append({
+                "scena_id": i,
+                "testo": t_scena,
+                "prompt": p_scena,
+                "type": "hook" if i == 0 else "story",
+                "duration": 4.5,
+                "is_outro": (i == n_scenes - 1)
+            })
+        return scene
+
     # Parsing testuale automatico da Colonna F
     frasi = [f.strip() for f in re.split(r'(?<=[.!?])\s+', storia["testo_colonna_f"]) if f.strip()]
     if not frasi:
@@ -520,6 +543,10 @@ def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
             return "cute friendly strong anthropomorphic bear cub Hercules standing on two feet with tiny cape, charming children cartoon style"
         return "cute anthropomorphic animal hero in ancient Greece, standing on two feet with colorful tunic, charming children cartoon style"
 
+    # Mappatura Grandi Classici della Letteratura (Gattino Avventuriero nei Libri)
+    if "STANDARD" in cat or "LIBRI" in cat or "CLASSICI" in cat:
+        return "adorable anthropomorphic orange tabby cat boy adventurer standing upright on two feet, wearing a blue and white striped t-shirt and brown shorts, big expressive cartoon eyes, cheerful friendly smile, whiskers, classic 2D hand-drawn animated cartoon cel art style"
+
     # Mappatura Pillole Immobiliari & Legali (Corporate Elegante, Consulenza & Architettura)
     if "PILLOLE" in cat:
         return "elegant high-end Italian real estate setting, luxury modern villa architecture, notary office interior, warm sunlight, sophisticated architectural design"
@@ -550,7 +577,22 @@ def costruisci_prompt_scena(raw_prompt, idx=1, story_id="", titolo="", categoria
     s = re.sub(r"inspiring cartoon scene for [^,]*?( in [^,]+)?,", "", s, flags=re.IGNORECASE)
     for noise in _STYLE_NOISE:
         s = re.sub(rf"{noise},?\s*", "", s, flags=re.IGNORECASE)
-    for pat, rep in {r"\bgiant\b": "very tall warrior", r"\bmonster\b": "creature", r"\bscary\b": "dramatic",
+    if "BIBBIA" in cat_upper:
+        for pat, rep in {
+            r"\bboy shepherd\b": "kitten shepherd",
+            r"\byoung shepherd\b": "kitten shepherd",
+            r"\bcurly brown hair\b": "orange tabby fur",
+            r"\bbeige tunic\b": "blue striped shirt",
+            r"\bgiant goliath\b": "comical bulldog warrior Goliath",
+            r"\bgoliath in bronze armor\b": "bulldog warrior Goliath in funny armor",
+            r"\bterrified cartoon soldiers\b": "worried cute cartoon animal soldiers",
+            r"\bsoldiers\b": "friendly cartoon animals",
+            r"\bboth armies\b": "cute cartoon animal armies",
+            r"\barmies\b": "animal groups",
+            r"\bpeople\b": "animal friends",
+        }.items():
+            s = re.sub(pat, rep, s, flags=re.IGNORECASE)
+    for pat, rep in {r"\bgiant\b": "tall cartoon warrior", r"\bmonster\b": "creature", r"\bscary\b": "dramatic",
                      r"\bdark\b": "dusk", r"\bterrified\b": "worried", r"\bfierce\b": "majestic",
                      r"\bchariots?\b": "ancient wooden horse-drawn chariots", r"\bcars?\b": "ancient horse carts",
                      r"\bark\b": "big wooden boat ark"}.items():
@@ -822,9 +864,14 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                 except Exception as ec:
                     print(f"  ⚠️ Errore caricamento immagine personalizzata {custom_name}: {ec}")
 
-    # 2. Asset pre-renderizzati Disney/Pixar — pool di varianti per massima varietà
-    if "MITOLOGIA" in cat_upper or "BIBBIA" in cat_upper:
-        prefix = "mitologia" if "MITOLOGIA" in cat_upper else "bibbia"
+    # 2. Asset pre-renderizzati Cartoni Animati 2D — pool di varianti per massima varietà
+    if "MITOLOGIA" in cat_upper or "BIBBIA" in cat_upper or "CLASSICI" in cat_upper or "STANDARD" in cat_upper or "LIBRI" in cat_upper:
+        if "MITOLOGIA" in cat_upper:
+            prefix = "mitologia"
+        elif "BIBBIA" in cat_upper:
+            prefix = "bibbia"
+        else:
+            prefix = "classici"
         cartoons_dir = os.path.join(assets_dir, f"{prefix}_scene_cartoons")
         
         # Cerca le varianti disponibili v1/v2/v3 (pool Disney/Pixar)
@@ -838,15 +885,26 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         old_path = os.path.join(cartoons_dir, f"{prefix}_{story_id}_scena_{idx}.jpg")
         if not varianti and os.path.exists(old_path) and os.path.getsize(old_path) > 1000:
             varianti.append(old_path)
+
+        # Fallback ciclico sulle scene esistenti della stessa storia (garantisce copertura al 100%)
+        if not varianti and os.path.exists(cartoons_dir):
+            storia_assets = [
+                os.path.join(cartoons_dir, f) for f in sorted(os.listdir(cartoons_dir))
+                if f.startswith(f"{prefix}_{story_id}_scena_") and os.path.getsize(os.path.join(cartoons_dir, f)) > 1000
+            ]
+            if storia_assets:
+                idx_int = int(idx) if str(idx).isdigit() else 1
+                chosen_cyc = storia_assets[(idx_int - 1) % len(storia_assets)]
+                varianti.append(chosen_cyc)
         
         if varianti:
-            # Selezione casuale dalla pool → video sempre diverso ad ogni run!
+            # Selezione variante da pool per garantire coerenza visiva
             chosen = random.choice(varianti)
             try:
                 with Image.open(chosen) as mim:
                     adatta_immagine_9_16(mim).save(output_img, "JPEG", quality=95)
                 variante_label = os.path.basename(chosen)
-                print(f"  🎨 [DISNEY ASSET {prefix.upper()}] Scena {idx} (variante casuale): {variante_label}")
+                print(f"  🎨 [2D CARTOON ASSET {prefix.upper()}] Scena {idx}: {variante_label}")
                 return True
             except Exception as em:
                 print(f"  ⚠️ Avviso caricamento asset {os.path.basename(chosen)}: {em}")
@@ -956,7 +1014,7 @@ def crea_immagine_fallback(output_img, testo_descrittivo, categoria="STANDARD", 
     2. Se nessuna scena precedente esiste, applica il master artwork corrispondente.
     """
     out_dir = os.path.dirname(output_img)
-    prefix = "bibbia" if "BIBBIA" in str(categoria).upper() else ("mitologia" if "MITOLOGIA" in str(categoria).upper() else ("pillole" if "PILLOLE" in str(categoria).upper() else "reels"))
+    prefix = "bibbia" if "BIBBIA" in str(categoria).upper() else ("mitologia" if "MITOLOGIA" in str(categoria).upper() else ("pillole" if "PILLOLE" in str(categoria).upper() else "classici"))
     
     # 1. Priorità massima: riutilizzo scena cartoon precedente della stessa storia per continuità visiva coerente
     try:
@@ -1754,6 +1812,10 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
 async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_json_only=False, solo_telegram=True):
     start_time = time.time()
     
+    # Normalizzazione alias modalità
+    if mode in ["libri", "classici"]:
+        mode = "standard"
+
     # 🔒 DIRETTIVA UTENTE: DISABILITAZIONE TOTALE PUBBLICAZIONE SOCIAL.
     # L'utente ha disposto di NON pubblicare su Facebook ma inviare SOLO su Telegram per monitorare gli sviluppi.
     solo_telegram = True
@@ -1804,7 +1866,7 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
     story_id_int = int(storia["id"]) if str(storia["id"]).isdigit() else 1
     img_files = []
     esiti = []
-    stile_desc = "Fotografia 8K Architettura & Legale" if mode == "pillole" else ("Disney/Pixar Mitologia" if mode == "mitologia" else "Pixar 3D Sacro")
+    stile_desc = "Fotografia 8K Architettura & Legale" if mode == "pillole" else ("Cartone Animato 2D Mitologia" if mode == "mitologia" else "Cartone Animato 2D per Bambini (Animali Antropomorfi)")
     print(f"\n🖼️ Pre-generazione di {len(scene)} immagini in stile coordinato ({stile_desc})...")
     for idx, s in enumerate(scene, start=1):
         img_file = os.path.join(OUTPUT_DIR, f"{mode}_{storia['id']}_scena_{idx}.jpg")
@@ -1896,7 +1958,7 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
 # ── ENTRY POINT CLI ─────────────────────────────────────────────────────────
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bot Reels Master — Pipeline Video 9:16 Multi-Canale")
-    parser.add_argument("--mode", type=str, default=None, choices=["standard", "bibbia", "pillole", "mitologia"], help="Modalità bot")
+    parser.add_argument("--mode", type=str, default=None, choices=["standard", "bibbia", "pillole", "mitologia", "libri", "classici"], help="Modalità bot")
     parser.add_argument("--id", type=str, default=None, help="ID specifico della storia o pillola da generare")
     parser.add_argument("--voice", type=str, default=None, help="Voce personalizzata")
     parser.add_argument("--json", action="store_true", help="Genera solo lo schema JSON")

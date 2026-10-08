@@ -255,30 +255,78 @@ def carica_immobile_e_stanze(target_sheet=None):
         return None
 
     fogli_immobili = []
-    exclude = ['POST_YOUTUBE', 'DIALOGHI_AVAT_TUTTI', 'IMPOSTAZIONI_SOCIAL', 'PUBBLICITA_SCHERMO_CENTRALE', 'PROMPT_GEMINI_STUDIO']
+    non_immobili = [
+        'POST_YOUTUBE', 'DIALOGHI_AVAT_TUTTI', 'IMPOSTAZIONI_SOCIAL',
+        'PUBBLICITA_SCHERMO_CENTRALE', 'PROMPT_GEMINI_STUDIO', 'BATTUTE_DARIO',
+        'CONFIGURAZIONE_TEMPI', 'REGIA_IMMOBILE', 'RISULTATI_GIORNATA', 'FRASI_CALCIO',
+        'TEATRINO', 'NOZIONI_IMMOBILIARI', 'POST_FACEBOOK', 'NOTIZIE_SPORT_ATTUALITA',
+        'ANALYTICS_SOCIAL', 'PALINSESTO_ORARIO', 'PUBBLICITA_SPOT', 'MUSICA_SOTTOFONDO',
+        'DIRETTA_O_DARIA_E_DARIO_INFLUENCER', 'DIALOGHI_DUO', 'ARCHIVIO_CLIENTI',
+        'STORYTELLER_CITTA', 'POSE_AVATAR_DARIA', '360', 'APPARTAMENTO_CON_MAGAZZINO_VISTA_MARE'
+    ]
     for s in all_sheets:
         name = s.get('name', '')
-        if name.upper() not in exclude and s.get('rows', 0) >= 4:
+        if name.upper() not in non_immobili and s.get('rows', 0) >= 4:
             fogli_immobili.append(name)
 
     if not fogli_immobili:
         print("❌ Nessun foglio immobile valido trovato.")
         return None
 
+    # Recupero storico completo da tutte le posizioni note
+    history_candidates = [
+        HISTORY_FILE,
+        os.path.join(PROJECT_DIR, "immobili_pubblicati_history.json"),
+        os.path.join(PROJECT_DIR, "scripts", "immobili_pubblicati_history.json"),
+        os.path.join(BASE_DIR, "immobili_pubblicati_history.json")
+    ]
     history = {}
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-                history = json.load(f)
-        except Exception:
-            history = {}
+    for hp in history_candidates:
+        if os.path.exists(hp):
+            try:
+                with open(hp, 'r', encoding='utf-8') as f:
+                    d = json.load(f)
+                    if isinstance(d, dict):
+                        history.update(d)
+            except Exception:
+                pass
 
     storico_date = history.get("storico_immobili", {})
+    # Unifica anche eventuali chiavi flat con timestamp
+    for k, v in history.items():
+        if k not in ("storico_immobili", "ultima_pubblicazione_data", "ultimo_orario", "ultimo_immobile"):
+            if isinstance(v, dict) and "timestamp" in v:
+                fonte = v.get("fonte", k.split("_riga")[0])
+                storico_date[fonte] = str(v.get("timestamp"))
+            elif isinstance(v, (str, int, float)):
+                storico_date[k] = str(v)
 
+    # 🌟 SELEZIONE IMMOBILE DIVERSO AD OGNI ESECUZIONE (ANTI-RIPETIZIONE GARANTITA)
     scelto = target_sheet
     if not scelto or scelto not in fogli_immobili:
-        fogli_immobili.sort(key=lambda x: storico_date.get(x, "1970-01-01"))
-        scelto = fogli_immobili[0]
+        ultimo_immobile = history.get("ultimo_immobile", "")
+        # Escludi categoricamente l'ultimo immobile per non ripetere mai due volte lo stesso
+        candidati_fogli = [f for f in fogli_immobili if f != ultimo_immobile]
+        if not candidati_fogli:
+            candidati_fogli = fogli_immobili
+
+        # Separa gli immobili mai pubblicati da quelli già mostrati
+        mai_visti = [f for f in candidati_fogli if f not in storico_date]
+        if mai_visti:
+            # Scegli uno a rotazione tra quelli mai visti
+            import random
+            random.seed(int(time.time() // 60))
+            scelto = random.choice(mai_visti)
+            print(f"✨ Selezione nuovo immobile non ancora mostrato ({len(mai_visti)} inediti nel catalogo): '{scelto}'")
+        else:
+            # Ordina per data/timestamp crescente (il meno recente viene prima)
+            candidati_fogli.sort(key=lambda x: str(storico_date.get(x, "1970-01-01")))
+            # Prendi uno tra i primi 3 meno recenti
+            top_scelta = candidati_fogli[:min(3, len(candidati_fogli))]
+            import random
+            random.seed(int(time.time() // 60))
+            scelto = random.choice(top_scelta)
+            print(f"🔄 Rotazione ciclica immobile meno recente (ultimo uso: {storico_date.get(scelto)}): '{scelto}'")
 
     print(f"🏰 IMMOBILE SELEZIONATO PER IL CAROSELLO: '{scelto}'")
 
@@ -376,8 +424,37 @@ def scarica_immagine(url):
 
 def genera_slide_carosello_1080(stanza_data, immobile_info, index, total, logo_img):
     """
-    Genera immagine 1080x1080 per Post Carosello Facebook & Instagram.
+    Genera immagine 1080x1080 per Post Carosello Facebook & Instagram
+    applicando i 3 nuovi stili a rotazione (C&B, Metroquadro, ProfessioneCasa).
     """
+    out_path = os.path.join(OUTPUT_DIR, f"carosello_slide_{index}.jpg")
+    foto = scarica_immagine(stanza_data['foto_url'])
+    
+    stili_rotazione = ["cb_curved_wave", "metroquadro_gradient", "professionecasa_sidebar"]
+    stile_corrente = stili_rotazione[(index - 1) % len(stili_rotazione)]
+
+    try:
+        import motore_grafica_storie as mgs
+        media_info = {
+            'titolo': immobile_info.get('titolo', 'Opportunità Immobiliare'),
+            'tipologia': stanza_data.get('stanza_nome', 'Spazio Abitativo'),
+            'zona': immobile_info.get('titolo', 'Favara (AG)').split('–')[0].split('-')[0].strip(),
+            'indirizzo': stanza_data.get('stanza_nome', 'Favara Centro'),
+            'prezzo': stanza_data.get('prezzo', immobile_info.get('prezzo', 'Trattativa Riservata')),
+            'mq': stanza_data.get('mq', immobile_info.get('mq', '120 metri quadri')),
+            'codice_rif': f"STZ-{index}DI{total}",
+            'testoF': stanza_data.get('testo_col_f', ''),
+            'testo_col_f': stanza_data.get('testo_col_f', ''),
+            'fotoImage': foto,
+            'stato': 'IN VENDITA'
+        }
+        res = mgs.crea_flyer_1_1(media_info, style=stile_corrente, output_path=out_path)
+        if res and os.path.exists(res):
+            print(f"  ✓ Slide Carosello 1:1 [{stile_corrente}] generata: {res}")
+            return res
+    except Exception as e_mgs:
+        print(f"Avviso fallback grafica carosello: {e_mgs}")
+
     W, H = 1080, 1080
     canvas = Image.new('RGBA', (W, H), (10, 12, 18, 255))
 
@@ -486,8 +563,37 @@ def genera_slide_carosello_1080(stanza_data, immobile_info, index, total, logo_i
 
 def genera_slide_storia_1920(stanza_data, immobile_info, index, total, logo_img):
     """
-    Genera immagine 1080x1920 verticale per Storie Facebook e Instagram (9:16).
+    Genera immagine 1080x1920 verticale per Storie Facebook e Instagram (9:16)
+    applicando i 3 nuovi stili a rotazione (C&B, Metroquadro, ProfessioneCasa).
     """
+    out_unified = os.path.join(OUTPUT_DIR, f"storia_slide_{index}.jpg")
+    foto = scarica_immagine(stanza_data['foto_url'])
+
+    stili_rotazione = ["cb_curved_wave", "metroquadro_gradient", "professionecasa_sidebar"]
+    stile_corrente = stili_rotazione[(index - 1) % len(stili_rotazione)]
+
+    try:
+        import motore_grafica_storie as mgs
+        media_info = {
+            'titolo': immobile_info.get('titolo', 'Opportunità Immobiliare'),
+            'tipologia': stanza_data.get('stanza_nome', 'Spazio Abitativo'),
+            'zona': immobile_info.get('titolo', 'Favara (AG)').split('–')[0].split('-')[0].strip(),
+            'indirizzo': stanza_data.get('stanza_nome', 'Favara Centro'),
+            'prezzo': stanza_data.get('prezzo', immobile_info.get('prezzo', 'Trattativa Riservata')),
+            'mq': stanza_data.get('mq', immobile_info.get('mq', '120 metri quadri')),
+            'codice_rif': f"STZ-{index}DI{total}",
+            'testoF': stanza_data.get('testo_col_f', ''),
+            'testo_col_f': stanza_data.get('testo_col_f', ''),
+            'fotoImage': foto,
+            'stato': 'IN VENDITA'
+        }
+        res = mgs.crea_story_9_16(media_info, style=stile_corrente, output_path=out_unified)
+        if res and os.path.exists(res):
+            print(f"  ✓ Slide Storia 9:16 [{stile_corrente}] generata: {res}")
+            return res
+    except Exception as e_mgs:
+        print(f"Avviso fallback grafica storia carosello: {e_mgs}")
+
     W, H = 1080, 1920
     canvas = Image.new('RGBA', (W, H), (8, 11, 19, 255))
 
@@ -585,6 +691,11 @@ def pubblica_post_carosello_facebook(immobile_info, carosello_paths):
     """
     Pubblica un post carosello multi-foto (3-5 foto) sulla Pagina Facebook.
     """
+    disable_fb = os.environ.get("ENABLE_FACEBOOK", "false").lower() != "true"
+    if disable_fb:
+        print("\n🔒 [REGOLA 5 ATTIVA] Pubblicazione Facebook disattivata temporaneamente. Consegna su Telegram in corso...")
+        return {"success": True, "info": "Regola 5: Pubblicazione Facebook disattivata"}
+
     print(f"\n📘 [FACEBOOK] Caricamento {len(carosello_paths)} foto per Post Carosello...")
     media_fbids = []
     ctx = ssl._create_unverified_context()
@@ -716,6 +827,11 @@ def carica_video_storia_fb(page_id, page_token, video_path):
 
 def pubblica_storie_facebook(immobile_info, storia_paths):
     """Pubblica tutte le immagini delle stanze come Storie ufficiali sulla Pagina Facebook"""
+    disable_fb = os.environ.get("ENABLE_FACEBOOK", "false").lower() != "true"
+    if disable_fb:
+        print("\n🔒 [REGOLA 5 ATTIVA] Pubblicazione Storie Facebook disattivata temporaneamente. Consegna su Telegram in corso...")
+        return {"success": True, "info": "Regola 5: Pubblicazione Storie disattivata"}
+
     print(f"\n📘 [FACEBOOK] Pubblicazione di tutte le {len(storia_paths)} Storie ambienti...")
     risultati = []
 
@@ -733,6 +849,46 @@ def pubblica_storie_facebook(immobile_info, storia_paths):
             print(f"  ❌ Errore storia Facebook {i}: {e}")
 
     return {"success": len(risultati) > 0, "dettagli": risultati}
+
+def invia_immagini_a_telegram(image_paths, didascalia_master):
+    """Invia le immagini generate direttamente alla chat Telegram di verifica"""
+    if not image_paths:
+        return
+    ctx = ssl._create_unverified_context()
+    for idx, img_p in enumerate(image_paths, start=1):
+        if not os.path.exists(img_p):
+            continue
+        try:
+            caption = f"📸 {didascalia_master} — Slide {idx}/{len(image_paths)}\n\n— Immobiliare Giancani" if idx == 1 else ""
+            boundary = f"----TelegramBoundary{int(time.time()*1000)}"
+            with open(img_p, 'rb') as f:
+                img_bytes = f.read()
+
+            body = bytearray()
+            body.extend(f"--{boundary}\r\n".encode('utf-8'))
+            body.extend(f'Content-Disposition: form-data; name="chat_id"\r\n\r\n{TELEGRAM_CHAT_ID}\r\n'.encode('utf-8'))
+            if caption:
+                body.extend(f"--{boundary}\r\n".encode('utf-8'))
+                body.extend(f'Content-Disposition: form-data; name="caption"\r\n\r\n{caption}\r\n'.encode('utf-8'))
+            body.extend(f"--{boundary}\r\n".encode('utf-8'))
+            body.extend(f'Content-Disposition: form-data; name="photo"; filename="slide_{idx}.jpg"\r\n'.encode('utf-8'))
+            body.extend(b'Content-Type: image/jpeg\r\n\r\n')
+            body.extend(img_bytes)
+            body.extend(b"\r\n")
+            body.extend(f"--{boundary}--\r\n".encode('utf-8'))
+
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+            req = urllib.request.Request(url, data=body, headers={
+                'Content-Type': f'multipart/form-data; boundary={boundary}',
+                'User-Agent': 'Mozilla/5.0'
+            })
+            with urllib.request.urlopen(req, timeout=30, context=ctx) as r:
+                pass
+            print(f"  ✈️ Telegram: Slide {idx}/{len(image_paths)} inviata alla chat {TELEGRAM_CHAT_ID}!")
+            time.sleep(1)
+        except Exception as e_tg:
+            print(f"  ⚠️ Errore invio Telegram slide {idx}: {e_tg}")
+
 
 def invia_notifica_telegram(titolo, mq, prezzo, stanze_nomi, res_fb, res_storie):
     """Invia notifica sintetica su Telegram"""
@@ -759,16 +915,28 @@ def invia_notifica_telegram(titolo, mq, prezzo, stanze_nomi, res_fb, res_storie)
         print(f"[TELEGRAM] Errore notifica: {e}")
 
 def aggiorna_storico_pubblicazioni(nome_foglio):
-    """Aggiorna il file JSON dello storico pubblicazioni"""
+    """Aggiorna il file JSON dello storico pubblicazioni su tutte le directory chiave"""
     oggi_str = datetime.datetime.now().strftime("%Y-%m-%d")
     orario_str = datetime.datetime.now().isoformat()
-    hist = {"ultima_pubblicazione_data": oggi_str, "storico_immobili": {}}
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-                hist = json.load(f)
-        except Exception:
-            pass
+    now_ts = time.time()
+    hist = {"ultima_pubblicazione_data": oggi_str, "ultimo_orario": orario_str, "ultimo_immobile": nome_foglio, "storico_immobili": {}}
+
+    history_paths = [
+        HISTORY_FILE,
+        os.path.join(PROJECT_DIR, "immobili_pubblicati_history.json"),
+        os.path.join(PROJECT_DIR, "scripts", "immobili_pubblicati_history.json"),
+        os.path.join(BASE_DIR, "immobili_pubblicati_history.json")
+    ]
+
+    for hp in history_paths:
+        if os.path.exists(hp):
+            try:
+                with open(hp, 'r', encoding='utf-8') as f:
+                    old_h = json.load(f)
+                    if isinstance(old_h, dict):
+                        hist.update(old_h)
+            except Exception:
+                pass
 
     hist["ultima_pubblicazione_data"] = oggi_str
     hist["ultimo_orario"] = orario_str
@@ -777,12 +945,14 @@ def aggiorna_storico_pubblicazioni(nome_foglio):
         hist["storico_immobili"] = {}
     hist["storico_immobili"][nome_foglio] = oggi_str
 
-    try:
-        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(hist, f, indent=2)
-        print(f"📝 Storico aggiornato: '{nome_foglio}' registrato in data {oggi_str}.")
-    except Exception as e:
-        print(f"⚠️ Errore scrittura storico: {e}")
+    for hp in history_paths:
+        try:
+            os.makedirs(os.path.dirname(hp), exist_ok=True)
+            with open(hp, 'w', encoding='utf-8') as f:
+                json.dump(hist, f, indent=2)
+            print(f"📝 Storico salvato in {hp} con ultimo immobile '{nome_foglio}'.")
+        except Exception as e:
+            pass
 
 def main():
     parser = argparse.ArgumentParser(description="Bot Carosello Post & Storie Social — Immobiliare Giancani")
@@ -831,6 +1001,7 @@ def main():
 
     aggiorna_storico_pubblicazioni(immobile_data['foglio_nome'])
     stanze_nomi = [s['stanza_nome'] for s in stanze]
+    invia_immagini_a_telegram(carosello_files, f"{immobile_data['titolo']} ({immobile_data['prezzo']})")
     invia_notifica_telegram(immobile_data['titolo'], immobile_data['mq'], immobile_data['prezzo'], stanze_nomi, res_fb, res_storie)
 
     print("\n" + "=" * 70)

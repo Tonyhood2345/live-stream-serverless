@@ -454,12 +454,12 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "Disney Pixar animated movie still, cute 3D cartoon style, stylized 3D character design by Pixar Disney animation studios, "
-    "vibrant Disney cartoon colors, smooth 3D animation render, volumetric sunny lighting, vertical 9:16"
+    "2D cartoon animation style, distinct black pencil outline contour, bold black ink line art, "
+    "charming Disney Pixar cartoon character design, vibrant rich colors, classic 2D animated movie cel still, vertical 9:16"
 )
 LOCKED_NEGATIVE = (
-    "anime, manga, photorealism, realistic photo, real human, hyperrealistic skin, "
-    "2D illustration, flat drawing, sketch, dark, scary, horror, deformed, ugly, blurry, watermark, text"
+    "3D realistic CGI render, photorealistic, realistic photo, real human, hyperrealistic skin, "
+    "blurry lines, messy sketch, dark, scary, horror, deformed, ugly, watermark, text"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
@@ -491,19 +491,19 @@ def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
     tit = (titolo or "").lower()
     cat = (categoria or "").upper()
 
-    # Mappatura Storie Bibliche — Stile Disney Pixar Cartone Animato+
+    # Mappatura Storie Bibliche — Stile Cartone Animato 2D con Contorno Matita Nero
     if sid == "1" or "davide" in tit or "golia" in tit:
-        return "cute little 3D cartoon boy shepherd David, big expressive eyes, curly brown clay hair, simple beige tunic, cheerful friendly smiling face"
+        return "cute 2D cartoon boy shepherd David, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, big expressive cartoon eyes, curly brown hair, simple beige tunic"
     elif sid == "2" or "mosè" in tit or "mose" in tit or "mar rosso" in tit:
-        return "kind little 3D cartoon elderly prophet Moses, big expressive eyes, fluffy white cartoon beard, blue and cream robes, holding wooden shepherd staff, friendly warm smile"
+        return "kind 2D cartoon elderly prophet Moses, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, fluffy white beard, blue and cream robes holding wooden staff"
     elif sid == "3" or "salomone" in tit or "sapienza" in tit:
-        return "cheerful little 3D cartoon young King Solomon, golden cartoon crown, royal blue and gold robes, gentle wise smiling face"
+        return "cheerful 2D cartoon young King Solomon, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, golden crown, royal blue and gold robes"
     elif sid == "4" or "noè" in tit or "noe" in tit or "arca" in tit:
-        return "kind little 3D cartoon elderly Noah, warm friendly smile, fluffy gray cartoon beard, rustic tunic, cute stylized 3D animals"
+        return "kind 2D cartoon elderly Noah, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, gray beard, rustic tunic, cute 2D animals"
     elif sid == "5" or "daniele" in tit or "leoni" in tit:
-        return "faithful little 3D cartoon young Daniel, brown hair, peaceful smiling face, fine colorful biblical robes, cute friendly fluffy cartoon lions"
+        return "faithful 2D cartoon young Daniel, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon face, brown hair, peaceful smile, fine robes, cute fluffy lions"
     elif sid == "365" or "vergini" in tit or "dieci vergini" in tit:
-        return "cute little 3D cartoon young girls, joyful smiling faces, colorful biblical dresses, holding warm glowing golden cartoon oil lamps"
+        return "cute 2D cartoon young girls, distinct black pencil outline contour, bold black ink line art, charming Pixar cartoon faces, joyful smiles, holding warm golden oil lamps"
     elif "giona" in tit:
         return "cute 3D Pixar cartoon prophet Jonah with simple blue tunic, expressive friendly face"
     elif "giuseppe" in tit:

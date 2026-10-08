@@ -454,15 +454,14 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "adorable 3D cartoon animation style, children animated TV series style, "
-    "cute stylized cartoon character design, oversized round head, huge shiny expressive cartoon eyes, "
-    "tiny cute button nose, wide happy cartoon smile, chunky smooth cartoon hair, "
-    "bright saturated cheerful colors, smooth clean textures, zero human skin realism, "
-    "100% pure cartoon aesthetic, vertical 9:16"
+    "classic 2D animated movie cel art, traditional hand-drawn 2D cartoon style, "
+    "clean bold black ink outline contour, flat vibrant color fills, "
+    "charming 2D storybook character design, hand-painted 2D background, "
+    "absolutely no 3D, zero CGI, flat 2D animation aesthetic, vertical 9:16"
 )
 LOCKED_NEGATIVE = (
-    "realistic, photorealistic, real human, human skin, human face, realistic anatomy, realistic hair, "
-    "real person, live action, uncanny, adult, dark, scary, gloomy, horror, deformed, ugly, blurry"
+    "3D, CGI, 3D model, 3D render, Pixar 3D, blender, octane render, 3D character, "
+    "volumetric 3D shading, 3D lighting, claymation, photorealistic, realistic photo, real human, realistic skin, dark, horror"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
@@ -494,19 +493,19 @@ def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
     tit = (titolo or "").lower()
     cat = (categoria or "").upper()
 
-    # Mappatura Storie Bibliche — 100% Puro Cartone Animato per Bambini (Zero Realismo)
+    # Mappatura Storie Bibliche — 100% Puro Cartone Animato 2D Disegnato a Mano
     if sid == "1" or "davide" in tit or "golia" in tit:
-        return "adorable 3D cartoon boy shepherd David, children animated TV series style, oversized round head, huge shiny expressive cartoon eyes, cute tiny button nose, wide happy cartoon smile, chunky brown cartoon hair, simple colorful cartoon tunic"
+        return "charming 2D cartoon boy shepherd David, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, big expressive 2D cartoon eyes, cheerful smile, curly brown hair, beige tunic"
     elif sid == "2" or "mosè" in tit or "mose" in tit or "mar rosso" in tit:
-        return "adorable 3D cartoon grandfather prophet Moses, children animated TV series style, round friendly face, big shiny kind cartoon eyes, fluffy cloud-like white cartoon beard, smiling warmly, wearing bright sky-blue cartoon robes, holding smooth wooden cartoon staff"
+        return "charming kind elderly 2D cartoon prophet Moses, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, round friendly 2D face, fluffy white cartoon beard, light blue robes holding wooden staff"
     elif sid == "3" or "salomone" in tit or "sapienza" in tit:
-        return "cheerful 3D cartoon young King Solomon, children animated TV series style, round smiling face, big shiny cartoon eyes, golden cartoon crown, royal blue and gold cartoon robes"
+        return "cheerful 2D cartoon young King Solomon, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, smiling 2D face, golden crown, royal blue and gold robes"
     elif sid == "4" or "noè" in tit or "noe" in tit or "arca" in tit:
-        return "kind 3D cartoon grandfather Noah, children animated TV series style, warm cheerful smile, fluffy white cartoon beard, rustic cartoon tunic, cute friendly cartoon animals"
+        return "kind 2D cartoon grandfather Noah, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, warm smile, fluffy white beard, rustic tunic, cute friendly 2D cartoon animals"
     elif sid == "5" or "daniele" in tit or "leoni" in tit:
-        return "faithful 3D cartoon boy Daniel, children animated TV series style, round peaceful smiling face, big shiny cartoon eyes, colorful cartoon robes, cute friendly fluffy cartoon lions"
+        return "faithful 2D cartoon boy Daniel, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, peaceful smile, colorful robes, cute 2D cartoon lions"
     elif sid == "365" or "vergini" in tit or "dieci vergini" in tit:
-        return "cute 3D cartoon little girls, children animated TV series style, round joyful smiling faces, big shiny cartoon eyes, colorful cartoon dresses, holding warm glowing golden cartoon lanterns"
+        return "cute 2D cartoon young girls, classic hand-drawn 2D cel art, clean black ink outline contour, flat colors, joyful smiles, colorful dresses, holding glowing 2D cartoon oil lamps"
 
     # Mappatura Mitologia
     if "MITOLOGIA" in cat:

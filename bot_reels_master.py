@@ -532,12 +532,30 @@ def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
             return "cute 3D Pixar cartoon cheerful strong young hero Hercules with lion pelt cape, friendly smile"
         return "cute 3D Pixar cartoon heroic character in Ancient Greece mythology, vibrant colors, expressive smile"
 
+    # Mappatura Pillole Immobiliari & Legali (Corporate Elegante, Consulenza & Architettura)
+    if "PILLOLE" in cat:
+        return "elegant high-end Italian real estate setting, luxury modern villa architecture, notary office interior, warm sunlight, sophisticated architectural design"
+
     # Fallback per storie generiche
     return "cute 3D Pixar cartoon biblical characters with friendly expressive faces in ancient colorful tunics"
 
 
 def costruisci_prompt_scena(raw_prompt, idx=1, story_id="", titolo="", categoria="BIBBIA"):
-    """Ricava il soggetto visivo della scena dalla Colonna G, inietta l'ancora del protagonista e applica SEMPRE lo stile Pixar 3D bloccato."""
+    """Ricava il soggetto visivo della scena applicando lo stile idoneo alla categoria."""
+    cat_upper = str(categoria).upper()
+    if "PILLOLE" in cat_upper:
+        tit_clean = (titolo or "consulenza immobiliare").lower()
+        if "rogito" in tit_clean or "notarile" in tit_clean:
+            return "cinematic elegant notary office, antique mahogany desk with fountain pen, legal contract deed, golden seal, modern luxury villa in background through window, warm sunlight, photorealistic 8k architectural digest, vertical 9:16"
+        elif "conformità" in tit_clean or "catasto" in tit_clean or "urbanistica" in tit_clean:
+            return "architectural drafting table with detailed building blueprint plans, wooden ruler, magnifying glass, sleek modern apartment interior in background, bright morning lighting, photorealistic 8k architectural digest, vertical 9:16"
+        elif "fiscale" in tit_clean or "prima casa" in tit_clean or "imposte" in tit_clean:
+            return "luxurious bright contemporary home interior, marble floor, elegant living room, calculator and house keys on glass table, soft natural daylight, photorealistic 8k architectural digest, vertical 9:16"
+        elif "caparra" in tit_clean or "proposta" in tit_clean or "contratto" in tit_clean:
+            return "handshake in elegant real estate office, modern contract document with golden pen on marble table, modern villa view through panorama window, photorealistic 8k architectural digest, vertical 9:16"
+        else:
+            return f"prestigious Italian luxury villa facade and garden, warm golden hour sunlight, Mediterranean architecture, clear sky, photorealistic 8k architectural digest, vertical 9:16"
+
     s = re.sub(r"--no.*$", "", raw_prompt or "", flags=re.IGNORECASE | re.DOTALL)
     generico = bool(re.search(r"action part \d+|inspiring cartoon scene for", s, flags=re.IGNORECASE))
     s = re.sub(r",?\s*action part \d+", "", s, flags=re.IGNORECASE)
@@ -589,6 +607,40 @@ def _disattiva_se_crediti(engine, err_text):
         if engine not in DISABLED_ENGINES:
             print(f"  🚫 Motore {engine} disattivato per questa run (crediti/chiave non disponibili).")
         DISABLED_ENGINES.add(engine)
+
+
+def genera_immagine_gemini_banana(prompt, output_img):
+    """Genera immagine tramite Google Nano Banana / Gemini Flash Image se la quota è attiva."""
+    if not GEMINI_API_KEY:
+        return False
+    models = ["gemini-nano-banana-2.1", "gemini-2.5-flash-image", "nano-banana-pro-preview"]
+    for m in models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={GEMINI_API_KEY}"
+        payload = {
+            "contents": [{
+                "parts": [{"text": f"Generate vertical 9:16 high quality 3D Pixar Disney style render: {prompt}"}]
+            }]
+        }
+        try:
+            r = requests.post(url, json=payload, verify=False, timeout=25)
+            if r.status_code == 200:
+                res = r.json()
+                for p in res.get("candidates", [{}])[0].get("content", {}).get("parts", []):
+                    if "inlineData" in p and p["inlineData"].get("data"):
+                        raw = base64.b64decode(p["inlineData"]["data"])
+                        with open(output_img, "wb") as f_out:
+                            f_out.write(raw)
+                        with Image.open(output_img) as pim:
+                            adatta_immagine_9_16(pim).save(output_img, "JPEG", quality=95)
+                        print(f"  🍌 [GOOGLE NANO BANANA] Immagine generata con successo da {m}!")
+                        return True
+            elif r.status_code in (402, 429):
+                print(f"  ⏳ Google Nano Banana ({m}) quota momentaneamente esaurita (HTTP {r.status_code}).")
+                _disattiva_se_crediti("GEMINI_IMAGE", r.text)
+                return False
+        except Exception as eg:
+            print(f"  ⚠️ Avviso chiamata Google Nano Banana ({m}): {eg}")
+    return False
 
 
 def genera_immagine_huggingface(prompt, output_img):
@@ -783,7 +835,7 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                     print(f"  ⚠️ Errore caricamento immagine personalizzata {custom_name}: {ec}")
 
     # 2. Asset pre-renderizzati Disney/Pixar — pool di varianti per massima varietà
-    if "MITOLOGIA" in cat_upper:
+    if "MITOLOGIA" in cat_upper or "BIBBIA" in cat_upper:
         prefix = "mitologia" if "MITOLOGIA" in cat_upper else "bibbia"
         cartoons_dir = os.path.join(assets_dir, f"{prefix}_scene_cartoons")
         
@@ -811,6 +863,27 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
             except Exception as em:
                 print(f"  ⚠️ Avviso caricamento asset {os.path.basename(chosen)}: {em}")
 
+    # 2b. Asset fotografici curati ad altissima definizione per PILLOLE IMMOBILIARI & LEGALI (8K Architettura e Diritto)
+    if "PILLOLE" in cat_upper or "IMMOBIL" in cat_upper:
+        pillole_dir = os.path.join(assets_dir, "pillole_scene_curated")
+        curated_path = os.path.join(pillole_dir, f"pillole_{story_id}_scena_{idx}.jpg")
+        # Se la scena richiesta non esiste o idx > 3, fallback intelligente a scena 2 o 1 della stessa pillola
+        if not os.path.exists(curated_path):
+            curated_path = os.path.join(pillole_dir, f"pillole_{story_id}_scena_{((idx - 1) % 3) + 1}.jpg")
+        if not os.path.exists(curated_path):
+            curated_path = os.path.join(pillole_dir, f"pillole_{story_id}_scena_1.jpg")
+        if not os.path.exists(curated_path):
+            curated_path = os.path.join(pillole_dir, "pillole_1_scena_1.jpg")
+            
+        if os.path.exists(curated_path) and os.path.getsize(curated_path) > 1000:
+            try:
+                with Image.open(curated_path) as pim:
+                    adatta_immagine_9_16(pim).save(output_img, "JPEG", quality=95)
+                print(f"  🏛️ [FOTO CURATA 8K PILLOLE] Scena {idx} caricata con successo: {os.path.basename(curated_path)}")
+                return True
+            except Exception as ep:
+                print(f"  ⚠️ Errore caricamento asset pillole {curated_path}: {ep}")
+
 
     # 3. Cache valida (solo se richiesta)
     if use_cache and immagine_valida(output_img):
@@ -823,7 +896,10 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
     final_prompt = costruisci_prompt_scena(prompt, idx=idx, story_id=story_id, titolo=titolo, categoria=categoria)
     print(f"  🧭 Prompt scena {idx}: {final_prompt[:150]}...", flush=True)
 
-    # 4. Motori con chiave (saltati automaticamente se senza crediti)
+    # 4. Motori con chiave (saltati automaticamente se senza crediti o quota esaurita)
+    if GEMINI_API_KEY and "GEMINI_IMAGE" not in DISABLED_ENGINES:
+        if genera_immagine_gemini_banana(final_prompt, output_img) and immagine_valida(output_img):
+            return True
     if HF_TOKEN and "HF" not in DISABLED_ENGINES:
         if genera_immagine_huggingface(final_prompt, output_img) and immagine_valida(output_img):
             return True
@@ -842,13 +918,16 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
     encoded_prompt = urllib.parse.quote(poll_prompt)
     encoded_neg = urllib.parse.quote(LOCKED_NEGATIVE)
 
+    models_free = ["flux", "turbo"]
     max_retries = 6
     for attempt in range(1, max_retries + 1):
+        # Primo tentativo con FLUX.1 (massima qualità), poi fallback su turbo
+        cur_model = "flux" if attempt <= 2 else "turbo"
         ts_val = int(time.time() * 1000)
         url = (f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=576&height=1024&nologo=true"
-               f"&seed={seed}&negative={encoded_neg}&ts={ts_val}")
+               f"&seed={seed}&model={cur_model}&negative={encoded_neg}&ts={ts_val}")
         try:
-            print(f"  🎨 Pollinations [seed {seed}] tentativo {attempt}/{max_retries}...", flush=True)
+            print(f"  🎨 Pollinations [{cur_model.upper()} - seed {seed}] tentativo {attempt}/{max_retries}...", flush=True)
             resp = requests.get(url, timeout=(5, 55), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             if resp.status_code == 200 and len(resp.content) > 10000:
                 temp_file = f"{output_img}.tmp"
@@ -1019,7 +1098,7 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
     lora_path = os.path.join(fonts_dir, "Lora-Bold.ttf")
 
     def carica_font(path, fallback_list, size):
-        if os.path.exists(path):
+        if path and os.path.exists(path):
             try:
                 return ImageFont.truetype(path, size)
             except Exception:
@@ -1084,27 +1163,38 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
             draw.text((360, 132), f"di {autore}", fill=(210, 225, 245), font=font_autore, anchor="mm")
     # DOPO LA PRIMA SCENA (idx > 1): IL TITOLO SCOMPARE PER LASCIARE PIENA VISIBILITÀ ALL'ILLUSTRAZIONE
 
-    # 2. SOTTOTITOLI IN STILE COMIC STICKER (Doppio contorno 360°, ombra profonda a sbalzo, font solare)
+    # 2. SOTTOTITOLI IN STILE REELS PROFESSIONALE (Font nitido, pillola scura soft, leggibilità impeccabile)
     import textwrap
-    font_comic = carica_font(cinzel_path, ["impact.ttf", "arialbd.ttf", "arial.ttf"], 35)
-    wrapped_lines = textwrap.wrap(testo, width=32)
-    line_height = 46
+    font_subtitles = carica_font(None, ["segoeuib.ttf", "arialbd.ttf", "dejavusans-bold.ttf", "arial.ttf"], 28)
+    wrapped_lines = textwrap.wrap(testo, width=28)
+    line_height = 42
     total_h = len(wrapped_lines) * line_height
-    start_y = (1040 if not is_outro else 970) - (total_h // 2)
+    start_y = (1030 if not is_outro else 960) - (total_h // 2)
 
-    colore_font_solare = (255, 245, 95)  # Giallo chiaro solare brillante
-    colore_bianco_puro = (255, 255, 255)
+    colore_font_solare = (255, 235, 90)   # Oro solare
+    colore_bianco_puro = (255, 255, 255)  # Bianco pulito
+
+    # Pillola di contrasto soft semi-trasparente dietro i sottotitoli
+    box_pad_x = 24
+    box_pad_y = 14
+    max_w = 0
+    for line in wrapped_lines:
+        bbox = draw.textbbox((0, 0), line, font=font_subtitles)
+        max_w = max(max_w, bbox[2] - bbox[0])
+    
+    box_x0 = max(30, 360 - (max_w // 2) - box_pad_x)
+    box_x1 = min(690, 360 + (max_w // 2) + box_pad_x)
+    box_y0 = start_y - box_pad_y
+    box_y1 = start_y + total_h + box_pad_y
+    draw.rounded_rectangle([box_x0, box_y0, box_x1, box_y1], radius=16, fill=(10, 16, 28, 205), outline=(212, 175, 55, 140), width=1)
 
     for l_idx, line in enumerate(wrapped_lines):
-        y_pos = start_y + (l_idx * line_height)
+        y_pos = start_y + (l_idx * line_height) + (line_height // 2)
         testo_color = colore_font_solare if (l_idx == 0 or len(wrapped_lines) == 1) else colore_bianco_puro
 
-        # a) Ombra profonda a sbalzo (+5, +5)
-        draw.text((360 + 5, y_pos + 5), line, fill=(0, 0, 0, 255), font=font_comic, anchor="mm", stroke_width=5, stroke_fill=(0, 0, 0, 255))
-        # b) Doppio contorno spesso a 360° (stroke 6px)
-        draw.text((360, y_pos), line, fill=(0, 0, 0, 255), font=font_comic, anchor="mm", stroke_width=6, stroke_fill=(0, 0, 0, 255))
-        # c) Testo frontale solare con rifinitura interna
-        draw.text((360, y_pos), line, fill=testo_color, font=font_comic, anchor="mm", stroke_width=2, stroke_fill=(20, 20, 20, 255))
+        # Ombra soft e testo nitido
+        draw.text((360 + 2, y_pos + 2), line, fill=(0, 0, 0, 220), font=font_subtitles, anchor="mm")
+        draw.text((360, y_pos), line, fill=testo_color, font=font_subtitles, anchor="mm")
 
     # 3. OUTRO BADGE (y tra 1115 e 1245 px): Personal Branding Immobiliare Giancani
     if is_outro:
@@ -1396,11 +1486,9 @@ def invia_su_telegram(video_path, storia):
 
 def pubblica_reel_su_pagina_facebook(page_id, page_token, video_path, storia, nome_pagina="Facebook"):
     """Pubblica un Reel su una specifica pagina Facebook con descrizione ottimizzata da Colonna F."""
-    if not page_id or not page_token:
-        print(f"  ⚠️ Credenziali mancanti per Pagina Facebook '{nome_pagina}'. Salto.")
-        return False
-
-    cat = (storia.get('categoria') or storia.get('genere') or '').upper()
+    # 🔒 DIRETTIVA UTENTE: Pubblicazione Facebook disabilitata. Monitoraggio attivo solo su Telegram.
+    print(f"  🔒 [SICUREZZA] Pubblicazione Reel Facebook su '{nome_pagina}' BLOCCATA su direttiva utente. I video sono inviati solo su Telegram per monitoraggio. — Immobiliare Giancani")
+    return False
     # 🏛️ REGOLA UTENTE: Storie della Mitologia Greca avviano solo ed esclusivamente su Telegram!
     if "MITOLOGIA" in cat:
         print(f"  🛑 [POLICY UTENTE] Storie della Mitologia Greca sono configurate per l'invio ESCLUSIVO su Telegram. Pubblicazione Facebook annullata. — Immobiliare Giancani")
@@ -1469,15 +1557,9 @@ def pubblica_storia_facebook(page_id, page_token, video_path, nome_pagina="Faceb
     Carica un video come Storia di Facebook via Meta Graph API v19.0 /video_stories.
     Ideale per card video da 10-60 secondi con audio, grafica e musica.
     """
-    if not page_id or not page_token:
-        print(f"  ⚠️ Credenziali mancanti per Storia Facebook '{nome_pagina}'. Salto.")
-        return False
-    if not os.path.exists(video_path):
-        print(f"  ⚠️ Video storia non trovato: {video_path}")
-        return False
-
-    file_size = os.path.getsize(video_path)
-    url_stories = f"https://graph.facebook.com/v19.0/{page_id}/video_stories"
+    # 🔒 DIRETTIVA UTENTE: Pubblicazione Facebook disabilitata. Monitoraggio attivo solo su Telegram.
+    print(f"  🔒 [SICUREZZA] Pubblicazione Storia Facebook su '{nome_pagina}' BLOCCATA su direttiva utente. — Immobiliare Giancani")
+    return False
 
     try:
         # Phase 1: Start
@@ -1575,37 +1657,9 @@ def dividi_e_pubblica_storie_facebook(video_path, clips, storia, page_id, page_t
 # ── PUBBLICAZIONE POST TESTUALE FACEBOOK (COLONNA F) ────────────────────────
 def pubblica_post_testuale_facebook(page_id, page_token, storia, nome_pagina="Facebook"):
     """Pubblica un post testuale con testo estratto rigorosamente da Colonna F."""
-    if not page_id or not page_token:
-        return False
-        
-    print(f"\n📝 [FACEBOOK POST TESTUALE] Pubblicazione su '{nome_pagina}'...")
-    url_feed = f"https://graph.facebook.com/v19.0/{page_id}/feed"
-    testo_col_f = storia.get('testo_colonna_f', '').replace('|||', '\n\n').strip()
-    
-    messaggio = (
-        f"🏢 {storia.get('titolo', 'GUIDA PRATICA').upper()}\n"
-        f"📜 Guida e Tutela Legale Quotidiana a cura di Antonio Giancani\n\n"
-        f"{testo_col_f}\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"⭐ IMMOBILIARE GIANCANI ⭐\n"
-        f"📍 Favara & Agrigento | Consulenza e Vendita Immobiliari di Prestigio\n"
-        f"🌐 https://immobiliaregiancani.it\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"#ImmobiliareGiancani #AntonioGiancani #Favara #Agrigento #Casa #ConsulenzaImmobiliare\n\n"
-        f"🌟 Contenuto a cura di IMMOBILIARE GIANCANI"
-    )
-    try:
-        r = requests.post(url_feed, data={"message": messaggio, "access_token": page_token}, verify=False, timeout=25)
-        res = r.json()
-        if res.get("id"):
-            print(f"  ✅ [POST TESTUALE] Pubblicato con successo su '{nome_pagina}'! (ID: {res.get('id')})")
-            return True
-        else:
-            print(f"  ⚠️ Errore post testuale su {nome_pagina}: {res}")
-            return False
-    except Exception as e:
-        print(f"  ❌ Errore post testuale su {nome_pagina}: {e}")
-        return False
+    # 🔒 DIRETTIVA UTENTE: Pubblicazione Facebook disabilitata. Monitoraggio attivo solo su Telegram.
+    print(f"  🔒 [SICUREZZA] Pubblicazione Post Facebook su '{nome_pagina}' BLOCCATA su direttiva utente. — Immobiliare Giancani")
+    return False
 
 
 # ── PUBBLICAZIONE SULLA PAGINA DI ANTONIO GIANCANI ─────────────────────────
@@ -1621,19 +1675,17 @@ def pubblica_reel_facebook(video_path, storia):
 
 
 # ── DISPATCHER SOCIAL: ESEGUI ROUTING PUBBLICAZIONE (PUNTO 4) ───────────────
-def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", solo_telegram=False):
+def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", solo_telegram=True):
     """
-    Dispatcher centralizzato di pubblicazione multicanale:
-    - TUTTI i contenuti -> Telegram (Chat e Canale @immobiliaregiancani)
-    - BIBBIA (Ore 20:00) -> FB Reel & Storie 'Antonio Giancani', FB 'Eterno nostra giustizia', YT Shorts 'Eterno nostra giustizia'
-    - MITOLOGIA (Ore 18:00) -> FB Reel & Storie 'Antonio Giancani' (+ 'Immobiliare Giancani'), YT Shorts 'Storie della Mitologia Greca'
-    - PILLOLE (Ore 06:00) -> FB Reel & Storie & Post Colonna F 'Immobiliare Giancani', FB Reel & Storie 'Antonio Giancani', YT Shorts 'Immobiliare Giancani'
-    - LIBRI (Grandi Classici) -> FB Reel & Storie 'Antonio Giancani' (+ 'Immobiliare Giancani'), YT Shorts 'Immobiliare Giancani'
-    Tutti i post includono descrizioni ricche, contestuali e terminate con IMMOBILIARE GIANCANI.
+    Dispatcher centralizzato di pubblicazione multicanale.
+    🔒 NOTA DI SICUREZZA: Pubblicazione Facebook disabilitata su direttiva utente.
+    Invio ESCLUSIVAMENTE su Telegram per monitoraggio e sviluppo.
     """
+    solo_telegram = True
     mode_lower = mode.lower()
     print("\n" + "="*75)
-    print(f"📡 [ROUTING SOCIAL & PUBBLICAZIONE MULTICANALE] Categoria: {mode.upper()}")
+    print(f"📡 [ROUTING SICURO: SOLO TELEGRAM] Categoria: {mode.upper()}")
+    print("🔒 Pubblicazione Facebook disattivata dall'utente. Monitoraggio esclusivo su Telegram.")
     print("⭐ Supervisione Strategica e Personal Branding: IMMOBILIARE GIANCANI ⭐")
     print("="*75)
 
@@ -1711,15 +1763,15 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
 
 
 # ── ORCHESTRATORE PRINCIPALE (MAIN PIPELINE) ────────────────────────────────
-async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_json_only=False, solo_telegram=False):
+async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_json_only=False, solo_telegram=True):
     start_time = time.time()
     
+    # 🔒 DIRETTIVA UTENTE: DISABILITAZIONE TOTALE PUBBLICAZIONE SOCIAL.
+    # L'utente ha disposto di NON pubblicare su Facebook ma inviare SOLO su Telegram per monitorare gli sviluppi.
+    solo_telegram = True
+
     if not voice:
         voice = VOICES_BY_MODE.get(mode, "it-IT-ElsaNeural")
-
-    # 🏛️ REGOLA UTENTE: Storie della Mitologia Greca avviano solo ed esclusivamente su Telegram!
-    if mode == "mitologia":
-        solo_telegram = True
 
     mode_titles = {
         "mitologia": "STORIE DELLA MITOLOGIA GRECA (SOLO TELEGRAM)",
@@ -1764,7 +1816,8 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
     story_id_int = int(storia["id"]) if str(storia["id"]).isdigit() else 1
     img_files = []
     esiti = []
-    print(f"\n🖼️ Pre-generazione di {len(scene)} immagini in stile unico (Pixar 3D biblico)...")
+    stile_desc = "Fotografia 8K Architettura & Legale" if mode == "pillole" else ("Disney/Pixar Mitologia" if mode == "mitologia" else "Pixar 3D Sacro")
+    print(f"\n🖼️ Pre-generazione di {len(scene)} immagini in stile coordinato ({stile_desc})...")
     for idx, s in enumerate(scene, start=1):
         img_file = os.path.join(OUTPUT_DIR, f"{mode}_{storia['id']}_scena_{idx}.jpg")
         if os.path.exists(img_file):
@@ -1859,7 +1912,7 @@ if __name__ == "__main__":
     parser.add_argument("--id", type=str, default=None, help="ID specifico della storia o pillola da generare")
     parser.add_argument("--voice", type=str, default=None, help="Voce personalizzata")
     parser.add_argument("--json", action="store_true", help="Genera solo lo schema JSON")
-    parser.add_argument("--solo-telegram", action="store_true", help="Invia solo ed esclusivamente su Telegram")
+    parser.add_argument("--solo-telegram", action="store_true", default=True, help="Invia solo ed esclusivamente su Telegram (DEFAULT ATTIVO)")
     args = parser.parse_args()
 
     mode_effettivo = args.mode
@@ -1877,4 +1930,4 @@ if __name__ == "__main__":
         else:
             mode_effettivo = "bibbia"
 
-    asyncio.run(esegui_pipeline(story_id=args.id, voice=args.voice, mode=mode_effettivo, output_json_only=args.json, solo_telegram=args.solo_telegram))
+    asyncio.run(esegui_pipeline(story_id=args.id, voice=args.voice, mode=mode_effettivo, output_json_only=args.json, solo_telegram=True))

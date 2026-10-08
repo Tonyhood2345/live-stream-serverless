@@ -59,7 +59,7 @@ jobs:
           REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
           YOUTUBE_TOKEN_MITOLOGIA_JSON: ${{ secrets.YOUTUBE_TOKEN_MITOLOGIA_JSON }}
         run: |
-          CMD="python bot_reels_master.py --mode mitologia"
+          CMD="python bot_reels_master.py --mode mitologia --solo-telegram"
           if [ -n "${{ github.event.inputs.story_id }}" ]; then
             CMD="$CMD --id ${{ github.event.inputs.story_id }}"
           fi

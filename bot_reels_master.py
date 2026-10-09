@@ -1722,48 +1722,40 @@ def pubblica_reel_facebook(video_path, storia):
 
 
 # ── DISPATCHER SOCIAL: ESEGUI ROUTING PUBBLICAZIONE (PUNTO 4) ───────────────
-def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", solo_telegram=True):
+def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", solo_telegram=True, upload_youtube=False):
     """
     Dispatcher centralizzato di pubblicazione multicanale.
-    🔒 NOTA DI SICUREZZA: Pubblicazione Facebook disabilitata su direttiva utente.
-    Invio ESCLUSIVAMENTE su Telegram per monitoraggio e sviluppo.
+    - Telegram: Sempre attivo per monitoraggio e verifica.
+    - Facebook: Disattivato su direttiva utente.
+    - YouTube Shorts: Attivabile tramite flag upload_youtube / token configurato.
     """
-    solo_telegram = True
     mode_lower = mode.lower()
     print("\n" + "="*75)
-    print(f"📡 [ROUTING SICURO: SOLO TELEGRAM] Categoria: {mode.upper()}")
-    print("🔒 Pubblicazione Facebook disattivata dall'utente. Monitoraggio esclusivo su Telegram.")
+    print(f"📡 [ROUTING PUBBLICAZIONE] Categoria: {mode.upper()}")
+    print("🔒 Pubblicazione Facebook: DISATTIVATA su direttiva utente.")
+    print(f"📺 Caricamento YouTube Shorts: {'ATTIVO' if upload_youtube else 'Disattivato (solo Telegram)'}")
     print("⭐ Supervisione Strategica e Personal Branding: IMMOBILIARE GIANCANI ⭐")
     print("="*75)
 
     # 1. Telegram (TUTTI i contenuti obbligatoriamente su Chat e Canale Broadcast)
     invia_su_telegram(video_path, storia)
 
-    if solo_telegram:
+    # 2. YouTube Shorts (se richiesto e supportato per la modalità)
+    if upload_youtube:
+        if genera_metadati_youtube and pubblica_video_youtube:
+            print(f"\n📺 [YOUTUBE SHORTS] Avvio pubblicazione per la modalità '{mode}'...")
+            try:
+                yt_payload, _ = genera_metadati_youtube(video_path, storia, mode=mode)
+                pubblica_video_youtube(video_path, yt_payload, mode=mode)
+            except Exception as e_yt:
+                print(f"  ⚠️ Errore caricamento YouTube Shorts: {e_yt}")
+        else:
+            print("  ⚠️ Modulo youtube_uploader non disponibile.")
+
+    if solo_telegram and not upload_youtube:
         print("\n🔒 [MODALITÀ ESCLUSIVA TELEGRAM] Invio completato unicamente su Telegram come richiesto.")
         print("⭐ Produzione e Personal Branding: IMMOBILIARE GIANCANI ⭐\n")
         return
-
-    # 2. Routing multicanale in base al tema
-    if "bibbia" in mode_lower:
-        # a) Pagina Facebook "Eterno nostra giustizia" (Reel + Storie se configurato)
-        if FB_PAGE_ID_ETERNO and FB_PAGE_TOKEN_ETERNO:
-            pubblica_reel_su_pagina_facebook(FB_PAGE_ID_ETERNO, FB_PAGE_TOKEN_ETERNO, video_path, storia, "Eterno nostra giustizia")
-            dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ETERNO, FB_PAGE_TOKEN_ETERNO, "Eterno nostra giustizia")
-        else:
-            print("  ℹ️ [FB Eterno nostra giustizia]: Token non configurato. Aggiungi FB_PAGE_ACCESS_TOKEN_ETERNO e FB_PAGE_ID_ETERNO nei secret per attivare.")
-
-        # b) Pagina Facebook "Antonio Giancani" (Reel + Storie)
-        pubblica_reel_facebook(video_path, storia)
-        dividi_e_pubblica_storie_facebook(video_path, clips, storia, FB_PAGE_ID_ANTONIO, FB_PAGE_TOKEN_ANTONIO, "Antonio Giancani")
-
-        # c) Canale YouTube Shorts "Eterno nostra giustizia"
-        if genera_metadati_youtube and pubblica_video_youtube:
-            try:
-                yt_payload, _ = genera_metadati_youtube(video_path, storia, mode="bibbia")
-                pubblica_video_youtube(video_path, yt_payload, mode="bibbia")
-            except Exception as e_yt:
-                print(f"  ⚠️ Warning YouTube Bibbia: {e_yt}")
 
     elif "mitologia" in mode_lower:
         # 🏛️ REGOLA UTENTE: Storie della Mitologia Greca avviano solo ed esclusivamente su Telegram!
@@ -1810,16 +1802,16 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
 
 
 # ── ORCHESTRATORE PRINCIPALE (MAIN PIPELINE) ────────────────────────────────
-async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_json_only=False, solo_telegram=True):
+async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_json_only=False, solo_telegram=True, upload_youtube=False):
     start_time = time.time()
     
     # Normalizzazione alias modalità
     if mode in ["libri", "classici"]:
         mode = "standard"
 
-    # 🔒 DIRETTIVA UTENTE: DISABILITAZIONE TOTALE PUBBLICAZIONE SOCIAL.
-    # L'utente ha disposto di NON pubblicare su Facebook ma inviare SOLO su Telegram per monitorare gli sviluppi.
-    solo_telegram = True
+    # Se non è specificato upload_youtube, invio esclusivo su Telegram (Facebook resta disabilitato)
+    if not upload_youtube:
+        solo_telegram = True
 
     if not voice:
         voice = VOICES_BY_MODE.get(mode, "it-IT-ElsaNeural")
@@ -1933,7 +1925,7 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
     print(f"✅ Video finale generato con successo! ({file_mb} MB, Durata: ~{round(durata_totale, 1)}s)")
 
     # 4. Routing Social e Pubblicazione Centralizzata (Punto 4)
-    esegui_routing_pubblicazione(video_finale, clips, storia, mode=mode, solo_telegram=solo_telegram)
+    esegui_routing_pubblicazione(video_finale, clips, storia, mode=mode, solo_telegram=solo_telegram, upload_youtube=upload_youtube)
 
     # 5. Salvataggio stato di rotazione progressiva (evita sovrapposizioni)
     try:
@@ -1963,7 +1955,8 @@ if __name__ == "__main__":
     parser.add_argument("--id", type=str, default=None, help="ID specifico della storia o pillola da generare")
     parser.add_argument("--voice", type=str, default=None, help="Voce personalizzata")
     parser.add_argument("--json", action="store_true", help="Genera solo lo schema JSON")
-    parser.add_argument("--solo-telegram", action="store_true", default=True, help="Invia solo ed esclusivamente su Telegram (DEFAULT ATTIVO)")
+    parser.add_argument("--solo-telegram", action="store_true", default=True, help="Invia su Telegram per monitoraggio")
+    parser.add_argument("--upload-youtube", action="store_true", default=False, help="Carica automaticamente come YouTube Short")
     args = parser.parse_args()
 
     mode_effettivo = args.mode
@@ -1981,4 +1974,11 @@ if __name__ == "__main__":
         else:
             mode_effettivo = "bibbia"
 
-    asyncio.run(esegui_pipeline(story_id=args.id, voice=args.voice, mode=mode_effettivo, output_json_only=args.json, solo_telegram=True))
+    asyncio.run(esegui_pipeline(
+        story_id=args.id,
+        voice=args.voice,
+        mode=mode_effettivo,
+        output_json_only=args.json,
+        solo_telegram=args.solo_telegram,
+        upload_youtube=args.upload_youtube
+    ))

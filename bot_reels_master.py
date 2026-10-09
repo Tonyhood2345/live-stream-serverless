@@ -531,8 +531,10 @@ LOCKED_STYLE = (
     "charming children storybook illustration, zero 3D, zero CGI, vertical 9:16"
 )
 LOCKED_NEGATIVE = (
-    "3D, CGI, 3D model, 3D render, volumetric 3D shading, octane render, realistic photo, "
-    "photorealistic, real animal, real fur photo, real human, realistic face, dark, scary, horror, deformed, ugly"
+    "car, automobile, vehicle, truck, van, bus, motor, engine, wheels, tire, road, street, highway, traffic, asphalt, "
+    "modern city, modern building, skyscraper, concrete, steel, glass, power line, electricity, telephone, "
+    "modern clothes, jeans, sunglasses, wristwatch, technology, smartphone, screen, gadget, "
+    "photorealistic, real human photo, real photo, dark, scary, horror, violent, deformed, ugly, 3D, CGI, 3D render"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
@@ -557,26 +559,44 @@ _STYLE_NOISE = [
 def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
     """
     Restituisce un profilo descrittivo dettagliato e costante del protagonista principale
-    in stile cartone animato per bambini con simpatici animali antropomorfi in piedi vestiti,
-    per garantire continuità e massima tenerezza nelle scene.
+    in stile cartone animato per bambini con simpatici personaggi/animali antropomorfi vestiti,
+    ancorato RIGOROSAMENTE al contenuto semantico della specifica storia (mai su ID numerico).
     """
-    sid = str(story_id).strip()
     tit = (titolo or "").lower()
     cat = (categoria or "").upper()
 
-    # Mappatura Storie Bibliche — Cartoni Animati per Bambini con Animali Antropomorfi
-    if sid == "1" or "davide" in tit or "golia" in tit:
-        return "adorable anthropomorphic orange tabby kitten boy shepherd David standing upright on two feet, wearing a blue and white striped t-shirt and brown shorts, big round green eyes, cheerful smile, holding small wooden slingshot in cute paws, charming children cartoon style"
-    elif sid == "2" or "mosè" in tit or "mose" in tit or "mar rosso" in tit:
-        return "wise grandfatherly anthropomorphic lion prophet Moses standing upright on two feet, fluffy white cartoon beard, wearing sky-blue robe, holding wooden staff in paws, warm gentle expression, charming children cartoon style"
-    elif sid == "3" or "salomone" in tit or "sapienza" in tit:
-        return "cheerful young anthropomorphic golden lion cub King Solomon standing on two feet, tiny golden crown, royal blue and gold robe, happy smiling expression, charming children cartoon style"
-    elif sid == "4" or "noè" in tit or "noe" in tit or "arca" in tit:
-        return "kind grandfatherly anthropomorphic brown bear Noah standing upright on two feet, cozy rustic tunic, friendly warm smile, surrounded by tiny happy animal cartoon friends, charming children cartoon style"
-    elif sid == "5" or "daniele" in tit or "leoni" in tit:
-        return "cute anthropomorphic bunny boy Daniel standing upright on two feet, colorful tunic, peaceful happy smile, surrounded by cute sleepy cartoon lions, charming children cartoon style"
-    elif sid == "365" or "vergini" in tit or "dieci vergini" in tit:
-        return "cute anthropomorphic kitten and bunny girls standing upright on two feet, colorful dresses, joyful smiles, holding glowing warm golden lanterns in paws, charming children cartoon style"
+    # Mappatura Storie Bibliche — Cartoni Animati per Bambini per Singola Storia
+    if "BIBBIA" in cat:
+        if any(k in tit for k in ["adamo", "eva", "eden", "creazione"]):
+            return "cute anthropomorphic cheerful innocent cartoon animal couple Adam and Eve in the lush Garden of Eden, vibrant blooming paradise flowers and ancient green trees, sweet gentle smiles, charming children storybook illustration"
+        elif any(k in tit for k in ["davide", "golia", "fionda"]):
+            return "adorable anthropomorphic orange tabby kitten boy shepherd David standing upright on two feet, wearing a blue and white striped t-shirt and brown shorts, big round green eyes, cheerful smile, holding small wooden slingshot in cute paws, charming children cartoon style"
+        elif any(k in tit for k in ["mosè", "mose", "mar rosso", "egitto", "faraone", "roveto", "tavole"]):
+            return "wise grandfatherly anthropomorphic lion prophet Moses standing upright on two feet, fluffy white cartoon beard, wearing sky-blue robe, holding wooden staff in paws, warm gentle expression, charming children cartoon style"
+        elif any(k in tit for k in ["noè", "noe", "arca", "diluvio", "arcobaleno"]):
+            return "kind grandfatherly anthropomorphic brown bear Noah standing upright on two feet, cozy rustic tunic, friendly warm smile, surrounded by tiny happy animal cartoon friends, charming children cartoon style"
+        elif any(k in tit for k in ["salomone", "sapienza", "tempio"]):
+            return "cheerful young anthropomorphic golden lion cub King Solomon standing on two feet, tiny golden crown, royal blue and gold robe, happy smiling expression, charming children cartoon style"
+        elif any(k in tit for k in ["daniele", "leoni", "fossa"]):
+            return "cute anthropomorphic bunny boy Daniel standing upright on two feet, colorful tunic, peaceful happy smile, surrounded by cute sleepy cartoon lions, charming children cartoon style"
+        elif any(k in tit for k in ["giuseppe", "tunica", "fratelli"]):
+            return "cute anthropomorphic young gazelle boy Joseph standing upright on two feet in colorful striped biblical coat, cheerful smiling expression, charming children cartoon style"
+        elif any(k in tit for k in ["abramo", "isacco", "fede", "stelle"]):
+            return "kind wise grandfatherly anthropomorphic sheep elder Abraham in rustic biblical robes, warm gentle smile, charming children cartoon style"
+        elif any(k in tit for k in ["giona", "balena", "pesce", "ninive"]):
+            return "friendly anthropomorphic otter prophet Jonah standing on ancient seashore, colorful biblical tunic, charming children cartoon style"
+        elif any(k in tit for k in ["samuele", "chiamata"]):
+            return "cute young anthropomorphic lamb boy Samuel standing in ancient temple sanctuary, soft glowing light, charming children cartoon style"
+        elif any(k in tit for k in ["sansone", "forza"]):
+            return "friendly strong anthropomorphic lion hero Samson in ancient biblical tunic, cheerful smile, charming children cartoon style"
+        elif any(k in tit for k in ["rut", "naomi", "campo"]):
+            return "kind gentle anthropomorphic doe girl Ruth in rustic biblical dress, carrying golden wheat sheaf, charming children cartoon style"
+        elif any(k in tit for k in ["ester", "regina"]):
+            return "graceful young anthropomorphic gazelle queen Esther with tiny golden tiara, royal dress, charming children cartoon style"
+        elif any(k in tit for k in ["vergini", "lampade"]):
+            return "cute anthropomorphic kitten and bunny girls standing upright on two feet, colorful dresses, joyful smiles, holding glowing warm golden lanterns in paws, charming children cartoon style"
+        else:
+            return "cute anthropomorphic cartoon animal characters in ancient biblical robes, peaceful ancient landscape, olive trees and hills, charming children storybook illustration"
 
     # Mappatura Mitologia
     if "MITOLOGIA" in cat:
@@ -911,8 +931,8 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                 except Exception as ec:
                     print(f"  ⚠️ Errore caricamento immagine personalizzata {custom_name}: {ec}")
 
-    # 2. Asset pre-renderizzati Cartoni Animati 2D — pool di varianti per massima varietà
-    if "MITOLOGIA" in cat_upper or "BIBBIA" in cat_upper or "CLASSICI" in cat_upper or "STANDARD" in cat_upper or "LIBRI" in cat_upper:
+    # 2. Asset pre-renderizzati Cartoni Animati 2D (Esclusa BIBBIA: deve essere generata sempre per l'occasione)
+    if ("MITOLOGIA" in cat_upper or "CLASSICI" in cat_upper or "STANDARD" in cat_upper or "LIBRI" in cat_upper) and "BIBBIA" not in cat_upper:
         if "MITOLOGIA" in cat_upper:
             prefix = "mitologia"
         elif "BIBBIA" in cat_upper:
@@ -1005,23 +1025,26 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
 
     # 5. Pollinations gratuito: prompt compatto con ancora personaggio + stile Cartone 2D Piatto con Contorno Matita Nero
     clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
-    poll_prompt = f"{clean_sub}, flat 2D cartoon illustration, distinct black pencil outline contour, bold black ink line art, clean cel art, no 3D"
+    if "BIBBIA" in cat_upper:
+        poll_prompt = f"{clean_sub}, flat 2D cartoon illustration, distinct black pencil outline contour, bold black ink line art, clean cel art, ancient biblical times, zero cars, zero vehicles, no 3D"
+    else:
+        poll_prompt = f"{clean_sub}, flat 2D cartoon illustration, distinct black pencil outline contour, bold black ink line art, clean cel art, no 3D"
     if len(poll_prompt) > 280:
         poll_prompt = poll_prompt[:280].rstrip(" ,")
     encoded_prompt = urllib.parse.quote(poll_prompt)
     encoded_neg = urllib.parse.quote(LOCKED_NEGATIVE)
 
-    models_free = ["flux", "turbo"]
     max_retries = 6
+    scene_seed = (int(seed) + int(idx) * 123) % 1000000
     for attempt in range(1, max_retries + 1):
-        # Primo tentativo con FLUX.1 (massima qualità), poi fallback su turbo
-        cur_model = "flux" if attempt <= 2 else "turbo"
+        # Turbo è ultra-rapido (2-4s) e stabile per i cartoon 2D; flux come secondo tentativo
+        cur_model = "turbo" if attempt in (1, 3, 5) else "flux"
         ts_val = int(time.time() * 1000)
         url = (f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&nologo=true"
-               f"&seed={seed}&model={cur_model}&negative={encoded_neg}&ts={ts_val}")
+               f"&seed={scene_seed}&model={cur_model}&negative={encoded_neg}&ts={ts_val}")
         try:
-            print(f"  🎨 Pollinations [{cur_model.upper()} - seed {seed}] tentativo {attempt}/{max_retries}...", flush=True)
-            resp = requests.get(url, timeout=(5, 55), verify=False, headers={"User-Agent": "Mozilla/5.0"})
+            print(f"  🎨 Pollinations [{cur_model.upper()} - seed {scene_seed}] tentativo {attempt}/{max_retries}...", flush=True)
+            resp = requests.get(url, timeout=(5, 30), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             if resp.status_code == 200 and len(resp.content) > 10000:
                 temp_file = f"{output_img}.tmp"
                 with open(temp_file, "wb") as f:
@@ -1504,31 +1527,65 @@ def formatta_caption_telegram(storia):
         icona = "🏛️"
         sub = "Miti dell'Antica Grecia (Ore 18:00)"
         tags = "#MitologiaGreca #Olimpo #Cultura #ImmobiliareGiancani"
+        caption = (
+            f"{icona} <b>{titolo.upper()}</b>\n"
+            f"<i>{sub}</i>\n\n"
+            f"💬 <b>Narrazione (Colonna F):</b>\n"
+            f"«{estratto}»\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"⭐ <b>IMMOBILIARE GIANCANI</b> ⭐\n"
+            f"📍 Favara & Agrigento | https://immobiliaregiancani.it\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{tags}\n\n"
+            f"🌟 Contenuto a cura di <b>IMMOBILIARE GIANCANI</b>"
+        )
     elif cat == "BIBBIA":
         icona = "📖"
-        sub = "Storie della Bibbia (Ore 20:00)"
-        tags = "#Bibbia #Fede #EternoNostraGiustizia #ImmobiliareGiancani"
+        sub = "Storie per Bambini della Bibbia (Ore 20:00)"
+        tags = "#Bibbia #StorieDellaBibbia #BibbiaPerBambini #EternoNostraGiustizia #CartoniAnimati"
+        caption = (
+            f"{icona} <b>{titolo.upper()}</b>\n"
+            f"<i>{sub}</i>\n\n"
+            f"💬 <b>Narrazione (Colonna F):</b>\n"
+            f"«{estratto}»\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"✨ <b>Storie Per Bambini ENG della Bibbia</b> ✨\n"
+            f"📺 Canale YouTube: @StoriePerBambinidellaBibbiaENG\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{tags}"
+        )
     elif cat == "PILLOLE":
         icona = "🏢"
         sub = "Pillole Immobiliari & Legali (Ore 06:00)"
         tags = "#Immobiliare #Casa #Favara #Agrigento #ImmobiliareGiancani"
+        caption = (
+            f"{icona} <b>{titolo.upper()}</b>\n"
+            f"<i>{sub}</i>\n\n"
+            f"💬 <b>Narrazione (Colonna F):</b>\n"
+            f"«{estratto}»\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"⭐ <b>IMMOBILIARE GIANCANI</b> ⭐\n"
+            f"📍 Favara & Agrigento | https://immobiliaregiancani.it\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{tags}\n\n"
+            f"🌟 Contenuto a cura di <b>IMMOBILIARE GIANCANI</b>"
+        )
     else:
         icona = "📚"
         sub = "I Grandi Classici della Letteratura"
         tags = "#GrandiClassici #Libri #Cultura #ImmobiliareGiancani"
-
-    caption = (
-        f"{icona} <b>{titolo.upper()}</b>\n"
-        f"<i>{sub}</i>\n\n"
-        f"💬 <b>Narrazione (Colonna F):</b>\n"
-        f"«{estratto}»\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"⭐ <b>IMMOBILIARE GIANCANI</b> ⭐\n"
-        f"📍 Favara & Agrigento | https://immobiliaregiancani.it\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"{tags}\n\n"
-        f"🌟 Contenuto a cura di <b>IMMOBILIARE GIANCANI</b>"
-    )
+        caption = (
+            f"{icona} <b>{titolo.upper()}</b>\n"
+            f"<i>{sub}</i>\n\n"
+            f"💬 <b>Narrazione (Colonna F):</b>\n"
+            f"«{estratto}»\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"⭐ <b>IMMOBILIARE GIANCANI</b> ⭐\n"
+            f"📍 Favara & Agrigento | https://immobiliaregiancani.it\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{tags}\n\n"
+            f"🌟 Contenuto a cura di <b>IMMOBILIARE GIANCANI</b>"
+        )
     return caption
 
 
@@ -1542,12 +1599,20 @@ def invia_su_telegram(video_path, storia):
     print("\n📲 [TELEGRAM] Invio video su Chat e Canale...")
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
     caption = formatta_caption_telegram(storia)
+    cat_tg = str(storia.get("categoria", "")).upper()
     
-    inline_keyboard = {
-        "inline_keyboard": [
-            [{"text": "✨ Sito Web Immobiliare Giancani", "url": "https://immobiliaregiancani.it"}]
-        ]
-    }
+    if "BIBBIA" in cat_tg:
+        inline_keyboard = {
+            "inline_keyboard": [
+                [{"text": "📺 Canale YouTube Storie della Bibbia", "url": "https://www.youtube.com/@StoriePerBambinidellaBibbiaENG"}]
+            ]
+        }
+    else:
+        inline_keyboard = {
+            "inline_keyboard": [
+                [{"text": "✨ Sito Web Immobiliare Giancani", "url": "https://immobiliaregiancani.it"}]
+            ]
+        }
     
     destinazioni = [TELEGRAM_CHAT_ID]
     if TELEGRAM_CHANNEL_ID and TELEGRAM_CHANNEL_ID not in destinazioni:

@@ -382,11 +382,46 @@ def crea_struttura_scene(storia, mode="standard"):
     return scene
 
 
+# ── PULIZIA TESTO PER SINTESI VOCALE (ANTI-LETTURA PUNTEGGIATURA) ─────────
+def pulisci_testo_per_tts(testo):
+    """
+    Pulisce il testo prima dell'invio al sintetizzatore vocale neurale:
+    - Sostituisce trattini (-), due punti (:) e punti e virgola (;) con virgole naturali di pausa,
+      evitando tassativamente che la voce pronunci le parole 'trattino', 'due punti', ecc.
+    - Rimuove virgolette (« », " ", “ ”), parentesi e simboli speciali (*, #, •)
+    - Normalizza punti e virgole affinché fungano unicamente da pause foniche naturali.
+    """
+    if not testo:
+        return ""
+    t = str(testo)
+    # Sostituisci trattini e lineette con pausa
+    t = re.sub(r'\s*[\-–—_]\s*', ', ', t)
+    # Sostituisci due punti con pausa virgola (evita la pronuncia letterale 'due punti')
+    t = re.sub(r'\s*:\s*', ', ', t)
+    # Sostituisci punto e virgola con virgola
+    t = re.sub(r'\s*;\s*', ', ', t)
+    # Rimuovi virgolette di qualsiasi tipo (evita che pronunci 'virgolette')
+    t = re.sub(r'[«»\"“”„`\']', ' ', t)
+    # Rimuovi parentesi
+    t = re.sub(r'[\(\)\[\]\{\}]', '', t)
+    # Rimuovi simboli non alfabetici isolati
+    t = re.sub(r'[*•#~|^/\\<>]', ' ', t)
+    # Normalizza puntini di sospensione (...) in un unico punto
+    t = re.sub(r'\.{2,}', '.', t)
+    # Normalizza spazi e virgole consecutive
+    t = re.sub(r'\s*,\s*', ', ', t)
+    t = re.sub(r',\s*,+', ', ', t)
+    t = re.sub(r'\.\s*\.+', '. ', t)
+    t = re.sub(r'\s+', ' ', t).strip(' ,')
+    return t
+
+
 # ── GENERATORE VOCE NARRATRICE GOOGLE GEMINI TTS ────────────────────────────
 def genera_voce_gemini_tts(testo, file_audio, voice_name="Charon"):
     """Sintesi vocale neurale avanzata con le API di Google Gemini."""
     if not GEMINI_API_KEY:
         return False
+    testo = pulisci_testo_per_tts(testo)
         
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key={GEMINI_API_KEY}"
     payload = {
@@ -439,6 +474,7 @@ def genera_voce_gemini_tts(testo, file_audio, voice_name="Charon"):
 # ── GENERAZIONE VOCE NARRANTE (GEMINI TTS + EDGE-TTS + GTTS FALLBACK) ───────
 async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
     """Sintesi vocale neurale con priorità a Gemini TTS (Charon) e fallback su Edge-TTS."""
+    testo = pulisci_testo_per_tts(testo)
     if "gemini" in str(voce).lower() or voce in ["Charon", "Fenrir", "Puck", "Aoede"] or "it-IT-DiegoNeural" in str(voce):
         gem_voice = "Charon" if "diego" in str(voce).lower() else (voce.replace("gemini-", "") if "gemini" in str(voce).lower() else voce)
         if genera_voce_gemini_tts(testo, file_audio, voice_name=gem_voice):
@@ -1253,9 +1289,9 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
             draw.text((360, 1180), "IMMOBILIARE GIANCANI", fill=(255, 255, 255), font=font_brand, anchor="mm")
             draw.text((360, 1215), "⚡ Grandi Miti in 2 Minuti | Valori che Superano il Tempo ⚡", fill=(215, 230, 255), font=font_submotto, anchor="mm")
         elif "BIBBIA" in cat_upper:
-            draw.text((360, 1145), "📖 RUBRICA SPIRITUALE E SAPIENZIALE 📖", fill=(234, 198, 108), font=font_submotto, anchor="mm")
-            draw.text((360, 1180), "IMMOBILIARE GIANCANI", fill=(255, 255, 255), font=font_brand, anchor="mm")
-            draw.text((360, 1215), "«Eterno Nostra Giustizia» • Parola di Vita e Speranza", fill=(210, 225, 245), font=font_submotto, anchor="mm")
+            draw.text((360, 1145), "📖 STORIE PER BAMBINI DELLA BIBBIA 📖", fill=(234, 198, 108), font=font_submotto, anchor="mm")
+            draw.text((360, 1180), "STORIE DELLA BIBBIA", fill=(255, 255, 255), font=font_brand, anchor="mm")
+            draw.text((360, 1215), "Racconti di Fede e Coraggio in Animazione 2D ✨", fill=(210, 225, 245), font=font_submotto, anchor="mm")
         elif "PILLOLE" in cat_upper:
             draw.text((360, 1145), "🏢 LA TUA GUIDA IMMOBILIARE & LEGALE 🏢", fill=(234, 198, 108), font=font_submotto, anchor="mm")
             draw.text((360, 1180), "IMMOBILIARE GIANCANI", fill=(255, 255, 255), font=font_brand, anchor="mm")

@@ -55,11 +55,22 @@ CANALI_YOUTUBE = {
         "default_tags": ["Mitologia Greca", "Miti Greci", "Olimpo", "Eroi Greci", "Storia Antica", "Shorts", "YouTube Shorts", "Immobiliare Giancani", "Antonio Giancani"]
     },
     "bibbia": {
-        "nome_canale": "Storie della Bibbia — Eterno Nostra Giustizia",
-        "descrizione_canale": "I grandi racconti e insegnamenti della Bibbia in animazione 2D in 2 minuti.",
+        "nome_canale": "Storie Per Bambini ENG della Bibbia (@StoriePerBambinidellaBibbiaENG)",
+        "descrizione_canale": "I grandi racconti e insegnamenti della Bibbia per bambini in animazione 2D in 2 minuti.",
         "cred_file": os.path.join(BASE_DIR, "credentials_youtube_bibbia.json"),
         "token_file": os.path.join(BASE_DIR, "token_youtube_bibbia.json"),
-        "default_tags": ["Storie della Bibbia", "Bibbia", "Eterno Nostra Giustizia", "Fede", "Antico Testamento", "Shorts", "YouTube Shorts", "Immobiliare Giancani", "Antonio Giancani"]
+        "default_tags": [
+            "Storie Per Bambini ENG della Bibbia",
+            "Storie Per Bambini della Bibbia",
+            "Bibbia per Bambini",
+            "Storie della Bibbia",
+            "Cartoni Animati Bibbia",
+            "Animazione 2D",
+            "Shorts",
+            "YouTube Shorts",
+            "Immobiliare Giancani",
+            "Antonio Giancani"
+        ]
     },
     "giancani": {
         "nome_canale": "Immobiliare Giancani (@immobiliaregiancani761)",
@@ -105,14 +116,14 @@ def genera_metadati_youtube(video_path, storia, mode="mitologia"):
             extra_info += f"💡 Morale & Insegnamento: {morale}\n"
         hashtags = "#Shorts #MitologiaGreca #MitiGreci #Olimpo #Eroi #CulturaClassica #ImmobiliareGiancani #AntonioGiancani"
     elif mode_key == "bibbia":
-        short_title = f"{titolo} in 2 Minuti | Storie della Bibbia #Shorts"
-        header = f"📖 {titolo.upper()} — STORIE DELLA BIBBIA («ETERNO NOSTRA GIUSTIZIA») 📖"
+        short_title = f"{titolo} | Storie per Bambini della Bibbia #Shorts"
+        header = f"📖 {titolo.upper()} — STORIE PER BAMBINI DELLA BIBBIA IN 2 MINUTI 📖"
         extra_info = ""
         if storia.get("riferimento_biblico"):
             extra_info += f"📜 Riferimento: {storia.get('riferimento_biblico')}\n"
         if morale:
             extra_info += f"💡 Insegnamento di Fede: {morale}\n"
-        hashtags = "#Shorts #StorieDellaBibbia #Bibbia #Fede #ParolaDiDio #EternoNostraGiustizia #ImmobiliareGiancani #AntonioGiancani"
+        hashtags = "#Shorts #StoriePerBambinidellaBibbia #BibbiaPerBambini #StorieDellaBibbia #CartoniAnimati #ImmobiliareGiancani #AntonioGiancani"
     elif "pillole" in m_lower:
         short_title = f"{titolo} | Pillole Immobiliari & Legali #Shorts"
         header = f"🏢 {titolo.upper()} — PILLOLE IMMOBILIARI & LEGALI CON DARIA 🏢"
@@ -218,7 +229,10 @@ def ottieni_credenziali_youtube(mode="mitologia", interactive=False):
     creds = None
 
     # 1. Da variabile d'ambiente (GitHub Actions)
-    candidates_env = [env_token_var, "YOUTUBE_TOKEN_GIANCANI_JSON", "YOUTUBE_TOKEN_MITOLOGIA_JSON", "YOUTUBE_TOKEN_JSON"]
+    candidates_env = [env_token_var]
+    if mode_key == "giancani":
+        candidates_env.append("YOUTUBE_TOKEN_JSON")
+
     for ev in candidates_env:
         if os.environ.get(ev):
             try:
@@ -229,15 +243,14 @@ def ottieni_credenziali_youtube(mode="mitologia", interactive=False):
             except Exception as e_env:
                 print(f"  ⚠️ Warning parsing token da env {ev}: {e_env}")
 
-    # 2. Da file token su disco con fallback a token_youtube_giancani.json / token_youtube.json
+    # 2. Da file token su disco specifico per il canale
     if not creds:
-        candidate_files = [
-            token_file,
-            os.path.join(BASE_DIR, "token_youtube_giancani.json"),
-            os.path.join(BASE_DIR, "token_youtube.json"),
-            os.path.join(BASE_DIR, "token_youtube_mitologia.json"),
-            os.path.join(BASE_DIR, "diretta_live_project", "token_youtube.json")
-        ]
+        candidate_files = [token_file]
+        if mode_key == "giancani":
+            candidate_files.extend([
+                os.path.join(BASE_DIR, "token_youtube.json"),
+                os.path.join(BASE_DIR, "diretta_live_project", "token_youtube.json")
+            ])
         for cf in candidate_files:
             if os.path.exists(cf) and os.path.getsize(cf) > 100:
                 try:

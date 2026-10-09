@@ -206,6 +206,12 @@ def estrai_storia_colonna_f(csv_file=None, id_richiesto=None, mode="standard"):
                 col_f = row[5].strip() if len(row) > 5 and row[5].strip() not in ['pronto', 'pubblicato', 'bozza'] else row[3].strip()
                 prompts = row[6].strip() if len(row) > 6 else (row[4].strip() if len(row) > 4 else "")
                 stato = row[7].strip() if len(row) > 7 else (row[5].strip() if len(row) > 5 else "pronto")
+                
+                # Rimozione dinamica a runtime di qualsiasi menzione a Immobiliare Giancani per la Bibbia (brand separato)
+                col_f = re.sub(r'(?i)\s*(?:Costruisci il tuo futuro|Trova la tua casa|Trova le soluzioni|Dona basi sicure|Fai scelte trasparenti|affidati alla cura|con la guida|grazie alla solida|all\'integrità|alla trasparenza).*?Immobiliare Giancani.*', '', col_f)
+                col_f = re.sub(r'(?i)\s*Immobiliare Giancani.*', '', col_f).strip(' ,.:')
+                if not col_f.endswith(('.', '!', '?')):
+                    col_f += '.'
                 storie.append({
                     "id": row[0].strip(),
                     "titolo": row[1].strip(),
@@ -318,6 +324,11 @@ def crea_struttura_scene(storia, mode="standard"):
             scene = []
             for i, rs in enumerate(raw_scenes):
                 t_scena = rs.get("voiceover_chunk") or rs.get("overlay_text") or ""
+                if mode == "bibbia" or "BIBBIA" in categoria:
+                    t_scena = re.sub(r'(?i)\s*(?:Costruisci il tuo futuro|Trova la tua casa|Trova le soluzioni|Dona basi sicure|Fai scelte trasparenti|affidati alla cura|con la guida|grazie alla solida|all\'integrità|alla trasparenza).*?Immobiliare Giancani.*', '', t_scena)
+                    t_scena = re.sub(r'(?i)\s*Immobiliare Giancani.*', '', t_scena).strip(' ,.:')
+                    if not t_scena and i == len(raw_scenes) - 1:
+                        t_scena = "Nessun ostacolo è insormontabile quando cammini con rettitudine e fede."
                 scene.append({
                     "scena_id": rs.get("id", i),
                     "testo": t_scena,

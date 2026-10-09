@@ -13,9 +13,9 @@ on:
         required: false
         default: ''
       solo_telegram:
-        description: 'Invia solo ed esclusivamente su Telegram'
+        description: 'Invia solo su Telegram (senza YouTube)'
         required: false
-        default: true
+        default: false
         type: boolean
 
 jobs:
@@ -60,12 +60,14 @@ jobs:
           REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
           YOUTUBE_TOKEN_BIBBIA_JSON: ${{ secrets.YOUTUBE_TOKEN_BIBBIA_JSON }}
         run: |
-          CMD="python bot_reels_master.py --mode bibbia --solo-telegram"
+          CMD="python bot_reels_master.py --mode bibbia"
           if [ -n "${{ github.event.inputs.story_id }}" ]; then
             CMD="$CMD --id ${{ github.event.inputs.story_id }}"
           fi
           if [ "${{ github.event.inputs.solo_telegram }}" = "true" ]; then
             CMD="$CMD --solo-telegram"
+          else
+            CMD="$CMD --upload-youtube"
           fi
           echo "Esecuzione comando: $CMD"
           $CMD

@@ -68,8 +68,8 @@ CANALI_YOUTUBE = {
             "Animazione 2D",
             "Shorts",
             "YouTube Shorts",
-            "Immobiliare Giancani",
-            "Antonio Giancani"
+            "Racconti Biblici",
+            "Fede e Coraggio"
         ]
     },
     "giancani": {
@@ -123,7 +123,7 @@ def genera_metadati_youtube(video_path, storia, mode="mitologia"):
             extra_info += f"📜 Riferimento: {storia.get('riferimento_biblico')}\n"
         if morale:
             extra_info += f"💡 Insegnamento di Fede: {morale}\n"
-        hashtags = "#Shorts #StoriePerBambinidellaBibbia #BibbiaPerBambini #StorieDellaBibbia #CartoniAnimati #ImmobiliareGiancani #AntonioGiancani"
+        hashtags = "#Shorts #StoriePerBambinidellaBibbia #BibbiaPerBambini #StorieDellaBibbia #CartoniAnimati #Animazione2D"
     elif "pillole" in m_lower:
         short_title = f"{titolo} | Pillole Immobiliari & Legali #Shorts"
         header = f"🏢 {titolo.upper()} — PILLOLE IMMOBILIARI & LEGALI CON DARIA 🏢"
@@ -148,21 +148,31 @@ def genera_metadati_youtube(video_path, storia, mode="mitologia"):
 
     info_blocco = f"\n{extra_info.strip()}\n" if extra_info.strip() else ""
 
-    description = (
-        f"{header}\n"
-        f"{info_blocco}\n"
-        f"📜 Narrazione Ufficiale (Colonna F):\n"
-        f"«{colonna_f}»\n\n"
-        f"💬 Ti è piaciuto questo racconto? Lascia un commento, metti Mi Piace e iscriviti al canale per non perdere i prossimi appuntamenti!\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👉 Produzione, Consulenza & Personal Branding:\n"
-        f"🏠 IMMOBILIARE GIANCANI — Favara (Agrigento)\n"
-        f"🌐 Sito Web Ufficiale: https://immobiliaregiancani.it\n"
-        f"👤 A cura di Antonio Giancani\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"{hashtags}\n\n"
-        f"🌟 Contenuto a cura di IMMOBILIARE GIANCANI"
-    )
+    if mode_key == "bibbia":
+        description = (
+            f"{header}\n"
+            f"{info_blocco}\n"
+            f"📜 Racconto della Bibbia per Bambini (Colonna F):\n"
+            f"{colonna_f}\n\n"
+            f"💬 Ti è piaciuto questo racconto? Iscriviti al canale @StoriePerBambinidellaBibbiaENG, lascia un Mi Piace e condividi con i tuoi amici per non perdere le prossime storie in animazione 2D!\n\n"
+            f"{hashtags}"
+        )
+    else:
+        description = (
+            f"{header}\n"
+            f"{info_blocco}\n"
+            f"📜 Narrazione Ufficiale (Colonna F):\n"
+            f"«{colonna_f}»\n\n"
+            f"💬 Ti è piaciuto questo racconto? Lascia un commento, metti Mi Piace e iscriviti al canale per non perdere i prossimi appuntamenti!\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👉 Produzione, Consulenza & Personal Branding:\n"
+            f"🏠 IMMOBILIARE GIANCANI — Favara (Agrigento)\n"
+            f"🌐 Sito Web Ufficiale: https://immobiliaregiancani.it\n"
+            f"👤 A cura di Antonio Giancani\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{hashtags}\n\n"
+            f"🌟 Contenuto a cura di IMMOBILIARE GIANCANI"
+        )
 
     tags = list(config["default_tags"])
     tags.append(titolo)

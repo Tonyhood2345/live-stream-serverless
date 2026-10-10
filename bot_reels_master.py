@@ -524,17 +524,16 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "authentic 1990s 2D animated cartoon series cel art, vintage 90s Saturday morning cartoon style, "
-    "classic hand-drawn traditional cel animation, bold clean black pencil outline contour, "
-    "vibrant flat gouache cel colors, expressive retro 90s cartoon faces, warm friendly smiles, "
-    "charming classic 1990s animated television aesthetic, zero 3D, zero CGI, natural body proportions"
+    "cute 2D children cartoon illustration, official style of Storie per Bambini della Bibbia, "
+    "bold clean thick black outlines, bright cheerful saturated colors, smooth clean cel shading, "
+    "adorable friendly characters with cute round faces, big joyful open-mouth smiles, "
+    "big round expressive cartoon eyes, rosy blush cheeks, warm sunny radiant lighting, "
+    "wholesome colorful children storybook sticker art, zero 3D, zero photorealism, natural proportions"
 )
 LOCKED_NEGATIVE = (
-    "car, automobile, vehicle, truck, van, bus, motor, engine, wheels, tire, road, street, highway, traffic, asphalt, "
-    "modern city, modern building, skyscraper, concrete, steel, glass, power line, electricity, telephone, "
-    "modern clothes, jeans, sunglasses, wristwatch, technology, smartphone, screen, gadget, "
-    "photorealistic, real human photo, real photo, dark, scary, horror, violent, deformed, ugly, 3D, CGI, 3D render, "
-    "elongated body, vertically stretched, tall distorted anatomy, warped proportions"
+    "photorealistic, real human photo, real photo, 3D, CGI, 3D render, dark, scary, horror, violent, gritty, sad, solemn, "
+    "sleepy eyes, closed eyes, squinting, narrow eyes, deformed, ugly, elongated, vertically stretched, "
+    "car, automobile, vehicle, truck, van, bus, motor, modern city, modern clothes, jeans, technology, smartphone, screen"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
@@ -559,44 +558,103 @@ _STYLE_NOISE = [
 def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
     """
     Restituisce un profilo descrittivo dettagliato e costante del protagonista principale
-    in autentico stile cartone animato 2D anni '90 (vintage cel art),
+    in stile cartone animato 2D per bambini (Storie per Bambini della Bibbia — Ministero ENG),
     ancorato RIGOROSAMENTE al contenuto semantico della specifica storia (mai su ID numerico).
     """
     tit = (titolo or "").lower()
     cat = (categoria or "").upper()
 
-    # Mappatura Storie Bibliche — Cartoni Animati 2D anni '90 per Singola Storia
+    # Mappatura Storie Bibliche — Stile Ufficiale Storie per Bambini della Bibbia
     if "BIBBIA" in cat:
         if any(k in tit for k in ["adamo", "eva", "eden", "creazione"]):
-            return "authentic 1990s 2D animated cartoon series cel art, Adam and Eve in the lush paradise Garden of Eden, vibrant paradise flowers, ancient fruit trees, crystal clear river, innocent gentle smiling cartoon faces, vintage 90s animated cel art, natural body proportions"
+            return (
+                "cute cheerful 2D children cartoon characters, "
+                "Adam a sweet young cartoon boy with short brown hair in light green tunic, "
+                "Eve a sweet young cartoon girl with long brown hair in light yellow dress, "
+                "holding hands with big joyful smiles, big round open cartoon eyes, cute rosy cheeks, "
+                "in lush paradise Garden of Eden with blooming flowers, apple trees, rainbow and sunshine, "
+                "bold clean thick black outlines, bright colorful storybook illustration"
+            )
         elif any(k in tit for k in ["davide", "golia", "fionda"]):
-            return "authentic 1990s 2D animated cartoon series cel art, young courageous boy shepherd David with brown curls wearing simple rustic biblical tunic, holding wooden slingshot, smiling bravely, vintage 90s cartoon style, natural body proportions"
+            return (
+                "cute cheerful 2D cartoon boy shepherd David with brown curls, wearing simple rustic blue tunic "
+                "and brown shorts, holding small wooden slingshot, big round open cartoon eyes, brave bright smile, "
+                "cute rosy cheeks, bold clean thick black outlines, vibrant storybook illustration"
+            )
         elif any(k in tit for k in ["mosè", "mose", "mar rosso", "egitto", "faraone", "roveto", "tavole"]):
-            return "authentic 1990s 2D animated cartoon series cel art, wise biblical prophet Moses with white beard wearing flowing ancient sky-blue robe and holding wooden staff, gentle noble expression, vintage 90s animated cel art, natural body proportions"
+            return (
+                "cute kind 2D cartoon prophet Moses with neat white beard and white hair, wearing a bright sky-blue robe, "
+                "holding wooden staff, big round open cartoon eyes, gentle friendly smile, cute rosy cheeks, "
+                "bold clean thick black outlines, vibrant storybook illustration"
+            )
         elif any(k in tit for k in ["noè", "noe", "arca", "diluvio", "arcobaleno"]):
-            return "authentic 1990s 2D animated cartoon series cel art, kind elder prophet Noah with grey beard wearing simple rustic tunic, near big wooden ark with happy cartoon animals under bright rainbow and sky, vintage 90s animated cel art, natural body proportions"
+            return (
+                "cute kind 2D cartoon elder prophet Noah with friendly white beard and blue tunic, standing by a cute wooden boat ark, "
+                "with cute smiling baby animals, bright rainbow in blue sky, big round open cartoon eyes, joyful warm smile, "
+                "bold clean thick black outlines, vibrant storybook illustration"
+            )
+        elif any(k in tit for k in ["gesù", "gesu", "cristo"]):
+            return (
+                "cute cheerful 2D cartoon Jesus with wavy brown hair and neat beard, wearing pure white robe with bright red sash, "
+                "waving hand warmly with big joyful smile, big round open cartoon eyes, cute rosy cheeks, golden halo, "
+                "bold clean thick black outlines, vibrant storybook illustration"
+            )
         elif any(k in tit for k in ["salomone", "sapienza", "tempio"]):
-            return "authentic 1990s 2D animated cartoon series cel art, wise young King Solomon in royal biblical robes with golden crown, seated in ancient palace hall, vintage 90s animated cel art, natural body proportions"
+            return (
+                "cute cheerful 2D cartoon young King Solomon with golden crown, royal blue and gold tunic, "
+                "big round open cartoon eyes, happy wise smile, cute rosy cheeks, bold clean thick black outlines, vibrant storybook illustration"
+            )
         elif any(k in tit for k in ["daniele", "leoni", "fossa"]):
-            return "authentic 1990s 2D animated cartoon series cel art, faithful young prophet Daniel in ancient tunic, peaceful expression surrounded by calm sleeping cartoon lions, vintage 90s animated cel art, natural body proportions"
+            return (
+                "cute cheerful 2D cartoon boy Daniel in colorful tunic, praying peacefully with joyful smile, "
+                "surrounded by cute sleepy smiling cartoon lion cubs, big round open cartoon eyes, bold clean thick black outlines"
+            )
         elif any(k in tit for k in ["giuseppe", "tunica", "fratelli"]):
-            return "authentic 1990s 2D animated cartoon series cel art, cheerful young Joseph in colorful striped biblical coat, vintage 90s cartoon style, natural body proportions"
-        elif any(k in tit for k in ["abramo", "isacco", "fede", "stelle"]):
-            return "authentic 1990s 2D animated cartoon series cel art, kind elder patriarch Abraham in ancient biblical robes, vintage 90s cartoon style, natural body proportions"
+            return (
+                "cute cheerful 2D cartoon boy Joseph in colorful striped coat of many colors, "
+                "big round open cartoon eyes, bright joyful smile, cute rosy cheeks, bold clean thick black outlines"
+            )
         elif any(k in tit for k in ["giona", "balena", "pesce", "ninive"]):
-            return "authentic 1990s 2D animated cartoon series cel art, prophet Jonah on seashore near ancient wooden ship, vintage 90s cartoon style, natural body proportions"
+            return (
+                "cute cheerful 2D cartoon prophet Jonah in rustic tunic on sunny seashore near a huge friendly smiling cartoon whale, "
+                "big round open cartoon eyes, happy smile, bold clean thick black outlines"
+            )
+        elif any(k in tit for k in ["abramo", "isacco", "fede", "stelle"]):
+            return (
+                "cute kind 2D cartoon elder Abraham with white beard in rustic robes, looking at starry sky with joyful smile, "
+                "big round open cartoon eyes, bold clean thick black outlines"
+            )
         elif any(k in tit for k in ["samuele", "chiamata"]):
-            return "authentic 1990s 2D animated cartoon series cel art, young boy prophet Samuel in ancient sanctuary, soft glowing light, vintage 90s cartoon style, natural body proportions"
+            return (
+                "cute young 2D cartoon boy Samuel with brown hair in white tunic, smiling in peaceful ancient sanctuary, "
+                "big round open cartoon eyes, warm golden light, bold clean thick black outlines"
+            )
         elif any(k in tit for k in ["sansone", "forza"]):
-            return "authentic 1990s 2D animated cartoon series cel art, strong biblical hero Samson in ancient tunic, vintage 90s cartoon style, natural body proportions"
+            return (
+                "cute cheerful strong 2D cartoon hero Samson in ancient tunic, smiling bravely, "
+                "big round open cartoon eyes, bold clean thick black outlines"
+            )
         elif any(k in tit for k in ["rut", "naomi", "campo"]):
-            return "authentic 1990s 2D animated cartoon series cel art, kind young woman Ruth in rustic biblical dress holding golden wheat sheaf, vintage 90s cartoon style, natural body proportions"
+            return (
+                "cute cheerful 2D cartoon girl Ruth in rustic biblical dress holding golden wheat sheaf, "
+                "big round open cartoon eyes, sweet joyful smile, bold clean thick black outlines"
+            )
         elif any(k in tit for k in ["ester", "regina"]):
-            return "authentic 1990s 2D animated cartoon series cel art, graceful young Queen Esther with small golden crown and royal biblical dress, vintage 90s cartoon style, natural body proportions"
+            return (
+                "cute cheerful 2D cartoon Queen Esther with small golden crown and royal biblical dress, "
+                "big round open cartoon eyes, sweet joyful smile, bold clean thick black outlines"
+            )
         elif any(k in tit for k in ["vergini", "lampade"]):
-            return "authentic 1990s 2D animated cartoon series cel art, joyful young women in ancient colorful dresses holding glowing golden oil lanterns, vintage 90s cartoon style, natural body proportions"
+            return (
+                "cute cheerful 2D cartoon young women in colorful biblical dresses holding glowing golden oil lanterns, "
+                "big round open cartoon eyes, sweet joyful smiles, bold clean thick black outlines"
+            )
         else:
-            return "authentic 1990s 2D animated cartoon series cel art, biblical characters in ancient flowing robes, ancient biblical landscape of hills and olive trees, vintage 90s cartoon style, natural body proportions"
+            return (
+                "cute cheerful 2D children cartoon biblical characters in colorful ancient tunics, "
+                "big round open cartoon eyes, joyful open-mouth smiles, cute rosy cheeks, "
+                "sunny biblical landscape with rainbow, blooming flowers and olive trees, bold clean thick black outlines"
+            )
 
     # Mappatura Mitologia
     if "MITOLOGIA" in cat:
@@ -1015,12 +1073,12 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         if genera_immagine_replicate_sdxl(final_prompt, output_img) and immagine_valida(output_img):
             return True
 
-    # 5. Pollinations gratuito: prompt compatto con ancora personaggio + stile Cartone 2D Piatto con Contorno Matita Nero
+    # 5. Pollinations gratuito: prompt compatto con ancora personaggio + stile Cartone 2D Storie per Bambini della Bibbia
     clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
     if "BIBBIA" in cat_upper:
-        poll_prompt = f"{clean_sub}, authentic 1990s 2D animated cartoon series cel art, vintage 90s Saturday morning cartoon style, hand-drawn traditional cel animation, bold black pencil outline, flat gouache colors, natural body proportions, ancient biblical times, zero cars, zero modern vehicles, no 3D"
+        poll_prompt = f"{clean_sub}, cute 2D children cartoon sticker illustration, bold clean thick black outlines, bright cheerful flat colors, big happy smiles, open mouths, big round cartoon eyes, rosy cheeks, no 3D, no photorealism"
     else:
-        poll_prompt = f"{clean_sub}, authentic 1990s 2D animated cartoon series cel art, vintage 90s cartoon style, hand-drawn traditional cel animation, bold black pencil outline, flat gouache colors, natural body proportions, no 3D"
+        poll_prompt = f"{clean_sub}, cute 2D children cartoon illustration, bold clean black outlines, bright flat colors, happy smiles, no 3D"
     if len(poll_prompt) > 280:
         poll_prompt = poll_prompt[:280].rstrip(" ,")
     encoded_prompt = urllib.parse.quote(poll_prompt)

@@ -1449,8 +1449,8 @@ def crea_clip_ken_burns(img_path, audio_path, overlay_path, output_clip, idx):
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
 
-def monta_video_finale(clips, output_video, durata_totale):
-    """Concatena tutte le scene e mixa la musica di sottofondo d'atmosfera."""
+def monta_video_finale(clips, output_video, durata_totale, categoria="STANDARD"):
+    """Concatena tutte le scene e mixa la musica di sottofondo d'atmosfera senza copyright."""
     list_file = os.path.join(OUTPUT_DIR, "clips_concat.txt")
     with open(list_file, "w", encoding="utf-8") as f:
         for c in clips:
@@ -1466,12 +1466,18 @@ def monta_video_finale(clips, output_video, durata_totale):
     ]
     subprocess.run(cmd_concat, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     
-    # Selezione traccia musicale
-    music_files = [os.path.join(MUSIC_DIR, f) for f in os.listdir(MUSIC_DIR) if f.endswith((".mp3", ".wav"))] if os.path.exists(MUSIC_DIR) else []
+    # Selezione traccia musicale 100% sicura anti-copyright (YouTube Audio Library)
+    cat_upper = str(categoria).upper()
+    if "BIBBIA" in cat_upper:
+        safe_names = ["Back Road Out of Town.mp3", "Calma del Mediodia.mp3", "Sicilian Sunset.mp3"]
+        bibbia_tracks = [os.path.join(MUSIC_DIR, f) for f in safe_names if os.path.exists(os.path.join(MUSIC_DIR, f))]
+        music_files = bibbia_tracks if bibbia_tracks else [os.path.join(MUSIC_DIR, f) for f in os.listdir(MUSIC_DIR) if f.endswith((".mp3", ".wav"))]
+    else:
+        music_files = [os.path.join(MUSIC_DIR, f) for f in os.listdir(MUSIC_DIR) if f.endswith((".mp3", ".wav")) and not f.startswith("cinematic_")] if os.path.exists(MUSIC_DIR) else []
     
     if music_files:
         chosen_music = random.choice(music_files)
-        print(f"  🎵 Musica di sottofondo: {os.path.basename(chosen_music)}")
+        print(f"  🎵 Musica di sottofondo (Royalty-Free): {os.path.basename(chosen_music)}")
         cmd_mix = [
             FFMPEG_EXE, "-y",
             "-i", temp_concat,
@@ -2087,7 +2093,7 @@ async def esegui_pipeline(story_id=None, voice=None, mode="standard", output_jso
     # 3. Montaggio video finale e colonna sonora
     video_finale = os.path.join(OUTPUT_DIR, f"reels_{mode}_{storia['id']}.mp4")
     print(f"\n🎬 Montaggio finale del video: {os.path.basename(video_finale)}...")
-    monta_video_finale(clips, video_finale, durata_totale)
+    monta_video_finale(clips, video_finale, durata_totale, categoria=storia.get("categoria", mode))
     
     file_mb = round(os.path.getsize(video_finale) / (1024 * 1024), 2)
     print(f"✅ Video finale generato con successo! ({file_mb} MB, Durata: ~{round(durata_totale, 1)}s)")

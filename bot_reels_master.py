@@ -524,17 +524,17 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "classic 2D hand-drawn animated cartoon style, traditional cel animation, "
-    "bold clean black ink outline contour, vibrant flat colors, "
-    "adorable anthropomorphic cute animal characters standing upright on two feet, "
-    "wearing cute colorful clothes, sweet friendly cartoon smiles, completely non-realistic, "
-    "charming children storybook illustration, zero 3D, zero CGI, vertical 9:16"
+    "authentic 1990s 2D animated cartoon series cel art, vintage 90s Saturday morning cartoon style, "
+    "classic hand-drawn traditional cel animation, bold clean black pencil outline contour, "
+    "vibrant flat gouache cel colors, expressive retro 90s cartoon faces, warm friendly smiles, "
+    "charming classic 1990s animated television aesthetic, zero 3D, zero CGI, natural body proportions"
 )
 LOCKED_NEGATIVE = (
     "car, automobile, vehicle, truck, van, bus, motor, engine, wheels, tire, road, street, highway, traffic, asphalt, "
     "modern city, modern building, skyscraper, concrete, steel, glass, power line, electricity, telephone, "
     "modern clothes, jeans, sunglasses, wristwatch, technology, smartphone, screen, gadget, "
-    "photorealistic, real human photo, real photo, dark, scary, horror, violent, deformed, ugly, 3D, CGI, 3D render"
+    "photorealistic, real human photo, real photo, dark, scary, horror, violent, deformed, ugly, 3D, CGI, 3D render, "
+    "elongated body, vertically stretched, tall distorted anatomy, warped proportions"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
@@ -559,56 +559,56 @@ _STYLE_NOISE = [
 def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
     """
     Restituisce un profilo descrittivo dettagliato e costante del protagonista principale
-    in stile cartone animato per bambini con simpatici personaggi/animali antropomorfi vestiti,
+    in autentico stile cartone animato 2D anni '90 (vintage cel art),
     ancorato RIGOROSAMENTE al contenuto semantico della specifica storia (mai su ID numerico).
     """
     tit = (titolo or "").lower()
     cat = (categoria or "").upper()
 
-    # Mappatura Storie Bibliche — Cartoni Animati per Bambini per Singola Storia
+    # Mappatura Storie Bibliche — Cartoni Animati 2D anni '90 per Singola Storia
     if "BIBBIA" in cat:
         if any(k in tit for k in ["adamo", "eva", "eden", "creazione"]):
-            return "cute anthropomorphic cheerful innocent cartoon animal couple Adam and Eve in the lush Garden of Eden, vibrant blooming paradise flowers and ancient green trees, sweet gentle smiles, charming children storybook illustration"
+            return "authentic 1990s 2D animated cartoon series cel art, Adam and Eve in the lush paradise Garden of Eden, vibrant paradise flowers, ancient fruit trees, crystal clear river, innocent gentle smiling cartoon faces, vintage 90s animated cel art, natural body proportions"
         elif any(k in tit for k in ["davide", "golia", "fionda"]):
-            return "adorable anthropomorphic orange tabby kitten boy shepherd David standing upright on two feet, wearing a blue and white striped t-shirt and brown shorts, big round green eyes, cheerful smile, holding small wooden slingshot in cute paws, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, young courageous boy shepherd David with brown curls wearing simple rustic biblical tunic, holding wooden slingshot, smiling bravely, vintage 90s cartoon style, natural body proportions"
         elif any(k in tit for k in ["mosè", "mose", "mar rosso", "egitto", "faraone", "roveto", "tavole"]):
-            return "wise grandfatherly anthropomorphic lion prophet Moses standing upright on two feet, fluffy white cartoon beard, wearing sky-blue robe, holding wooden staff in paws, warm gentle expression, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, wise biblical prophet Moses with white beard wearing flowing ancient sky-blue robe and holding wooden staff, gentle noble expression, vintage 90s animated cel art, natural body proportions"
         elif any(k in tit for k in ["noè", "noe", "arca", "diluvio", "arcobaleno"]):
-            return "kind grandfatherly anthropomorphic brown bear Noah standing upright on two feet, cozy rustic tunic, friendly warm smile, surrounded by tiny happy animal cartoon friends, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, kind elder prophet Noah with grey beard wearing simple rustic tunic, near big wooden ark with happy cartoon animals under bright rainbow and sky, vintage 90s animated cel art, natural body proportions"
         elif any(k in tit for k in ["salomone", "sapienza", "tempio"]):
-            return "cheerful young anthropomorphic golden lion cub King Solomon standing on two feet, tiny golden crown, royal blue and gold robe, happy smiling expression, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, wise young King Solomon in royal biblical robes with golden crown, seated in ancient palace hall, vintage 90s animated cel art, natural body proportions"
         elif any(k in tit for k in ["daniele", "leoni", "fossa"]):
-            return "cute anthropomorphic bunny boy Daniel standing upright on two feet, colorful tunic, peaceful happy smile, surrounded by cute sleepy cartoon lions, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, faithful young prophet Daniel in ancient tunic, peaceful expression surrounded by calm sleeping cartoon lions, vintage 90s animated cel art, natural body proportions"
         elif any(k in tit for k in ["giuseppe", "tunica", "fratelli"]):
-            return "cute anthropomorphic young gazelle boy Joseph standing upright on two feet in colorful striped biblical coat, cheerful smiling expression, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, cheerful young Joseph in colorful striped biblical coat, vintage 90s cartoon style, natural body proportions"
         elif any(k in tit for k in ["abramo", "isacco", "fede", "stelle"]):
-            return "kind wise grandfatherly anthropomorphic sheep elder Abraham in rustic biblical robes, warm gentle smile, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, kind elder patriarch Abraham in ancient biblical robes, vintage 90s cartoon style, natural body proportions"
         elif any(k in tit for k in ["giona", "balena", "pesce", "ninive"]):
-            return "friendly anthropomorphic otter prophet Jonah standing on ancient seashore, colorful biblical tunic, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, prophet Jonah on seashore near ancient wooden ship, vintage 90s cartoon style, natural body proportions"
         elif any(k in tit for k in ["samuele", "chiamata"]):
-            return "cute young anthropomorphic lamb boy Samuel standing in ancient temple sanctuary, soft glowing light, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, young boy prophet Samuel in ancient sanctuary, soft glowing light, vintage 90s cartoon style, natural body proportions"
         elif any(k in tit for k in ["sansone", "forza"]):
-            return "friendly strong anthropomorphic lion hero Samson in ancient biblical tunic, cheerful smile, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, strong biblical hero Samson in ancient tunic, vintage 90s cartoon style, natural body proportions"
         elif any(k in tit for k in ["rut", "naomi", "campo"]):
-            return "kind gentle anthropomorphic doe girl Ruth in rustic biblical dress, carrying golden wheat sheaf, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, kind young woman Ruth in rustic biblical dress holding golden wheat sheaf, vintage 90s cartoon style, natural body proportions"
         elif any(k in tit for k in ["ester", "regina"]):
-            return "graceful young anthropomorphic gazelle queen Esther with tiny golden tiara, royal dress, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, graceful young Queen Esther with small golden crown and royal biblical dress, vintage 90s cartoon style, natural body proportions"
         elif any(k in tit for k in ["vergini", "lampade"]):
-            return "cute anthropomorphic kitten and bunny girls standing upright on two feet, colorful dresses, joyful smiles, holding glowing warm golden lanterns in paws, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, joyful young women in ancient colorful dresses holding glowing golden oil lanterns, vintage 90s cartoon style, natural body proportions"
         else:
-            return "cute anthropomorphic cartoon animal characters in ancient biblical robes, peaceful ancient landscape, olive trees and hills, charming children storybook illustration"
+            return "authentic 1990s 2D animated cartoon series cel art, biblical characters in ancient flowing robes, ancient biblical landscape of hills and olive trees, vintage 90s cartoon style, natural body proportions"
 
     # Mappatura Mitologia
     if "MITOLOGIA" in cat:
         if "perseo" in tit or "medusa" in tit:
-            return "cute anthropomorphic fox hero Perseus standing on two feet with tiny bronze helmet and shining shield, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, heroic Perseus with bronze helmet and shining shield, ancient Greece, vintage 90s cartoon style, natural body proportions"
         elif "dedalo" in tit or "icaro" in tit:
-            return "cute anthropomorphic bird boy Icarus standing on two feet with feathered wings, Greek tunic, cheerful expression, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, young Icarus with feathered wings flying near ancient sunny Greek shore, vintage 90s cartoon style, natural body proportions"
         elif "ulisse" in tit or "odisseo" in tit:
-            return "cute anthropomorphic otter traveler Odysseus standing on two feet with backpack and sailor hat, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, adventurous hero Odysseus on ancient wooden galley on Aegean Sea, vintage 90s cartoon style, natural body proportions"
         elif "ercole" in tit or "eracle" in tit:
-            return "cute friendly strong anthropomorphic bear cub Hercules standing on two feet with tiny cape, charming children cartoon style"
-        return "cute anthropomorphic animal hero in ancient Greece, standing on two feet with colorful tunic, charming children cartoon style"
+            return "authentic 1990s 2D animated cartoon series cel art, strong heroic Hercules in ancient Greek tunic, vintage 90s cartoon style, natural body proportions"
+        return "authentic 1990s 2D animated cartoon series cel art, ancient Greek mythic heroes and gods, marble temples, sunny Mediterranean landscape, vintage 90s cartoon style, natural body proportions"
 
     # Mappatura Grandi Classici della Letteratura (Gattino Avventuriero nei Libri)
     if "STANDARD" in cat or "LIBRI" in cat or "CLASSICI" in cat:
@@ -619,7 +619,7 @@ def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
         return "elegant high-end Italian real estate setting, luxury modern villa architecture, notary office interior, warm sunlight, sophisticated architectural design"
 
     # Fallback per storie generiche
-    return "adorable anthropomorphic cute animal characters standing on two feet in colorful clothes, charming children cartoon style"
+    return "authentic 1990s 2D animated cartoon series cel art, colorful retro animation characters, vintage 90s cartoon aesthetic, natural body proportions"
 
 
 def costruisci_prompt_scena(raw_prompt, idx=1, story_id="", titolo="", categoria="BIBBIA"):
@@ -646,20 +646,12 @@ def costruisci_prompt_scena(raw_prompt, idx=1, story_id="", titolo="", categoria
         s = re.sub(rf"{noise},?\s*", "", s, flags=re.IGNORECASE)
     if "BIBBIA" in cat_upper:
         for pat, rep in {
-            r"\bboy shepherd\b": "kitten shepherd",
-            r"\byoung shepherd\b": "kitten shepherd",
-            r"\bcurly brown hair\b": "orange tabby fur",
-            r"\bbeige tunic\b": "blue striped shirt",
-            r"\bgiant goliath\b": "comical bulldog warrior Goliath",
-            r"\bgoliath in bronze armor\b": "bulldog warrior Goliath in funny armor",
-            r"\bterrified cartoon soldiers\b": "worried cute cartoon animal soldiers",
-            r"\bsoldiers\b": "friendly cartoon animals",
-            r"\bboth armies\b": "cute cartoon animal armies",
-            r"\barmies\b": "animal groups",
-            r"\bpeople\b": "animal friends",
+            r"\bgiant goliath\b": "tall warrior Goliath in ancient bronze armor",
+            r"\bgoliath in bronze armor\b": "tall warrior Goliath in ancient bronze armor",
+            r"\bterrified soldiers\b": "worried ancient soldiers",
         }.items():
             s = re.sub(pat, rep, s, flags=re.IGNORECASE)
-    for pat, rep in {r"\bgiant\b": "tall cartoon warrior", r"\bmonster\b": "creature", r"\bscary\b": "dramatic",
+    for pat, rep in {r"\bmonster\b": "creature", r"\bscary\b": "dramatic",
                      r"\bdark\b": "dusk", r"\bterrified\b": "worried", r"\bfierce\b": "majestic",
                      r"\bchariots?\b": "ancient wooden horse-drawn chariots", r"\bcars?\b": "ancient horse carts",
                      r"\bark\b": "big wooden boat ark"}.items():
@@ -1026,9 +1018,9 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
     # 5. Pollinations gratuito: prompt compatto con ancora personaggio + stile Cartone 2D Piatto con Contorno Matita Nero
     clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
     if "BIBBIA" in cat_upper:
-        poll_prompt = f"{clean_sub}, flat 2D cartoon illustration, distinct black pencil outline contour, bold black ink line art, clean cel art, ancient biblical times, zero cars, zero vehicles, no 3D"
+        poll_prompt = f"{clean_sub}, authentic 1990s 2D animated cartoon series cel art, vintage 90s Saturday morning cartoon style, hand-drawn traditional cel animation, bold black pencil outline, flat gouache colors, natural body proportions, ancient biblical times, zero cars, zero modern vehicles, no 3D"
     else:
-        poll_prompt = f"{clean_sub}, flat 2D cartoon illustration, distinct black pencil outline contour, bold black ink line art, clean cel art, no 3D"
+        poll_prompt = f"{clean_sub}, authentic 1990s 2D animated cartoon series cel art, vintage 90s cartoon style, hand-drawn traditional cel animation, bold black pencil outline, flat gouache colors, natural body proportions, no 3D"
     if len(poll_prompt) > 280:
         poll_prompt = poll_prompt[:280].rstrip(" ,")
     encoded_prompt = urllib.parse.quote(poll_prompt)
@@ -1037,13 +1029,16 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
     max_retries = 6
     scene_seed = (int(seed) + int(idx) * 123) % 1000000
     for attempt in range(1, max_retries + 1):
-        # Turbo è ultra-rapido (2-4s) e stabile per i cartoon 2D; flux come secondo tentativo
-        cur_model = "turbo" if attempt in (1, 3, 5) else "flux"
+        # Turbo è stabile, ultra-veloce e gratuito su Pollinations; genera a 768x768 nativo per anatomia perfetta
+        cur_model = "turbo"
+        attempt_seed = (scene_seed + (attempt - 1) * 777) % 1000000
         ts_val = int(time.time() * 1000)
-        url = (f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&nologo=true"
-               f"&seed={scene_seed}&model={cur_model}&negative={encoded_neg}&ts={ts_val}")
+        # Generazione a 768x768 (quadrato nativo SD) per evitare allungamento orizzontale o verticale!
+        # Poi adatta_immagine_9_16(valid_pil) ritaglia a 720x1280 mantenendo proporzioni perfette senza stiramento.
+        url = (f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=768&height=768&nologo=true"
+               f"&seed={attempt_seed}&model={cur_model}&negative={encoded_neg}&ts={ts_val}")
         try:
-            print(f"  🎨 Pollinations [{cur_model.upper()} - seed {scene_seed}] tentativo {attempt}/{max_retries}...", flush=True)
+            print(f"  🎨 Pollinations [{cur_model.upper()} - seed {attempt_seed}] tentativo {attempt}/{max_retries}...", flush=True)
             resp = requests.get(url, timeout=(5, 30), verify=False, headers={"User-Agent": "Mozilla/5.0"})
             if resp.status_code == 200 and len(resp.content) > 10000:
                 temp_file = f"{output_img}.tmp"
@@ -1106,9 +1101,12 @@ def crea_immagine_fallback(output_img, testo_descrittivo, categoria="STANDARD", 
 
     assets_dir = os.path.join(BASE_DIR, "assets")
     cat_upper = str(categoria).upper()
+    master_art = None
     
     if "BIBBIA" in cat_upper:
-        master_art = os.path.join(assets_dir, "bibbia_master_fallback.jpg")
+        desc_low = str(testo_descrittivo).lower()
+        if any(k in desc_low for k in ["mosè", "mose", "mar rosso", "egitto", "tavole", "faraone"]):
+            master_art = os.path.join(assets_dir, "bibbia_master_fallback.jpg")
     elif "MITOLOGIA" in cat_upper:
         master_art = os.path.join(assets_dir, "mitologia_master_fallback.jpg")
     elif "PILLOLE" in cat_upper:
@@ -1116,7 +1114,7 @@ def crea_immagine_fallback(output_img, testo_descrittivo, categoria="STANDARD", 
     else:
         master_art = os.path.join(assets_dir, "cat_master_reference.jpg")
         
-    if os.path.exists(master_art):
+    if master_art and os.path.exists(master_art):
         try:
             with Image.open(master_art) as im:
                 adatta_immagine_9_16(im).save(output_img, "JPEG", quality=95)

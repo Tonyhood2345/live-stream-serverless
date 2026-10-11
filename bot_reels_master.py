@@ -318,9 +318,18 @@ def crea_struttura_scene(storia, mode="standard"):
     categoria = storia.get("categoria", mode).upper()
     
     # Scene JSON predefinite se presenti in prompts_g
-    if storia.get("prompts_g") and storia["prompts_g"].startswith("["):
+    if storia.get("prompts_g") and storia["prompts_g"].strip().startswith("["):
         try:
-            raw_scenes = json.loads(storia["prompts_g"])
+            pg = storia["prompts_g"].strip()
+            try:
+                raw_scenes = json.loads(pg)
+            except Exception:
+                # Normalizza virgolette ed escape causati da copia-incolla spreadsheet
+                pg_clean = pg.replace('""', '"')
+                pg_clean = re.sub(r'\{\s*id["\s]*:', '{"id":', pg_clean)
+                pg_clean = re.sub(r'(\d+(?:\.\d+)?)\s*[\t,]\s*"', r'\1, "', pg_clean)
+                pg_clean = re.sub(r'"\s*[\t]\s*"', r'", "', pg_clean)
+                raw_scenes = json.loads(pg_clean)
             scene = []
             for i, rs in enumerate(raw_scenes):
                 t_scena = rs.get("voiceover_chunk") or rs.get("overlay_text") or ""
@@ -715,15 +724,19 @@ def costruisci_prompt_scena(raw_prompt, idx=1, story_id="", titolo="", categoria
                      r"\bark\b": "big wooden boat ark"}.items():
         s = re.sub(pat, rep, s, flags=re.IGNORECASE)
     s = re.sub(r"[^a-zA-Z0-9\s,']", " ", s)
-    subject = " ".join(s.split()).strip(" ,")[:180].rstrip(" ,")
+    subject = " ".join(s.split()).strip(" ,")[:300].rstrip(" ,")
     if not subject:
         subject = "biblical characters in ancient setting"
     if generico:
         subject = f"{subject}, {SCENE_VARIATIONS[(int(idx) - 1) % len(SCENE_VARIATIONS)]}"
 
-    # Iniezione ancora del protagonista per garantire coerenza assoluta fisionomica e di abito
+    # Priorità assoluta all'azione della scena: il soggetto visivo viene SEMPRE messo in testa
     anchor = ottieni_ancora_personaggio(story_id=str(story_id), titolo=titolo, categoria=categoria)
-    return f"{anchor}, {subject}, {LOCKED_STYLE}"
+    has_characters = any(k in subject.lower() for k in ["boy", "girl", "man", "woman", "david", "goliath", "moses", "noah", "adam", "eve", "shepherd", "king", "jesus", "prophet", "soldier", "people", "characters", "human"])
+    if has_characters or generico:
+        return f"{subject}, {anchor}, {LOCKED_STYLE}"
+    else:
+        return f"{subject}, {LOCKED_STYLE}"
 
 
 def genera_prompt_compatto(raw_prompt, idx=1, story_id="", titolo="", categoria="BIBBIA"):
@@ -1073,14 +1086,17 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         if genera_immagine_replicate_sdxl(final_prompt, output_img) and immagine_valida(output_img):
             return True
 
-    # 5. Pollinations gratuito: prompt compatto con ancora personaggio + stile Cartone 2D Storie per Bambini della Bibbia
+    # 5. Pollinations gratuito: prompt ricco con azione della scena in testa + stile Cartone 2D Sticker
     clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
-    if "BIBBIA" in cat_upper:
-        poll_prompt = f"{clean_sub}, cute 2D children cartoon sticker illustration, bold clean thick black outlines, bright cheerful flat colors, big happy smiles, open mouths, big round cartoon eyes, rosy cheeks, no 3D, no photorealism"
+    if "sticker" not in clean_sub.lower() and "cartoon" not in clean_sub.lower():
+        if "BIBBIA" in cat_upper:
+            poll_prompt = f"{clean_sub}, cute 2D children cartoon sticker illustration, bold clean thick black outlines, bright cheerful flat colors, big happy smiles, open mouths, big round cartoon eyes, rosy cheeks, no 3D, no realism"
+        else:
+            poll_prompt = f"{clean_sub}, cute 2D children cartoon illustration, bold clean black outlines, bright flat colors, happy smiles, no 3D"
     else:
-        poll_prompt = f"{clean_sub}, cute 2D children cartoon illustration, bold clean black outlines, bright flat colors, happy smiles, no 3D"
-    if len(poll_prompt) > 280:
-        poll_prompt = poll_prompt[:280].rstrip(" ,")
+        poll_prompt = clean_sub
+    if len(poll_prompt) > 480:
+        poll_prompt = poll_prompt[:480].rstrip(" ,")
     encoded_prompt = urllib.parse.quote(poll_prompt)
     encoded_neg = urllib.parse.quote(LOCKED_NEGATIVE)
 

@@ -533,12 +533,12 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "classic 1990s 2D animated movie cel art, charming hand-drawn Disney storybook illustration, "
-    "vibrant gouache background, clean elegant black ink outlines, warm sunny lighting, "
-    "cheerful expressive characters, children's book masterpiece, no 3D, no CGI, no photorealism"
+    "cute cheerful 2D children cartoon sticker illustration, Warner cartoon style, "
+    "bold clean thick black outlines, bright cheerful flat saturated colors, big round cartoon eyes, "
+    "rosy cheeks, clean vector line art, no 3D, no realism, no gouache, no dark shadows"
 )
 LOCKED_NEGATIVE = (
-    "photorealistic, real photo, 3D, CGI, 3D render, realistic fur, blurry, messy, low quality, "
+    "photorealistic, real photo, 3D, CGI, 3D render, gouache, oil painting, watercolor, realistic, "
     "dark, scary, horror, violent, sad, closed eyes, deformed, ugly, bad anatomy, "
     "car, vehicle, truck, modern city, modern clothes, technology, smartphone, watermark, signature"
 )
@@ -992,12 +992,12 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                 except Exception as ec:
                     print(f"  ⚠️ Errore caricamento immagine personalizzata {custom_name}: {ec}")
 
-    # 2. Asset pre-renderizzati Cartoni Animati 2D (Esclusa BIBBIA: deve essere generata sempre per l'occasione)
-    if ("MITOLOGIA" in cat_upper or "CLASSICI" in cat_upper or "STANDARD" in cat_upper or "LIBRI" in cat_upper) and "BIBBIA" not in cat_upper:
-        if "MITOLOGIA" in cat_upper:
-            prefix = "mitologia"
-        elif "BIBBIA" in cat_upper:
+    # 2. Asset pre-renderizzati Cartoni Animati 2D (BIBBIA, MITOLOGIA, CLASSICI)
+    if "BIBBIA" in cat_upper or "MITOLOGIA" in cat_upper or "CLASSICI" in cat_upper or "STANDARD" in cat_upper or "LIBRI" in cat_upper:
+        if "BIBBIA" in cat_upper:
             prefix = "bibbia"
+        elif "MITOLOGIA" in cat_upper:
+            prefix = "mitologia"
         else:
             prefix = "classici"
         cartoons_dir = os.path.join(assets_dir, f"{prefix}_scene_cartoons")
@@ -1084,13 +1084,10 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         if genera_immagine_replicate_sdxl(final_prompt, output_img) and immagine_valida(output_img):
             return True
 
-    # 5. Pollinations gratuito: prompt ricco con azione della scena in testa + stile Classici 2D Storybook
+    # 5. Pollinations gratuito: prompt ricco con azione della scena in testa + stile 2D Cartoon Sticker Warner
     clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
-    if "cel art" not in clean_sub.lower() and "disney" not in clean_sub.lower() and "storybook" not in clean_sub.lower():
-        if "BIBBIA" in cat_upper:
-            poll_prompt = f"{clean_sub}, classic 1990s 2D animated movie cel art, charming hand-drawn Disney storybook illustration, vibrant gouache background, clean elegant black ink outlines, warm sunny lighting, cheerful expressive characters, children's book masterpiece, no 3D, no CGI, no photorealism"
-        else:
-            poll_prompt = f"{clean_sub}, classic 2D animation cel art, clean black outlines, bright gouache colors, no 3D"
+    if "sticker" not in clean_sub.lower() and "cartoon" not in clean_sub.lower():
+        poll_prompt = f"{clean_sub}, cute cheerful 2D children cartoon sticker illustration, Warner cartoon style, bold clean thick black outlines, bright cheerful flat saturated colors, big round cartoon eyes, rosy cheeks, clean vector line art, no 3D, no realism, no gouache"
     else:
         poll_prompt = clean_sub
     if len(poll_prompt) > 480:

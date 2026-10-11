@@ -533,16 +533,14 @@ async def genera_voce_edge_tts(testo, file_audio, voce="it-IT-DiegoNeural"):
 
 # ── OTTIMIZZAZIONE DOWNLOAD IMMAGINI (ANTI-TIMEOUT & ANTI-MOSTRO) ──────────
 LOCKED_STYLE = (
-    "cute 2D children cartoon illustration, official style of Storie per Bambini della Bibbia, "
-    "bold clean thick black outlines, bright cheerful saturated colors, smooth clean cel shading, "
-    "adorable friendly characters with cute round faces, big joyful open-mouth smiles, "
-    "big round expressive cartoon eyes, rosy blush cheeks, warm sunny radiant lighting, "
-    "wholesome colorful children storybook sticker art, zero 3D, zero photorealism, natural proportions"
+    "classic 1990s 2D animated movie cel art, charming hand-drawn Disney storybook illustration, "
+    "vibrant gouache background, clean elegant black ink outlines, warm sunny lighting, "
+    "cheerful expressive characters, children's book masterpiece, no 3D, no CGI, no photorealism"
 )
 LOCKED_NEGATIVE = (
-    "photorealistic, real human photo, real photo, 3D, CGI, 3D render, dark, scary, horror, violent, gritty, sad, solemn, "
-    "sleepy eyes, closed eyes, squinting, narrow eyes, deformed, ugly, elongated, vertically stretched, "
-    "car, automobile, vehicle, truck, van, bus, motor, modern city, modern clothes, jeans, technology, smartphone, screen"
+    "photorealistic, real photo, 3D, CGI, 3D render, realistic fur, blurry, messy, low quality, "
+    "dark, scary, horror, violent, sad, closed eyes, deformed, ugly, bad anatomy, "
+    "car, vehicle, truck, modern city, modern clothes, technology, smartphone, watermark, signature"
 )
 
 # Motori disattivati per il resto della run (crediti esauriti / chiave non valida)
@@ -1086,13 +1084,13 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         if genera_immagine_replicate_sdxl(final_prompt, output_img) and immagine_valida(output_img):
             return True
 
-    # 5. Pollinations gratuito: prompt ricco con azione della scena in testa + stile Cartone 2D Sticker
+    # 5. Pollinations gratuito: prompt ricco con azione della scena in testa + stile Classici 2D Storybook
     clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
-    if "sticker" not in clean_sub.lower() and "cartoon" not in clean_sub.lower():
+    if "cel art" not in clean_sub.lower() and "disney" not in clean_sub.lower() and "storybook" not in clean_sub.lower():
         if "BIBBIA" in cat_upper:
-            poll_prompt = f"{clean_sub}, cute 2D children cartoon sticker illustration, bold clean thick black outlines, bright cheerful flat colors, big happy smiles, open mouths, big round cartoon eyes, rosy cheeks, no 3D, no realism"
+            poll_prompt = f"{clean_sub}, classic 1990s 2D animated movie cel art, charming hand-drawn Disney storybook illustration, vibrant gouache background, clean elegant black ink outlines, warm sunny lighting, cheerful expressive characters, children's book masterpiece, no 3D, no CGI, no photorealism"
         else:
-            poll_prompt = f"{clean_sub}, cute 2D children cartoon illustration, bold clean black outlines, bright flat colors, happy smiles, no 3D"
+            poll_prompt = f"{clean_sub}, classic 2D animation cel art, clean black outlines, bright gouache colors, no 3D"
     else:
         poll_prompt = clean_sub
     if len(poll_prompt) > 480:
@@ -1103,13 +1101,13 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
     max_retries = 6
     scene_seed = (int(seed) + int(idx) * 123) % 1000000
     for attempt in range(1, max_retries + 1):
-        # Turbo è stabile, ultra-veloce e gratuito su Pollinations; genera a 768x768 nativo per anatomia perfetta
+        # Turbo su Pollinations; genera a 576x1024 (verticale nativo 9:16) per inquadratura ampia
         cur_model = "turbo"
         attempt_seed = (scene_seed + (attempt - 1) * 777) % 1000000
         ts_val = int(time.time() * 1000)
-        # Generazione a 768x768 (quadrato nativo SD) per evitare allungamento orizzontale o verticale!
-        # Poi adatta_immagine_9_16(valid_pil) ritaglia a 720x1280 mantenendo proporzioni perfette senza stiramento.
-        url = (f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=768&height=768&nologo=true"
+        # Generazione a 576x1024 (verticale nativo 9:16) per evitare tagli o inquadrature troppo strette!
+        # Poi adatta_immagine_9_16(valid_pil) perfeziona a 720x1280 con Lanczos.
+        url = (f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=576&height=1024&nologo=true"
                f"&seed={attempt_seed}&model={cur_model}&negative={encoded_neg}&ts={ts_val}")
         try:
             print(f"  🎨 Pollinations [{cur_model.upper()} - seed {attempt_seed}] tentativo {attempt}/{max_retries}...", flush=True)

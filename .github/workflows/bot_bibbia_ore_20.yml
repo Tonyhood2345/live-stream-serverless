@@ -58,6 +58,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
           REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY || '57944902-1332365540ba08b082d67dcdf' }}
           YOUTUBE_TOKEN_BIBBIA_JSON: ${{ secrets.YOUTUBE_TOKEN_BIBBIA_JSON }}
         run: |
           CMD="python bot_reels_master.py --mode bibbia"

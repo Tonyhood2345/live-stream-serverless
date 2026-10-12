@@ -119,11 +119,12 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")
 TELEGRAM_CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "@immobiliaregiancani")
 
-# Credenziali Google Gemini, Together AI, Replicate e Hugging Face (Serverless Free)
+# Credenziali Google Gemini, Together AI, Replicate, Hugging Face e Pixabay (0 Token Free)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY", "")
 REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
 HF_TOKEN = os.environ.get("HF_TOKEN", os.environ.get("HUGGINGFACE_API_KEY", ""))
+PIXABAY_API_KEY = os.environ.get("PIXABAY_API_KEY", "57944902-1332365540ba08b082d67dcdf")
 
 env_local = os.path.join(BASE_DIR, ".env")
 if os.path.exists(env_local):
@@ -141,6 +142,8 @@ if os.path.exists(env_local):
                     REPLICATE_API_TOKEN = eline.split("=", 1)[1].strip().strip('"').strip("'")
                 elif eline.startswith("HF_TOKEN=") and not HF_TOKEN:
                     HF_TOKEN = eline.split("=", 1)[1].strip().strip('"').strip("'")
+                elif eline.startswith("PIXABAY_API_KEY=") and not PIXABAY_API_KEY:
+                    PIXABAY_API_KEY = eline.split("=", 1)[1].strip().strip('"').strip("'")
     except Exception:
         pass
 
@@ -957,8 +960,88 @@ def genera_immagine_replicate_sdxl(prompt, output_img):
                     return False
         except Exception as e:
             print(f"  ⚠️ Errore Replicate: {e}")
-    return False
+def scarica_illustrazione_pixabay(prompt, output_img, idx=1, story_id="1", titolo="", categoria="BIBBIA"):
+    """
+    Ricerca e scarica illustrazioni cartoon / vettoriali 2D ad alta definizione da Pixabay (100% Gratuito, 0 Token).
+    Filtra rigorosamente per 'vector' o 'illustration' garantendo immagini pulite, senza distorsioni o anomalie.
+    """
+    if not PIXABAY_API_KEY:
+        return False
+        
+    raw = (f"{titolo} {prompt}").lower()
+    keywords = []
+    
+    # Mappatura semantica concetti biblici
+    if any(k in raw for k in ["eden", "giardino", "albero", "creazione"]):
+        keywords.extend(["garden", "nature", "tree"])
+    if any(k in raw for k in ["adamo", "eva", "adam", "eve", "uomo", "donna"]):
+        keywords.extend(["adam eve", "couple"])
+    if any(k in raw for k in ["serpente", "snake"]):
+        keywords.extend(["snake", "tree"])
+    if any(k in raw for k in ["frutto", "mela", "apple", "fruit"]):
+        keywords.extend(["apple tree", "fruit"])
+    if any(k in raw for k in ["sole", "luna", "stelle", "cielo", "sky"]):
+        keywords.extend(["sun moon stars", "sky"])
+    if any(k in raw for k in ["pesci", "mare", "uccelli", "acque", "water"]):
+        keywords.extend(["fish ocean", "birds"])
+    if any(k in raw for k in ["leone", "agnello", "animali", "giraffe"]):
+        keywords.extend(["lion animal", "cute animals"])
+    if any(k in raw for k in ["noè", "arca", "diluvio", "boat", "ark"]):
+        keywords.extend(["ark boat", "noah ark"])
+    if any(k in raw for k in ["arcobaleno", "rainbow"]):
+        keywords.extend(["rainbow meadow", "rainbow sky"])
+    if any(k in raw for k in ["mosè", "mose", "mare"]):
+        keywords.extend(["sea crossing", "ancient desert"])
+    if any(k in raw for k in ["davide", "golia", "pastore", "fionda"]):
+        keywords.extend(["shepherd boy", "ancient meadow"])
+    if any(k in raw for k in ["gesù", "gesu"]):
+        keywords.extend(["jesus biblical", "peaceful light"])
 
+    if not keywords:
+        words = [w for w in re.findall(r'[a-zA-Z]{4,}', prompt.lower()) if w not in [
+            'with', 'from', 'this', 'that', 'were', 'into', 'part', 'scene', 'cute', 'cartoon', 'illustration'
+        ]]
+        keywords = words[:2] if words else ["nature", "peaceful"]
+
+    query_candidates = [
+        f"{keywords[0]} cartoon",
+        f"{' '.join(keywords[:2])} cartoon",
+        f"{keywords[0]} illustration"
+    ]
+    
+    for q in query_candidates:
+        for itype in ["vector", "illustration"]:
+            try:
+                url = (f"https://pixabay.com/api/?key={PIXABAY_API_KEY}&q={urllib.parse.quote(q)}"
+                       f"&image_type={itype}&safesearch=true&per_page=12")
+                resp = requests.get(url, timeout=12, verify=False)
+                if resp.status_code == 200:
+                    hits = resp.json().get("hits", [])
+                    if hits:
+                        chosen_hit = hits[(int(idx) - 1) % len(hits)]
+                        img_url = chosen_hit.get("largeImageURL") or chosen_hit.get("webformatURL")
+                        if img_url:
+                            r_img = requests.get(img_url, timeout=18, verify=False, headers={"User-Agent": "Mozilla/5.0"})
+                            if r_img.status_code == 200 and len(r_img.content) > 3000:
+                                tmp_file = f"{output_img}.tmp.png"
+                                with open(tmp_file, "wb") as tf:
+                                    tf.write(r_img.content)
+                                try:
+                                    with Image.open(tmp_file) as pim:
+                                        if pim.mode in ("RGBA", "LA") or (pim.mode == "P" and "transparency" in pim.info):
+                                            bg = Image.new("RGB", pim.size, (255, 255, 255))
+                                            bg.paste(pim, mask=pim.split()[3])
+                                            pim = bg
+                                        adatta_immagine_9_16(pim).convert("RGB").save(output_img, "JPEG", quality=95)
+                                finally:
+                                    if os.path.exists(tmp_file):
+                                        os.remove(tmp_file)
+                                if immagine_valida(output_img):
+                                    print(f"  🎨 [PIXABAY 2D CARTOON] Scena {idx}: Trovata illustrazione vettoriale (ID {chosen_hit.get('id')}) con query '{q}' [0 TOKEN!]")
+                                    return True
+            except Exception:
+                pass
+    return False
 
 
 def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, categoria="STANDARD", is_intro=False, idx=1, story_id="1", titolo=""):
@@ -1059,6 +1142,12 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                 print(f"  ⚠️ Errore caricamento asset pillole {curated_path}: {ep}")
 
 
+    # 2c. Ricerca Automatica Illustrazioni Vettoriali e Cartoon su Pixabay (100% Gratuito, 0 Token Consumati)
+    if PIXABAY_API_KEY and "PIXABAY" not in DISABLED_ENGINES and "BIBBIA" in cat_upper:
+        if scarica_illustrazione_pixabay(prompt, output_img, idx=idx, story_id=story_id, titolo=titolo, categoria=categoria):
+            if immagine_valida(output_img):
+                return True
+
     # 3. Cache valida (solo se richiesta)
     if use_cache and immagine_valida(output_img):
         print(f"  ⚡ Immagine in cache verificata: {os.path.basename(output_img)}")
@@ -1084,7 +1173,14 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         if genera_immagine_replicate_sdxl(final_prompt, output_img) and immagine_valida(output_img):
             return True
 
-    # 5. Pollinations gratuito: prompt ricco con azione della scena in testa + stile 2D Cartoon Sticker Warner
+    # 5. Pollinations gratuito: disattivato categoricamente per la Bibbia (qualità scadente/mostri)
+    if "BIBBIA" in cat_upper:
+        print(f"  🚫 [POLICY QUALITA' BIBBIA] Pollinations disattivato. Secondo tentativo mirato Pixabay...")
+        if scarica_illustrazione_pixabay(f"{titolo} cartoon", output_img, idx=idx, story_id=story_id, titolo=titolo, categoria=categoria):
+            if immagine_valida(output_img):
+                return True
+        return False
+
     clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
     if "sticker" not in clean_sub.lower() and "cartoon" not in clean_sub.lower():
         poll_prompt = f"{clean_sub}, cute cheerful 2D children cartoon sticker illustration, Warner cartoon style, bold clean thick black outlines, bright cheerful flat saturated colors, big round cartoon eyes, rosy cheeks, clean vector line art, no 3D, no realism, no gouache"

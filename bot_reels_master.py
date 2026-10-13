@@ -1720,8 +1720,8 @@ def formatta_caption_telegram(storia):
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"✨ <b>Storie Per Bambini ENG della Bibbia</b> ✨\n"
             f"📺 Canale YouTube: @StoriePerBambinidellaBibbiaENG\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"{tags}"
+            f"{tags}\n\n"
+            f"— <b>Immobiliare Giancani</b>"
         )
     elif cat == "PILLOLE":
         icona = "🏢"
@@ -1807,7 +1807,25 @@ def invia_su_telegram(video_path, storia):
                 else:
                     print(f"  ⚠️ Errore invio a {chat_target}: {rdata.get('description')}")
         except Exception as e:
-            print(f"  ❌ Errore connessione Telegram verso {chat_target}: {e}")
+            print(f"  ⚠️ Tentativo requests fallito ({e}), fallback su curl.exe...")
+            try:
+                cmd = [
+                    "curl.exe", "-s", "-k",
+                    "-F", f"chat_id={chat_target}",
+                    "-F", f"video=@{video_path}",
+                    "-F", f"caption={caption[:1024]}",
+                    "-F", "parse_mode=HTML",
+                    "-F", "supports_streaming=true",
+                    url
+                ]
+                res_curl = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                if '"ok":true' in res_curl.stdout:
+                    print(f"  ✅ Video inviato con successo a {chat_target} (tramite curl)!")
+                    almeno_uno_inviato = True
+                else:
+                    print(f"  ❌ Errore curl Telegram verso {chat_target}: {res_curl.stdout[:200]}")
+            except Exception as ec:
+                print(f"  ❌ Errore definitivo Telegram verso {chat_target}: {ec}")
 
     return almeno_uno_inviato
 

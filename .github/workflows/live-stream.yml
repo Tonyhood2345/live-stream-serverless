@@ -1,13 +1,15 @@
-name: Serverless Multistream Live
+name: Serverless Multistream Live 24H YouTube & 19:00 Facebook
+
 on:
   schedule:
-    # ⏰ Avvio automatico serale ore 19:00 / 20:00 Europe/Rome:
-    # 16:58 UTC = 18:58 CEST (Orario Estivo Italiano - 2 min prima delle 19:00)
-    # 17:58 UTC = 18:58 CET (Orario Invernale Italiano - 2 min prima delle 19:00) / 19:58 CEST
-    # 18:58 UTC = 19:58 CET (Orario Invernale Italiano - 2 min prima delle 20:00)
-    - cron: '58 16 * * *'
-    - cron: '58 17 * * *'
-    - cron: '58 18 * * *'
+    # 🔁 Staffetta Perpetua 24/7 ogni 6 ore (UTC):
+    - cron: '0 0 * * *'
+    - cron: '0 6 * * *'
+    - cron: '0 12 * * *'
+    - cron: '0 18 * * *'
+    # ⏰ Sincronizzazione precisa per la diretta Facebook serale ore 19:00 Europe/Rome:
+    - cron: '55 16 * * *'
+    - cron: '55 17 * * *'
   workflow_dispatch:
     inputs:
       video_url:
@@ -20,6 +22,7 @@ on:
       yt_key:
         description: 'YouTube Stream Key o URL RTMP completo'
         required: false
+        default: 'byga-0tdf-uu9w-zetp-392s'
       tk_key:
         description: 'TikTok RTMP URL completo'
         required: false
@@ -27,17 +30,17 @@ on:
         description: 'Instagram RTMP URL completo'
         required: false
       duration_hours:
-        description: 'Durata massima della diretta in ore'
+        description: 'Durata massima della diretta in ore (max 5.8 per staffetta serverless)'
         required: false
-        default: '6'
+        default: '5.8'
       stream_quality:
         description: 'Qualità stream (1080p_high, 1080p_std, 1080p_eco, 720p_hq, 720p_std, 720p_eco, 480p, custom)'
         required: false
         default: '1080p_std'
       scale_factor:
-        description: 'Scala Device Chrome (1.0 = Desktop 1:5, 1.25 = Zoom)'
+        description: 'Scala Device Chrome (1.0 = Desktop 1:1, 1.25/1.5 = Zoom)'
         required: false
-        default: '1.5'
+        default: '1.0'
       custom_bitrate:
         description: 'Bitrate FFmpeg personalizzato (es. 4000k)'
         required: false
@@ -46,54 +49,62 @@ on:
         description: 'Risoluzione personalizzata (es. 1920:1080)'
         required: false
         default: '1920:1080'
+
+concurrency:
+  group: live-multistream-perpetual
+  cancel-in-progress: true
+
 jobs:
   multistream:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    permissions:
+      contents: write
+      actions: write
+      workflows: write
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: Time-Guard Verifica Orario Italiano (Europe/Rome)
+
+      - name: Time-Guard & Analisi Canali (Europe/Rome)
         id: timeguard
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            ROME_HOUR=$(TZ='Europe/Rome' date +%H)
-            ROME_MIN=$(TZ='Europe/Rome' date +%M)
-            echo "⏰ [Time-Guard] Orario attuale a Roma: $ROME_HOUR:$ROME_MIN"
-            # Consenti l'avvio unicamente nella fascia serale delle 19:00 / 20:00 (18:50 - 20:30 Rome time)
-            if [ "$ROME_HOUR" -ne 18 ] && [ "$ROME_HOUR" -ne 19 ] && [ "$ROME_HOUR" -ne 20 ]; then
-              echo "⚠️ AVVISO CRITICO: Workflow scatenato fuori orario ($ROME_HOUR:$ROME_MIN IT) per ritardo code GitHub."
-              echo "🛑 Annullamento immediato per impedire dirette non autorizzate o notturne. — Immobiliare Giancani"
-              echo "should_run=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-            if [ "$ROME_HOUR" -eq 18 ] && [ "$ROME_MIN" -lt 50 ]; then
-              echo "⚠️ Avvio anticipato non valido ($ROME_HOUR:$ROME_MIN IT). Annullamento."
-              echo "should_run=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-            if [ "$ROME_HOUR" -eq 20 ] && [ "$ROME_MIN" -gt 30 ]; then
-              echo "⚠️ Troppo tardi per la diretta serale ($ROME_HOUR:$ROME_MIN IT). Annullamento."
-              echo "should_run=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-            echo "✅ Orario verificato per la trasmissione serale delle 19:00 ($ROME_HOUR:$ROME_MIN Europe/Rome)!"
+          ROME_HOUR=$(TZ='Europe/Rome' date +%H)
+          ROME_MIN=$(TZ='Europe/Rome' date +%M)
+          echo "⏰ [Controllo Orario] Ora a Roma: $ROME_HOUR:$ROME_MIN"
+
+          # YouTube trasmette 24 ORE SU 24 in modo PERPETUO
+          echo "yt_enabled=true" >> $GITHUB_OUTPUT
+          echo "▶️ YouTube Live: ATTIVO 24H PERPETUO (Canale Immobiliare Giancani)"
+
+          # Facebook Live è attivo specificamente alle ore 19:00 italiane (finestra 18:50 - 01:00)
+          # oppure se forzato da workflow_dispatch con fb_key
+          FB_INPUT="${{ github.event.inputs.fb_key }}"
+          if [ -n "$FB_INPUT" ]; then
+            echo "fb_enabled=true" >> $GITHUB_OUTPUT
+            echo "📘 Facebook Live: FORZATO DA INPUT DISPATCH"
+          elif [ "$ROME_HOUR" -ge 18 ] || [ "$ROME_HOUR" -le 1 ]; then
+            echo "fb_enabled=true" >> $GITHUB_OUTPUT
+            echo "📘 Facebook Live: ATTIVO (Fascia serale 19:00 - 01:00 Europe/Rome)"
           else
-            echo "▶️ Avvio via workflow_dispatch da Google Apps Script o manuale (nessun vincolo di orario)."
+            echo "fb_enabled=false" >> $GITHUB_OUTPUT
+            echo "⏸️ Facebook Live: IN PAUSA (attivo ogni giorno alle 19:00 IT). Solo YouTube 24H in onda."
           fi
           echo "should_run=true" >> $GITHUB_OUTPUT
+
       - name: Setup Headless Environment and Audio Engine
         if: steps.timeguard.outputs.should_run == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core espeak-ng speech-dispatcher libespeak-ng1
-          # Installa Google Chrome stabile
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
           google-chrome --version
           ffmpeg -version | head -1
+
       - name: Setup Playwright and Headless Automation Engines
         if: steps.timeguard.outputs.should_run == 'true'
         run: |
@@ -103,6 +114,7 @@ jobs:
           npx playwright install chromium
           python3 -m pip install --no-cache-dir playwright requests pillow numpy edge-tts yt-dlp
           python3 -m playwright install --with-deps chromium || true
+
       - name: Launch Audio Engine, Browser and Start Multistream
         if: steps.timeguard.outputs.should_run == 'true'
         run: |
@@ -140,22 +152,22 @@ jobs:
           python3 scripts/tts_server.py &
           sleep 3
           curl -s http://127.0.0.1:5050/health && echo " -> TTS Server OK!" || echo " -> Avviso TTS Server"
-          # 5. CREA ESTENSIONE CHROME ANTI-BANNER GOOGLE APPS SCRIPT
-          # Rimuove qualsiasi disclaimer "Questa applicazione è stata creata da un altro utente"
+
+          # 4. CREA ESTENSIONE CHROME ANTI-BANNER GOOGLE APPS SCRIPT
           mkdir -p /tmp/hide_banner_ext
           cat << 'EOF' > /tmp/hide_banner_ext/manifest.json
           {
-          "manifest_version": 3,
-          "name": "Hide Apps Script Banner",
-          "version": "1.0",
-          "content_scripts": [
-          {
-          "matches": ["*://script.google.com/*", "*://script.googleusercontent.com/*"],
-          "css": ["style.css"],
-          "js": ["content.js"],
-          "run_at": "document_start"
-          }
-          ]
+            "manifest_version": 3,
+            "name": "Hide Apps Script Banner",
+            "version": "1.0",
+            "content_scripts": [
+              {
+                "matches": ["*://script.google.com/*", "*://script.googleusercontent.com/*"],
+                "css": ["style.css"],
+                "js": ["content.js"],
+                "run_at": "document_start"
+              }
+            ]
           }
           EOF
           cat << 'EOF' > /tmp/hide_banner_ext/style.css
@@ -167,67 +179,68 @@ jobs:
           div[aria-label*="Apps Script"],
           .app-bar,
           #guest-banner {
-          display: none !important;
-          height: 0px !important;
-          max-height: 0px !important;
-          min-height: 0px !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          border: 0 !important;
-          overflow: hidden !important;
-          visibility: hidden !important;
+            display: none !important;
+            height: 0px !important;
+            max-height: 0px !important;
+            min-height: 0px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 0 !important;
+            overflow: hidden !important;
+            visibility: hidden !important;
           }
           #warning-bar-table,
           #warning-bar-table > tbody,
           #warning-bar-table > tbody > tr:last-child,
           #warning-bar-table > tbody > tr:last-child > td,
           #sandboxFrame {
-          height: 100% !important;
-          width: 100% !important;
-          min-height: 100vh !important;
-          min-width: 100vw !important;
-          border: none !important;
-          padding: 0 !important;
-          margin: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
+            min-height: 100vh !important;
+            min-width: 100vw !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
           html, body {
-          overflow: hidden !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          height: 100% !important;
-          width: 100% !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
           }
           EOF
           cat << 'EOF' > /tmp/hide_banner_ext/content.js
           (function() {
-          function removeBanner() {
-          var w = document.getElementById('warning');
-          if (w) {
-          w.style.setProperty('display', 'none', 'important');
-          if (w.parentElement && w.parentElement.parentElement) {
-          w.parentElement.parentElement.style.setProperty('display', 'none', 'important');
-          }
-          }
-          var tbl = document.getElementById('warning-bar-table');
-          if (tbl) {
-          var rows = tbl.querySelectorAll('tr');
-          if (rows.length > 1) {
-          rows[0].style.setProperty('display', 'none', 'important');
-          }
-          }
-          var iframe = document.getElementById('sandboxFrame');
-          if (iframe) {
-          iframe.style.setProperty('height', '100vh', 'important');
-          iframe.style.setProperty('width', '100vw', 'important');
-          iframe.style.setProperty('border', 'none', 'important');
-          }
-          }
-          removeBanner();
-          document.addEventListener('DOMContentLoaded', removeBanner);
-          window.addEventListener('load', removeBanner);
-          setInterval(removeBanner, 300);
+            function removeBanner() {
+              var w = document.getElementById('warning');
+              if (w) {
+                w.style.setProperty('display', 'none', 'important');
+                if (w.parentElement && w.parentElement.parentElement) {
+                  w.parentElement.parentElement.style.setProperty('display', 'none', 'important');
+                }
+              }
+              var tbl = document.getElementById('warning-bar-table');
+              if (tbl) {
+                var rows = tbl.querySelectorAll('tr');
+                if (rows.length > 1) {
+                  rows[0].style.setProperty('display', 'none', 'important');
+                }
+              }
+              var iframe = document.getElementById('sandboxFrame');
+              if (iframe) {
+                iframe.style.setProperty('height', '100vh', 'important');
+                iframe.style.setProperty('width', '100vw', 'important');
+                iframe.style.setProperty('border', 'none', 'important');
+              }
+            }
+            removeBanner();
+            document.addEventListener('DOMContentLoaded', removeBanner);
+            window.addEventListener('load', removeBanner);
+            setInterval(removeBanner, 300);
           })();
           EOF
+
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
           SCALE_FACTOR="${{ github.event.inputs.scale_factor }}"
@@ -265,62 +278,18 @@ jobs:
             --alsa-output-device=pulse \
             --user-data-dir=/tmp/chrome_clean_profile \
             "$VIDEO_URL" &
+
           echo "Attesa di 15 secondi per il caricamento della pagina..."
           sleep 15
           echo "Verifica sink inputs PulseAudio (Chrome Audio Output):"
           pactl list sink-inputs || true
-          echo "Rimozione categorica banner Google Apps Script via Chrome CDP..."
+          echo "Rimozione banner Google Apps Script via Chrome CDP..."
           python3 scripts/rimuovi_banner_apps_script.py || true
-          # 6. Costruzione destinazioni con TEE Muxer e onfail=ignore (Fault-Tolerant)
-          # --- 0. AUTOMAZIONE CLOUD PER FACEBOOK, INSTAGRAM & TIKTOK ---
-          if [ -z "${{ github.event.inputs.fb_key }}" ] || [ -z "${{ github.event.inputs.ig_key }}" ] || [ -z "${{ github.event.inputs.tk_key }}" ] || [ "${{ github.event.inputs.fb_key }}" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
-            if [ -f scripts/estrai_chiavi_live_social.py ]; then
-              echo "🤖 Avvio Bot Estrazione Chiavi Social in background sul runner..."
-              python3 scripts/estrai_chiavi_live_social.py --headless &
-              echo "⏳ In attesa che le coordinate RTMP di tutti i canali (FB, IG, TK) siano pronte..."
-              for i in $(seq 1 35); do
-                ALL_READY=1
-                if [ -z "${{ github.event.inputs.fb_key }}" ] || [ "${{ github.event.inputs.fb_key }}" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
-                  [ ! -f /tmp/facebook_rtmp.txt ] && ALL_READY=0
-                fi
-                if [ -z "${{ github.event.inputs.ig_key }}" ]; then
-                  [ ! -f /tmp/instagram_rtmp.txt ] && ALL_READY=0
-                fi
-                if [ -z "${{ github.event.inputs.tk_key }}" ]; then
-                  [ ! -f /tmp/tiktok_rtmp.txt ] && ALL_READY=0
-                fi
 
-                if [ $ALL_READY -eq 1 ]; then
-                  echo "✅ Coordinate RTMP di tutti i canali (FB, IG, TK) estratte con successo e pronte per lo streaming!"
-                  break
-                fi
-                sleep 2
-              done
-            elif [ -f scripts/tiktok_live_auto.py ]; then
-              python3 scripts/tiktok_live_auto.py &
-              sleep 4
-            fi
-          fi
+          # 5. Configurazione Destinazioni RTMP
           TEE_DESTS=()
-          # --- 1. FACEBOOK LIVE ---
-          FB_KEY="${{ github.event.inputs.fb_key }}"
-          if [ -z "$FB_KEY" ] || [ "$FB_KEY" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
-            if [ -f /tmp/facebook_rtmp.txt ]; then
-              FB_KEY=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')
-              echo "📘 Endpoint Facebook RTMP recuperato dinamicamente da Graph API: $FB_KEY"
-            fi
-          fi
-          if [ -n "$FB_KEY" ] && [ "$FB_KEY" != "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
-            FB_URL=""
-            if [[ "$FB_KEY" == rtmp* ]]; then
-              FB_URL="$FB_KEY"
-            else
-              FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
-            fi
-            echo "📘 Output configurato: Facebook Live ($FB_URL)"
-            TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
-          fi
-          # --- 2. YOUTUBE LIVE ---
+
+          # --- DESTINAZIONE 1: YOUTUBE LIVE (24 ORE SU 24 INFINITO) ---
           YT_KEY="${{ github.event.inputs.yt_key }}"
           if [ -z "$YT_KEY" ]; then
             YT_KEY="byga-0tdf-uu9w-zetp-392s"
@@ -331,14 +300,54 @@ jobs:
           else
             YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
           fi
-          echo "▶ Output configurato: YouTube Live ($YT_URL)"
+          echo "▶️ [YouTube Live] Destinazione 24H Attiva: $YT_URL"
           TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")
-          # Seconda YT key rimossa (era scaduta/non necessaria)
-          # --- 3. TIKTOK LIVE ---
+
+          # --- DESTINAZIONE 2: FACEBOOK LIVE (Ore 19:00 Italiane) ---
+          FB_ENABLED="${{ steps.timeguard.outputs.fb_enabled }}"
+          if [ "$FB_ENABLED" = "true" ]; then
+            FB_KEY="${{ github.event.inputs.fb_key }}"
+            if [ -z "$FB_KEY" ] || [ "$FB_KEY" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
+              if [ -f scripts/estrai_chiavi_live_social.py ]; then
+                echo "🤖 Avvio Bot Estrazione Chiavi Social (FB, IG, TK)..."
+                python3 scripts/estrai_chiavi_live_social.py --headless &
+                for i in $(seq 1 30); do
+                  if [ -f /tmp/facebook_rtmp.txt ]; then break; fi
+                  sleep 2
+                done
+              fi
+            fi
+
+            if [ -z "$FB_KEY" ] || [ "$FB_KEY" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
+              if [ -f /tmp/facebook_rtmp.txt ]; then
+                FB_KEY=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')
+              fi
+            fi
+
+            if [ -n "$FB_KEY" ] && [ "$FB_KEY" != "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
+              FB_URL=""
+              if [[ "$FB_KEY" == rtmp* ]]; then
+                FB_URL="$FB_KEY"
+              else
+                FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
+              fi
+              echo "📘 [Facebook Live 19:00] Destinazione Serale Attiva: $FB_URL"
+              TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
+
+              # Avvia anche la pubblicazione automatica delle storie Facebook ogni 30 min solo durante la diretta serale
+              echo "📱 Avvio demone Storie Facebook in diretta ogni 30 minuti..."
+              python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 1800 &
+            else
+              echo "📘 [Facebook Live] Chiave non disponibile o fuori finestra. Lo stream prosegue regolarmente su YouTube."
+            fi
+          else
+            echo "📘 [Facebook Live] Non in finestra serale (19:00 Europe/Rome). YouTube continua in modalità solitaria 24H."
+          fi
+
+          # --- DESTINAZIONE 3: TIKTOK LIVE (se presente chiave) ---
           TK_KEY="${{ github.event.inputs.tk_key }}"
           if [ -z "$TK_KEY" ] && [ -f /tmp/tiktok_rtmp.txt ]; then
             TK_KEY=$(cat /tmp/tiktok_rtmp.txt | tr -d '\r\n')
-            echo "🎵 Endpoint TikTok RTMP recuperato da adapter: $TK_KEY"
           fi
           if [ -n "$TK_KEY" ]; then
             TK_URL=""
@@ -347,14 +356,14 @@ jobs:
             else
               TK_URL="rtmp://live-push.tiktok-cdns.com/live/$TK_KEY"
             fi
-            echo "🎵 Output configurato: TikTok Live ($TK_URL)"
+            echo "🎵 [TikTok Live] Destinazione Attiva: $TK_URL"
             TEE_DESTS+=("[f=flv:onfail=ignore]${TK_URL}")
           fi
-          # --- 4. INSTAGRAM LIVE ---
+
+          # --- DESTINAZIONE 4: INSTAGRAM LIVE (se presente chiave) ---
           IG_KEY="${{ github.event.inputs.ig_key }}"
           if [ -z "$IG_KEY" ] && [ -f /tmp/instagram_rtmp.txt ]; then
             IG_KEY=$(cat /tmp/instagram_rtmp.txt | tr -d '\r\n')
-            echo "📸 Endpoint Instagram RTMP recuperato da adapter: $IG_KEY"
           fi
           if [ -n "$IG_KEY" ]; then
             IG_URL=""
@@ -363,22 +372,24 @@ jobs:
             else
               IG_URL="rtmps://live-upload.instagram.com:443/rtmp/$IG_KEY"
             fi
-            echo "📸 Output configurato: Instagram Live ($IG_URL)"
+            echo "📸 [Instagram Live] Destinazione Attiva: $IG_URL"
             TEE_DESTS+=("[f=flv:onfail=ignore]${IG_URL}")
           fi
+
           if [ ${#TEE_DESTS[@]} -eq 0 ]; then
-            echo "❌ Errore: Nessuna chiave o destinazione RTMP fornita!"
+            echo "❌ Errore: Nessuna destinazione RTMP configurata!"
             exit 1
           fi
-          # Unione delle destinazioni separate dal carattere pipe '|'
+
           IFS="|"
           TEE_STRING="${TEE_DESTS[*]}"
+
+          # Durata per staffetta serverless: 5.8 ore (20880s) per consentire il passaggio fluido al runner successivo
           DUR_HOURS="${{ github.event.inputs.duration_hours }}"
-          if [ -z "$DUR_HOURS" ]; then
-            DUR_HOURS="6"
-          fi
+          if [ -z "$DUR_HOURS" ]; then DUR_HOURS="5.8"; fi
           DUR_SECS=$(awk "BEGIN {print int($DUR_HOURS * 3600)}")
-          echo "⏱️ Durata programmata dello streaming: $DUR_HOURS ore ($DUR_SECS secondi)"
+          echo "⏱️ Durata prevista per questa sessione staffetta: $DUR_HOURS ore ($DUR_SECS secondi)"
+
           QUALITY="${{ github.event.inputs.stream_quality }}"
           if [ -z "$QUALITY" ]; then QUALITY="1080p_std"; fi
           if [ "$QUALITY" = "1080p_high" ]; then
@@ -393,21 +404,12 @@ jobs:
             BITRATE="1600k"; MINRATE="1300k"; MAXRATE="2000k"; BUFSIZE="3200k"; VF="scale=1280:720:flags=bicubic"
           elif [ "$QUALITY" = "480p" ]; then
             BITRATE="1000k"; MINRATE="800k"; MAXRATE="1200k"; BUFSIZE="2000k"; VF="scale=854:480:flags=bicubic"
-          elif [ "$QUALITY" = "custom" ]; then
-            CUSTOM_BITRATE="${{ github.event.inputs.custom_bitrate }}"
-            if [ -z "$CUSTOM_BITRATE" ]; then CUSTOM_BITRATE="4000k"; fi
-            CUSTOM_RES="${{ github.event.inputs.custom_res }}"
-            if [ -z "$CUSTOM_RES" ]; then CUSTOM_RES="1920:1080"; fi
-            BITRATE="$CUSTOM_BITRATE"; MINRATE="$CUSTOM_BITRATE"; MAXRATE="$CUSTOM_BITRATE"; BUFSIZE="8000k"; VF="scale=$CUSTOM_RES:flags=bicubic"
           else
-            # Default 1080p Standard
             BITRATE="4500k"; MINRATE="4000k"; MAXRATE="5000k"; BUFSIZE="9000k"; VF="scale=1920:1080:flags=lanczos"
           fi
-          echo "🚀 Configurazione FFmpeg applicata: Qualità=$QUALITY, Bitrate=$BITRATE, Filtro=$VF"
-          # --- 7. BACKGROUND STORIES DAEMON (OGNI 30 MINUTI ED ESCLUSIVAMENTE IN LIVE) ---
-          echo "📱 Avvio demone Storie Facebook in diretta ogni 30 minuti..."
-          python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 1800 &
-          echo "🎥 Avvio encoding FFmpeg CBR $BITRATE ($QUALITY) con TEE Muxer e Timer di $DUR_HOURS ore..."
+          echo "🚀 FFmpeg Config: Bitrate=$BITRATE ($QUALITY), Filtro=$VF"
+
+          echo "🎥 Avvio encoding FFmpeg CBR $BITRATE verso YouTube 24H (+ Social)..."
           timeout --kill-after=30s "${DUR_SECS}s" ffmpeg -thread_queue_size 2048 \
             -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
             -thread_queue_size 2048 \
@@ -420,4 +422,16 @@ jobs:
             -vsync cfr \
             -flags +global_header \
             -f tee -map 0:v -map 1:a "$TEE_STRING" || true
-          echo "Stream terminato regolarmente dopo $DUR_HOURS ore."
+
+          echo "🏁 Turno di trasmissione completato con successo. Passaggio alla staffetta successiva! — Immobiliare Giancani"
+
+      - name: Staffetta Automatica (Trigger Prossima Sessione 24H)
+        if: always()
+        run: |
+          echo "🔄 Preparazione rilancio automatico per diretta perpetua 24H YouTube..."
+          # Se disponibile il secret GITHUB_TOKEN con permessi actions, scatena il ciclo successivo
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/live-stream.yml/dispatches \
+            -d '{"ref":"main"}' || echo "Staffetta delegata al cron schedulato."

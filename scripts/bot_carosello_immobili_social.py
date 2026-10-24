@@ -430,7 +430,16 @@ def genera_slide_carosello_1080(stanza_data, immobile_info, index, total, logo_i
     out_path = os.path.join(OUTPUT_DIR, f"carosello_slide_{index}.jpg")
     foto = scarica_immagine(stanza_data['foto_url'])
     
-    stili_rotazione = ["cb_curved_wave", "metroquadro_gradient", "professionecasa_sidebar"]
+    stili_rotazione = [
+        "cb_curved_wave",
+        "malfatti_sidebar",
+        "scheda_curva",
+        "cornice_minimal",
+        "zero24_card",
+        "tecnocasa_gazzetta",
+        "metroquadro_gradient",
+        "professionecasa_sidebar"
+    ]
     stile_corrente = stili_rotazione[(index - 1) % len(stili_rotazione)]
 
     try:
@@ -569,7 +578,16 @@ def genera_slide_storia_1920(stanza_data, immobile_info, index, total, logo_img)
     out_unified = os.path.join(OUTPUT_DIR, f"storia_slide_{index}.jpg")
     foto = scarica_immagine(stanza_data['foto_url'])
 
-    stili_rotazione = ["cb_curved_wave", "metroquadro_gradient", "professionecasa_sidebar"]
+    stili_rotazione = [
+        "cb_curved_wave",
+        "malfatti_sidebar",
+        "scheda_curva",
+        "cornice_minimal",
+        "zero24_card",
+        "tecnocasa_gazzetta",
+        "metroquadro_gradient",
+        "professionecasa_sidebar"
+    ]
     stile_corrente = stili_rotazione[(index - 1) % len(stili_rotazione)]
 
     try:
@@ -958,6 +976,8 @@ def main():
     parser = argparse.ArgumentParser(description="Bot Carosello Post & Storie Social — Immobiliare Giancani")
     parser.add_argument("--force", action="store_true", help="Forza pubblicazione ignorando la regola salta-giorno")
     parser.add_argument("--immobile", type=str, default=None, help="Specifica un immobile/foglio preciso")
+    parser.add_argument("--anche-social", action="store_true", help="Se specificato, pubblica anche su Facebook (default: SOLO TELEGRAM)")
+    parser.add_argument("--solo-telegram", action="store_true", default=True, help="Invia solo su Telegram")
     args = parser.parse_args()
 
     print("=" * 70)
@@ -996,12 +1016,21 @@ def main():
         storie_files.append(s_path)
         print(f"  ✓ Slide {idx}/{totale}: {s['stanza_nome']} completata!")
 
-    res_fb = pubblica_post_carosello_facebook(immobile_data, carosello_files)
-    res_storie = pubblica_storie_facebook(immobile_data, storie_files)
+    if getattr(args, 'anche_social', False):
+        res_fb = pubblica_post_carosello_facebook(immobile_data, carosello_files)
+        res_storie = pubblica_storie_facebook(immobile_data, storie_files)
+    else:
+        print("\n🛡️ Pubblicazione social disattivata come da regola aziendale: invio ESCLUSIVAMENTE su Telegram!")
+        res_fb = {"success": False, "skipped": True}
+        res_storie = {"success": False, "skipped": True}
 
     aggiorna_storico_pubblicazioni(immobile_data['foglio_nome'])
     stanze_nomi = [s['stanza_nome'] for s in stanze]
-    invia_immagini_a_telegram(carosello_files, f"{immobile_data['titolo']} ({immobile_data['prezzo']})")
+
+    # Invio Telegram: sia le storie 9:16 con fondo giallo sia le slide 1:1
+    print(f"\n📲 Invio Storie 9:16 con FONDO GIALLO su Telegram (Chat ID {TELEGRAM_CHAT_ID})...")
+    invia_immagini_a_telegram(storie_files, f"📱 STORIA 9:16 [FONDO GIALLO] • {immobile_data['titolo']} ({immobile_data['prezzo']}) — Immobiliare Giancani")
+    invia_immagini_a_telegram(carosello_files, f"🖼️ FLYER 1:1 [FONDO GIALLO] • {immobile_data['titolo']} ({immobile_data['prezzo']}) — Immobiliare Giancani")
     invia_notifica_telegram(immobile_data['titolo'], immobile_data['mq'], immobile_data['prezzo'], stanze_nomi, res_fb, res_storie)
 
     print("\n" + "=" * 70)

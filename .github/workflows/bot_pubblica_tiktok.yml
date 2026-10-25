@@ -42,16 +42,11 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: 🎞️ Installa Dipendenze di Sistema & Browser Chromium
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ffmpeg fonts-dejavu fonts-freefont-ttf fonts-liberation libgbm1 libnss3 libasound2
-
-      - name: 📦 Installa Librerie Python
+      - name: 📦 Installa Dipendenze & Browser Chromium Playwright
         run: |
           python -m pip install --upgrade pip
           pip install requests urllib3 playwright pillow
-          playwright install chromium
+          playwright install --with-deps chromium
 
       - name: 🚀 Esecuzione Bot TikTok Publisher (Colonna F & Branding)
         env:

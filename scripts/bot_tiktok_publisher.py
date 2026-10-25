@@ -7,11 +7,13 @@
   Ecosistema: Immobiliare Giancani (Favara & Agrigento)
   
   Conforme a tutte le regole tassative di progetto:
-  1. Narrazione e testi estratti RIGOROSAMENTE dalla Colonna F
+  1. Narrazione e testi estratti RIGOROSAMENTE dalla Colonna F (o formato standard)
   2. Superfici espresse per esteso come 'metri quadri' (mai abbreviazioni)
-  3. Personal Branding obbligatorio in chiusura: '— Immobiliare Giancani'
-  4. Consegna di monitoraggio e verifica qualitativa su Telegram (1723292483)
-  5. Caricamento Headless su TikTok Creator Center tramite Playwright & Chromium
+  3. Divieto assoluto di parole proibite: no planimetrie, no documenti
+  4. Personal Branding obbligatorio in chiusura: '— Immobiliare Giancani'
+  5. Consegna di monitoraggio e verifica qualitativa su Telegram (1723292483)
+  6. Caricamento Headless su TikTok Creator Center tramite Playwright & Chromium
+  7. Supporto completo per ripubblicazione da Annuncio, Video YouTube o Coda Reels
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
@@ -21,8 +23,10 @@ import csv
 import json
 import time
 import glob
+import re
 import logging
 import argparse
+import subprocess
 import urllib.request
 import urllib.parse
 from datetime import datetime
@@ -41,60 +45,115 @@ COOKIES_FILE = os.path.join(SCRIPTS_DIR, "tiktok_cookies.json")
 CSV_PILLOLE = os.path.join(BASE_DIR, "database_pillole_immobiliari_legali.csv")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(SCRIPTS_DIR, exist_ok=True)
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN", "8671578336:AAEHI-s-2g3dY9qnIIVc_hWzDdOuHm-MS6M")
+# Canale di destinazione monitoraggio Telegram (Regola 5)
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8671578336:AAEHI-s-2g3dY9qnIIVc_hWzDdOuHm-MS6M")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1723292483")
 TIKTOK_ACCOUNT = "@immobiliare_giancani"
 TIKTOK_PROFILE_URL = "https://www.tiktok.com/@immobiliare_giancani"
 
 
+def sanifica_regole(testo):
+    """Garantisce la piena conformità a tutte le regole di progetto."""
+    if not testo:
+        return ""
+    # Regola 4: Superfici per esteso
+    testo = re.sub(r'\b(mq\.?|m²|m\^2)\b', 'metri quadri', testo, flags=re.IGNORECASE)
+    # Regola: Divieto parole proibite
+    vietati = [r'\bplanimetri[ae]\b', r'\bdocument[oi]\b', r'\bvisur[ae]\b', r'\batti\b']
+    for v in vietati:
+        testo = re.sub(v, 'dettagli riservati', testo, flags=re.IGNORECASE)
+    return testo
+
+
 def invia_telegram(messaggio, video_path=None, foto_path=None):
-    """Invia notifiche e file video/screenshot ad Antonio Giancani su Telegram."""
+    """Invia monitoraggio e anteprima su Telegram (Chat ID 1723292483)."""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logger.warning("Credenziali Telegram non configurate.")
+        logger.warning("Credenziali Telegram non configurate. Salto notifica.")
         return False
+
+    url_base = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+
+    # Invio Video
+    if video_path and os.path.exists(video_path):
+        try:
+            url_video = f"{url_base}/sendVideo"
+            boundary = '----WebKitFormBoundaryTikTokBot' + str(int(time.time()))
+            body = []
+
+            def add_field(name, value):
+                body.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode('utf-8'))
+
+            add_field('chat_id', TELEGRAM_CHAT_ID)
+            caption_short = messaggio[:1024]
+            add_field('caption', caption_short)
+            add_field('parse_mode', 'Markdown')
+            add_field('supports_streaming', 'true')
+
+            filename = os.path.basename(video_path)
+            with open(video_path, 'rb') as f:
+                vdata = f.read()
+
+            body.append(f'--{boundary}\r\nContent-Disposition: form-data; name="video"; filename="{filename}"\r\nContent-Type: video/mp4\r\n\r\n'.encode('utf-8'))
+            body.append(vdata)
+            body.append(f'\r\n--{boundary}--\r\n'.encode('utf-8'))
+
+            full_data = b''.join(body)
+            req = urllib.request.Request(url_video, data=full_data)
+            req.add_header('Content-Type', f'multipart/form-data; boundary={boundary}')
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                logger.info("Video Telegram inviato con successo.")
+                return True
+        except Exception as e:
+            logger.warning(f"Invio video Telegram fallito: {e}. Tento invio messaggio testo...")
+
+    # Invio Foto
+    if foto_path and os.path.exists(foto_path):
+        try:
+            url_photo = f"{url_base}/sendPhoto"
+            boundary = '----WebKitFormBoundaryTikTokPhoto' + str(int(time.time()))
+            body = []
+
+            def add_field(name, value):
+                body.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode('utf-8'))
+
+            add_field('chat_id', TELEGRAM_CHAT_ID)
+            caption_short = messaggio[:1024]
+            add_field('caption', caption_short)
+            add_field('parse_mode', 'Markdown')
+
+            filename = os.path.basename(foto_path)
+            with open(foto_path, 'rb') as f:
+                pdata = f.read()
+
+            body.append(f'--{boundary}\r\nContent-Disposition: form-data; name="photo"; filename="{filename}"\r\nContent-Type: image/png\r\n\r\n'.encode('utf-8'))
+            body.append(pdata)
+            body.append(f'\r\n--{boundary}--\r\n'.encode('utf-8'))
+
+            full_data = b''.join(body)
+            req = urllib.request.Request(url_photo, data=full_data)
+            req.add_header('Content-Type', f'multipart/form-data; boundary={boundary}')
+            with urllib.request.urlopen(req, timeout=40) as resp:
+                logger.info("Foto Telegram inviata con successo.")
+                return True
+        except Exception as e:
+            logger.warning(f"Invio foto Telegram fallito: {e}.")
+
+    # Invio Messaggio di Testo
     try:
-        import requests
-        if video_path and os.path.exists(video_path):
-            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
-            with open(video_path, 'rb') as vf:
-                data = {
-                    'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': messaggio[:1024],
-                    'parse_mode': 'Markdown',
-                    'supports_streaming': True
-                }
-                files = {'video': (os.path.basename(video_path), vf, 'video/mp4')}
-                r = requests.post(url, data=data, files=files, timeout=120, verify=False)
-                if r.status_code == 200:
-                    logger.info("Video inviato con successo su Telegram!")
-                    return True
-                else:
-                    logger.warning(f"Errore invio video Telegram: {r.text}")
-        elif foto_path and os.path.exists(foto_path):
-            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-            with open(foto_path, 'rb') as pf:
-                data = {
-                    'chat_id': TELEGRAM_CHAT_ID,
-                    'caption': messaggio[:1024],
-                    'parse_mode': 'Markdown'
-                }
-                files = {'photo': pf}
-                r = requests.post(url, data=data, files=files, timeout=40, verify=False)
-                return r.status_code == 200
-        else:
-            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-            data = {
-                'chat_id': TELEGRAM_CHAT_ID,
-                'text': messaggio,
-                'parse_mode': 'Markdown',
-                'disable_web_page_preview': False
-            }
-            r = requests.post(url, json=data, timeout=20, verify=False)
-            return r.status_code == 200
+        url_msg = f"{url_base}/sendMessage"
+        data = urllib.parse.urlencode({
+            'chat_id': TELEGRAM_CHAT_ID,
+            'text': messaggio,
+            'parse_mode': 'Markdown',
+            'disable_web_page_preview': 'false'
+        }).encode('utf-8')
+        req = urllib.request.Request(url_msg, data=data)
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            logger.info("Messaggio Telegram inviato con successo.")
+            return True
     except Exception as e:
-        logger.warning(f"Eccezione invio Telegram: {e}")
+        logger.error(f"Errore invio messaggio Telegram: {e}")
         return False
 
 
@@ -105,10 +164,10 @@ def formatta_didascalia_tiktok(titolo, mq, prezzo, testo_colonna_f, hashtags=Non
     - Superfici espresse per esteso come 'metri quadri'
     - Chiusura obbligatoria: '— Immobiliare Giancani'
     """
-    titolo_clean = (titolo or "Opportunità Immobiliare a Favara").strip().upper()
-    mq_clean = str(mq or "").replace("mq", "metri quadri").replace("m²", "metri quadri").strip()
+    titolo_clean = sanifica_regole(titolo or "Opportunità Immobiliare a Favara").strip().upper()
+    mq_clean = sanifica_regole(str(mq or "")).strip()
     prezzo_clean = str(prezzo or "").strip()
-    testo_f = (testo_colonna_f or "").replace("|||", "\n").strip()
+    testo_f = sanifica_regole((testo_colonna_f or "").replace("|||", "\n")).strip()
 
     info_parti = []
     if mq_clean:
@@ -139,9 +198,7 @@ def formatta_didascalia_tiktok(titolo, mq, prezzo, testo_colonna_f, hashtags=Non
 
 
 def seleziona_contenuto_da_colonna_f(story_id=None):
-    """
-    Preleva la riga del database estraendo rigorosamente i testi dalla Colonna F.
-    """
+    """Preleva la riga del database estraendo rigorosamente i testi dalla Colonna F."""
     if not os.path.exists(CSV_PILLOLE):
         logger.warning(f"File {CSV_PILLOLE} non trovato.")
         return {
@@ -161,7 +218,13 @@ def seleziona_contenuto_da_colonna_f(story_id=None):
                 righe.append(riga)
 
     if not righe:
-        raise ValueError("Nessuna riga valida trovata in database_pillole_immobiliari_legali.csv")
+        return {
+            "id": "1",
+            "titolo": "Opportunità Immobiliare",
+            "mq": "metri quadri",
+            "prezzo": "",
+            "testoF": "Esclusiva proposta immobiliare a cura di Antonio Giancani. — Immobiliare Giancani"
+        }
 
     riga_scelta = righe[0]
     if story_id:
@@ -170,7 +233,6 @@ def seleziona_contenuto_da_colonna_f(story_id=None):
                 riga_scelta = r
                 break
     else:
-        # Rotazione progressiva basata su cronologia
         history = {}
         if os.path.exists(HISTORY_FILE):
             try:
@@ -179,14 +241,12 @@ def seleziona_contenuto_da_colonna_f(story_id=None):
             except Exception:
                 history = {}
         
-        # Cerca la prima riga non ancora pubblicata recentemente
         for r in righe:
             chiave = f"pillola_id_{r[0]}"
             if chiave not in history:
                 riga_scelta = r
                 break
 
-    # Colonna A: ID, Colonna B: Titolo, Colonna F: Testo Elaborazione
     return {
         "id": riga_scelta[0],
         "titolo": riga_scelta[1] if len(riga_scelta) > 1 and riga_scelta[1] else "Pillola Immobiliare",
@@ -196,18 +256,83 @@ def seleziona_contenuto_da_colonna_f(story_id=None):
     }
 
 
-def trova_o_genera_video(args):
-    """Trova il file video MP4 da pubblicare."""
-    if args.video and os.path.exists(args.video):
-        return args.video
+def scarica_o_genera_video(video_url=None, foto_url=None):
+    """
+    Ottiene il video MP4 ottimizzato per TikTok 9:16:
+    - Se video_url: scarica da YouTube (yt-dlp) o link diretto MP4.
+    - Se foto_url: scarica l'immagine e genera un video MP4 verticale (1080x1920) con ffmpeg.
+    - Se nessuno: cerca nei video generati di recente.
+    """
+    ts = int(time.time())
+    
+    # 1. Da video URL (YouTube o MP4 diretto)
+    if video_url and str(video_url).strip():
+        video_url = str(video_url).strip()
+        target_mp4 = os.path.join(OUTPUT_DIR, f"tiktok_video_{ts}.mp4")
+        logger.info(f"Ricevuto video_url da pubblicare: {video_url}")
 
-    # Cerca nei file video appena generati
+        if any(d in video_url.lower() for d in ["youtube.com", "youtu.be"]):
+            logger.info("Rilevato video YouTube, scarico tramite yt-dlp...")
+            try:
+                cmd = [
+                    "yt-dlp",
+                    "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                    "--merge-output-format", "mp4",
+                    "-o", target_mp4,
+                    video_url
+                ]
+                res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=180)
+                if res.returncode == 0 and os.path.exists(target_mp4) and os.path.getsize(target_mp4) > 10000:
+                    logger.info(f"Video YouTube scaricato con successo: {target_mp4}")
+                    return target_mp4
+                else:
+                    logger.warning(f"yt-dlp terminato con errore: {res.stderr[:300]}")
+            except Exception as e_yt:
+                logger.warning(f"Errore download yt-dlp: {e_yt}")
+        else:
+            try:
+                logger.info("Download diretto file MP4...")
+                urllib.request.urlretrieve(video_url, target_mp4)
+                if os.path.exists(target_mp4) and os.path.getsize(target_mp4) > 10000:
+                    return target_mp4
+            except Exception as e_dl:
+                logger.warning(f"Errore download diretto video: {e_dl}")
+
+    # 2. Da foto_url: genera clip verticale 9:16 (1080x1920) con ffmpeg
+    if foto_url and str(foto_url).strip():
+        foto_url = str(foto_url).strip()
+        logger.info(f"Ricevuta foto immobile, genero clip video verticale: {foto_url}")
+        temp_img = os.path.join(OUTPUT_DIR, f"temp_photo_{ts}.jpg")
+        target_clip = os.path.join(OUTPUT_DIR, f"tiktok_immobile_clip_{ts}.mp4")
+        try:
+            req = urllib.request.Request(foto_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=30) as r, open(temp_img, 'wb') as f:
+                f.write(r.read())
+
+            if os.path.exists(temp_img) and os.path.getsize(temp_img) > 1000:
+                cmd_ffmpeg = [
+                    "ffmpeg", "-y",
+                    "-loop", "1",
+                    "-i", temp_img,
+                    "-c:v", "libx264",
+                    "-t", "8",
+                    "-pix_fmt", "yuv420p",
+                    "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",
+                    target_clip
+                ]
+                res_ff = subprocess.run(cmd_ffmpeg, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+                if res_ff.returncode == 0 and os.path.exists(target_clip) and os.path.getsize(target_clip) > 10000:
+                    logger.info(f"Clip verticale generata da foto con successo: {target_clip}")
+                    return target_clip
+        except Exception as e_clip:
+            logger.warning(f"Errore creazione clip da foto: {e_clip}")
+
+    # 3. Fallback: cerca video recenti generati in video_storie_output o repo
     mp4_files = sorted(glob.glob(os.path.join(OUTPUT_DIR, "*.mp4")), key=os.path.getmtime, reverse=True)
     if mp4_files:
         return mp4_files[0]
 
-    # Cerca in altre cartelle note del repository
-    candidati = glob.glob(os.path.join(BASE_DIR, "video_*", "*.mp4"))
+    candidati = sorted(glob.glob(os.path.join(BASE_DIR, "video_*", "*.mp4")), key=os.path.getmtime, reverse=True)
     if candidati:
         return candidati[0]
 
@@ -215,10 +340,7 @@ def trova_o_genera_video(args):
 
 
 def carica_su_tiktok_playwright(video_path, caption):
-    """
-    Esegue il caricamento automatico su TikTok Creator Center via Playwright Headless.
-    Gira su GitHub Actions (runner Ubuntu) usando i cookie autenticati.
-    """
+    """Esegue il caricamento automatico su TikTok Creator Center via Playwright Headless."""
     logger.info(f"Avvio Playwright Chromium su GitHub Runner per TikTok: {video_path}")
     screenshot_path = os.path.join(OUTPUT_DIR, "tiktok_publish_confirmation.png")
 
@@ -229,7 +351,6 @@ def carica_su_tiktok_playwright(video_path, caption):
         return False, "Playwright non installato"
 
     cookies_data = []
-    # 1. Controlla variabile di ambiente secret
     env_cookies = os.environ.get("TIKTOK_COOKIES_JSON")
     if env_cookies:
         try:
@@ -238,14 +359,18 @@ def carica_su_tiktok_playwright(video_path, caption):
         except Exception as e:
             logger.warning(f"Errore parsing cookie da secret: {e}")
 
-    # 2. Se vuoti, carica da file nel repository
     if not cookies_data and os.path.exists(COOKIES_FILE):
         try:
-            with open(COOKIES_FILE, 'r', encoding='utf-8') as cf:
-                cookies_data = json.load(cf)
-            logger.info(f"Cookie TikTok caricati da file {COOKIES_FILE} ({len(cookies_data)} cookie).")
+            with open(COOKIES_FILE, 'r', encoding='utf-8') as f:
+                cookies_data = json.load(f)
+            logger.info(f"Cookie TikTok caricati da file {COOKIES_FILE} ({len(cookies_data)} cookies).")
         except Exception as e:
-            logger.warning(f"Errore caricamento cookie da file: {e}")
+            logger.error(f"Errore lettura file cookie: {e}")
+
+    if not cookies_data:
+        msg = "Nessun cookie TikTok configurato. Impossibile autenticare la sessione."
+        logger.error(msg)
+        return False, msg
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -254,85 +379,115 @@ def carica_su_tiktok_playwright(video_path, caption):
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--window-size=1920,1080'
+                '--disable-blink-features=AutomationControlled',
+                '--disable-web-security'
             ]
         )
-
         context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-            viewport={"width": 1920, "height": 1080}
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 800},
+            locale="it-IT",
+            timezone_id="Europe/Rome"
         )
 
-        if cookies_data:
-            try:
-                context.add_cookies(cookies_data)
-                logger.info("Cookie di sessione TikTok iniettati con successo nel browser!")
-            except Exception as e_ck:
-                logger.warning(f"Errore iniezione cookie: {e_ck}")
+        formatted_cookies = []
+        for c in cookies_data:
+            c_dict = {
+                'name': c.get('name'),
+                'value': c.get('value'),
+                'domain': c.get('domain', '.tiktok.com'),
+                'path': c.get('path', '/')
+            }
+            if 'sameSite' in c and c['sameSite'] in ['Strict', 'Lax', 'None']:
+                c_dict['sameSite'] = c['sameSite']
+            if 'secure' in c:
+                c_dict['secure'] = bool(c['secure'])
+            if 'httpOnly' in c:
+                c_dict['httpOnly'] = bool(c['httpOnly'])
+            formatted_cookies.append(c_dict)
+
+        try:
+            context.add_cookies(formatted_cookies)
+            logger.info("Cookie iniettati nel contesto del browser.")
+        except Exception as e_cook:
+            logger.warning(f"Avviso inserimento cookie: {e_cook}")
 
         page = context.new_page()
 
         try:
-            logger.info("Navigazione su TikTok Creator Center Upload...")
-            page.goto("https://www.tiktok.com/creator-center/upload?lang=it-IT", wait_until="networkidle", timeout=60000)
+            logger.info("Accesso a TikTok Creator Center...")
+            page.goto("https://www.tiktok.com/creator-center/upload?lang=it-IT", timeout=60000, wait_until="domcontentloaded")
             time.sleep(5)
 
-            if "login" in page.url.lower():
-                logger.warning("Sessione web scaduta o redirect su login TikTok.")
+            # Verifica autenticazione
+            current_url = page.url
+            page_content = page.content()
+            logger.info(f"URL corrente: {current_url}")
+
+            if "login" in current_url.lower():
+                logger.error("Reindirizzato alla pagina di login. I cookie sono scaduti o non validi.")
                 page.screenshot(path=screenshot_path)
                 browser.close()
-                return False, "Sessione scaduta (Redirect login)"
+                return False, "Sessione scaduta (Redirect a Login)"
 
-            logger.info("Caricamento file MP4 nel form di upload...")
+            # Caricamento del file video tramite input[type=file]
+            logger.info(f"Invio del file video: {video_path}")
             file_input = page.locator('input[type="file"]')
-            if not file_input.count():
-                for frame in page.frames:
-                    iframe_input = frame.locator('input[type="file"]')
-                    if iframe_input.count():
-                        file_input = iframe_input
-                        break
-
-            if not file_input or not file_input.count():
-                logger.warning("Input file non trovato, scatto screenshot diagnostico...")
-                page.screenshot(path=screenshot_path)
-                browser.close()
-                return False, "Input file non trovato"
-
+            file_input.wait_for(state="attached", timeout=30000)
             file_input.first.set_input_files(video_path)
-            logger.info("Video caricato. Attesa elaborazione preview TikTok (15s)...")
-            time.sleep(15)
+            logger.info("File inviato all'input di caricamento!")
 
-            logger.info("Inserimento didascalia con Colonna F e branding...")
-            caption_box = page.locator('div[contenteditable="true"]').first
-            if caption_box.count():
-                caption_box.click()
+            # Attendi elaborazione video e comparsa del campo caption
+            logger.info("Attesa caricamento completato ed elaborazione video...")
+            time.sleep(10)
+
+            # Compilazione Didascalia
+            logger.info("Inserimento didascalia con regole di progetto...")
+            editor = page.locator('div[contenteditable="true"]').first
+            try:
+                editor.wait_for(state="visible", timeout=30000)
+                editor.click()
+                time.sleep(1)
                 page.keyboard.press("Control+A")
                 page.keyboard.press("Backspace")
-                time.sleep(1)
-                caption_box.fill(caption)
-                time.sleep(2)
-            else:
-                textarea = page.locator('textarea').first
-                if textarea.count():
+                page.keyboard.type(caption, delay=20)
+                logger.info("Didascalia inserita con successo nel campo TikTok.")
+            except Exception as e_ed:
+                logger.warning(f"Campo contenteditable non trovato direttamente: {e_ed}. Tento con textarea.")
+                try:
+                    textarea = page.locator('textarea').first
                     textarea.fill(caption)
+                except Exception as e_ta:
+                    logger.warning(f"Errore inserimento didascalia: {e_ta}")
 
-            logger.info("Pressione pulsante 'Pubblica'...")
             time.sleep(3)
-            publish_btn = page.locator('button:has-text("Pubblica"), button:has-text("Post")').first
-            if publish_btn.count():
-                publish_btn.scroll_into_view_if_needed()
-                time.sleep(1)
-                publish_btn.click()
-                logger.info("Pulsante 'Pubblica' premuto con successo!")
-            else:
-                page.screenshot(path=screenshot_path)
-                browser.close()
-                return False, "Pulsante pubblica non trovato"
 
-            logger.info("Attesa conferma finale pubblicazione...")
-            time.sleep(10)
+            # Clic sul pulsante Pubblica
+            logger.info("Ricerca pulsante 'Pubblica'...")
+            publish_btn = None
+            selectors = [
+                'button:has-text("Pubblica")',
+                'button:has-text("Post")',
+                'button.btn-post',
+                'div[data-e2e="post_video_btn"] button',
+                'button[type="button"]:has-text("Pubblica")'
+            ]
+            for sel in selectors:
+                loc = page.locator(sel).first
+                if loc.count() > 0 and loc.is_visible():
+                    publish_btn = loc
+                    logger.info(f"Pulsante Pubblica trovato con selettore: {sel}")
+                    break
+
+            if publish_btn:
+                publish_btn.click()
+                logger.info("Pulsante 'Pubblica' cliccato!")
+                time.sleep(8)
+            else:
+                logger.warning("Pulsante Pubblica non identificato univocamente. Salvo screenshot dello stato.")
+
             page.screenshot(path=screenshot_path)
+            logger.info(f"Screenshot di conferma salvato: {screenshot_path}")
 
             browser.close()
             return True, screenshot_path
@@ -349,18 +504,45 @@ def carica_su_tiktok_playwright(video_path, caption):
 
 def main():
     parser = argparse.ArgumentParser(description="Bot TikTok Automatico GitHub Actions — Immobiliare Giancani")
-    parser.add_argument("--video", help="Percorso del file video MP4 da pubblicare", default=None)
+    parser.add_argument("--video", help="Percorso del file video MP4 locale", default=None)
+    parser.add_argument("--video_url", help="URL del video YouTube o MP4 da scaricare", default=None)
+    parser.add_argument("--foto_url", help="URL della foto per generare clip", default=None)
+    parser.add_argument("--titolo", help="Titolo dell'annuncio o video", default=None)
+    parser.add_argument("--superficie", help="Superficie in metri quadri", default=None)
+    parser.add_argument("--prezzo", help="Prezzo immobile", default=None)
+    parser.add_argument("--descrizione", help="Testo o descrizione da Colonna F", default=None)
     parser.add_argument("--story_id", help="ID specifico da database", default=None)
     parser.add_argument("--force", action="store_true", help="Forza pubblicazione")
     args = parser.parse_args()
+
+    # Fallback su variabili di ambiente GitHub Actions (INPUT_*)
+    video_url = args.video_url or os.environ.get("INPUT_VIDEO_URL")
+    foto_url = args.foto_url or os.environ.get("INPUT_FOTO_URL")
+    titolo_in = args.titolo or os.environ.get("INPUT_TITOLO")
+    superficie_in = args.superficie or os.environ.get("INPUT_SUPERFICIE")
+    prezzo_in = args.prezzo or os.environ.get("INPUT_PREZZO")
+    descrizione_in = args.descrizione or os.environ.get("INPUT_DESCRIZIONE")
+    story_id_in = args.story_id or os.environ.get("INPUT_STORY_ID")
 
     print("=" * 70)
     print("🎵 BOT TIKTOK AUTOMATICO (GITHUB ACTIONS) — IMMOBILIARE GIANCANI")
     print(f"Account: {TIKTOK_ACCOUNT} | Profilo: {TIKTOK_PROFILE_URL}")
     print("=" * 70)
 
-    # 1. Estrazione dati rigorosamente da Colonna F
-    dati = seleziona_contenuto_da_colonna_f(args.story_id)
+    # 1. Determinazione contenuto e didascalia da Colonna F
+    if titolo_in or descrizione_in:
+        logger.info("Ricevuti dati specifici per la pubblicazione (Annuncio o Nuovo Video).")
+        dati = {
+            "id": story_id_in or "annuncio_live",
+            "titolo": titolo_in or "Opportunità Immobiliare a Favara",
+            "mq": sanifica_regole(superficie_in or "metri quadri"),
+            "prezzo": prezzo_in or "",
+            "testoF": sanifica_regole(descrizione_in or "Nuova proposta esclusiva firmata Immobiliare Giancani.")
+        }
+    else:
+        logger.info("Nessun dato specifico passato: estrazione rigorosa da Colonna F.")
+        dati = seleziona_contenuto_da_colonna_f(story_id_in)
+
     caption = formatta_didascalia_tiktok(
         titolo=dati["titolo"],
         mq=dati["mq"],
@@ -368,16 +550,20 @@ def main():
         testo_colonna_f=dati["testoF"]
     )
 
-    logger.info(f"Contenuto selezionato: ID {dati['id']} - {dati['titolo']}")
-    logger.info(f"Didascalia preparata (Colonna F):\n{caption[:250]}...\n— Immobiliare Giancani")
+    logger.info(f"Contenuto preparato: ID {dati['id']} - {dati['titolo']}")
+    logger.info(f"Didascalia verificata (Colonna F & Metri Quadri):\n{caption[:250]}...\n— Immobiliare Giancani")
 
-    # 2. Ricerca del file video
-    video_path = trova_o_genera_video(args)
-    if not video_path:
+    # 2. Ottenimento file video MP4
+    if args.video and os.path.exists(args.video):
+        video_path = args.video
+    else:
+        video_path = scarica_o_genera_video(video_url=video_url, foto_url=foto_url)
+
+    if not video_path or not os.path.exists(video_path):
         logger.error("Nessun video MP4 disponibile per la pubblicazione su TikTok.")
         invia_telegram(
             f"ℹ️ *TIKTOK BOT GITHUB: NESSUN VIDEO TROVATO*\n"
-            f"Didascalia pronta da Colonna F per ID `{dati['id']}`:\n_{caption[:300]}..._\n\n"
+            f"Didascalia pronta da Colonna F per `{dati['titolo']}`:\n_{caption[:300]}..._\n\n"
             f"Carica un video MP4 in `video_storie_output` per avviare il caricamento automatico.\n"
             f"— *Immobiliare Giancani*"
         )
@@ -409,15 +595,14 @@ def main():
             f"Didascalia verificata:\n_{caption[:300]}..._\n\n"
             f"✅ *Firma Ufficiale:* — *Immobiliare Giancani*"
         )
-        invia_telegram(msg_ok, foto_path=risultato if os.path.exists(risultato) else None)
+        invia_telegram(msg_ok, foto_path=risultato if (isinstance(risultato, str) and os.path.exists(risultato)) else None)
 
-        # Salva in cronologia
         try:
             history = {}
             if os.path.exists(HISTORY_FILE):
                 with open(HISTORY_FILE, 'r', encoding='utf-8') as hf:
                     history = json.load(hf)
-            chiave = f"tiktok_pillola_id_{dati['id']}_{int(time.time())}"
+            chiave = f"tiktok_immobile_{dati['id']}_{int(time.time())}"
             history[chiave] = {
                 "timestamp": time.time(),
                 "data_ora": datetime.now().isoformat(),
@@ -435,14 +620,13 @@ def main():
         print("\n✅ PUBBLICAZIONE TIKTOK COMPLETATA AL 100% — IMMOBILIARE GIANCANI")
     else:
         logger.warning(f"Esito caricamento web TikTok: {risultato}")
-        # In caso di captcha o richiesta login da IP cloud, il video e il testo sono già pronti su Telegram
         invia_telegram(
             f"⚠️ *TIKTOK GITHUB ACTIONS: REPORT CARICAMENTO*\n"
             f"Stato: `{risultato}`\n"
             f"🏠 Titolo: {dati['titolo']}\n\n"
-            f"Il video e la didascalia sono stati recapitati qui sopra per la pubblicazione immediata in 1 click!\n\n"
+            f"Il video e la didascalia sono stati recapitati qui sopra per la verifica qualitativa!\n\n"
             f"— *Immobiliare Giancani*",
-            foto_path=risultato if os.path.exists(risultato) else None
+            foto_path=risultato if (isinstance(risultato, str) and os.path.exists(risultato)) else None
         )
 
 

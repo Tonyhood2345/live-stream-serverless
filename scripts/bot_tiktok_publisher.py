@@ -328,6 +328,11 @@ def scarica_o_genera_video(video_url=None, foto_url=None):
             logger.warning(f"Errore creazione clip da foto: {e_clip}")
 
     # 3. Fallback: cerca video recenti generati in video_storie_output o repo
+    master_reel = os.path.join(BASE_DIR, "assets", "tiktok_latest_reel.mp4")
+    if os.path.exists(master_reel) and os.path.getsize(master_reel) > 10000:
+        logger.info(f"Trovato video reel pronto in assets: {master_reel}")
+        return master_reel
+
     mp4_files = sorted(glob.glob(os.path.join(OUTPUT_DIR, "*.mp4")), key=os.path.getmtime, reverse=True)
     if mp4_files:
         return mp4_files[0]
@@ -478,7 +483,10 @@ def carica_su_tiktok_playwright(video_path, caption):
 
             # Compilazione Didascalia
             logger.info("Inserimento didascalia con regole di progetto...")
-            editor = page.locator('div[contenteditable="true"]').first
+            target_scope = target_scope if 'target_scope' in locals() else page
+            editor = target_scope.locator('div[contenteditable="true"]').first
+            if editor.count() == 0 and target_scope != page:
+                editor = page.locator('div[contenteditable="true"]').first
             try:
                 editor.wait_for(state="visible", timeout=30000)
                 editor.click()
@@ -508,7 +516,9 @@ def carica_su_tiktok_playwright(video_path, caption):
                 'button[type="button"]:has-text("Pubblica")'
             ]
             for sel in selectors:
-                loc = page.locator(sel).first
+                loc = target_scope.locator(sel).first
+                if loc.count() == 0 and target_scope != page:
+                    loc = page.locator(sel).first
                 if loc.count() > 0 and loc.is_visible():
                     publish_btn = loc
                     logger.info(f"Pulsante Pubblica trovato con selettore: {sel}")

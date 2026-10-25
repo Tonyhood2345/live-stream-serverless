@@ -167,13 +167,25 @@ function rispondiACommentoFB(commentId, testo) {
     var token = PropertiesService.getScriptProperties().getProperty('FB_PAGE_TOKEN');
     if (!token || !commentId) return { success: false, error: 'Token o commentId mancante' };
     
-    var url = 'https://graph.facebook.com/v19.0/' + commentId + '/comments';
+    var cleanId = String(commentId).replace(/^fb_/i, '').trim();
+    var url = 'https://graph.facebook.com/v21.0/' + cleanId + '/comments';
     var res = UrlFetchApp.fetch(url, {
       method: 'post',
       payload: 'message=' + encodeURIComponent(testo) + '&access_token=' + encodeURIComponent(token),
       muteHttpExceptions: true
     });
-    return { success: res.getResponseCode() === 200 };
+    var code = res.getResponseCode();
+    if (code === 200 || code === 201) return { success: true };
+
+    // Fallback JSON payload
+    var resJson = UrlFetchApp.fetch(url + '?access_token=' + encodeURIComponent(token), {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ message: testo }),
+      muteHttpExceptions: true
+    });
+    var codeJson = resJson.getResponseCode();
+    return { success: codeJson === 200 || codeJson === 201 };
   } catch(e) {
     inviaAllertaErroreTelegram("05_SocialECommentiLive.js", "rispondiACommentoFB", e.toString());
     return { success: false, error: e.toString() };
@@ -416,13 +428,59 @@ function rispondiACommentoInstagram(commentId, testo) {
     var token = props.getProperty('FB_PAGE_TOKEN');
     if (!token || !commentId) return { success: false, error: 'Token o commentId mancante' };
 
-    var url = 'https://graph.facebook.com/v19.0/' + commentId + '/replies';
+    var cleanId = String(commentId).replace(/^ig_/i, '').trim();
+    var url = 'https://graph.facebook.com/v21.0/' + cleanId + '/replies';
     var res = UrlFetchApp.fetch(url, {
       method: 'post',
       payload: 'message=' + encodeURIComponent(testo) + '&access_token=' + encodeURIComponent(token),
       muteHttpExceptions: true
     });
-    return { success: res.getResponseCode() === 200 };
+    var code = res.getResponseCode();
+    if (code === 200 || code === 201) return { success: true };
+
+    // Fallback JSON payload
+    var resJson = UrlFetchApp.fetch(url + '?access_token=' + encodeURIComponent(token), {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ message: testo }),
+      muteHttpExceptions: true
+    });
+    var codeJson = resJson.getResponseCode();
+    return { success: codeJson === 200 || codeJson === 201 };
+  } catch(e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+/**
+ * 🧵 Risposta a commento/reply su Threads
+ */
+function rispondiACommentoThreads(commentId, testo) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var token = props.getProperty('FB_PAGE_TOKEN') || props.getProperty('THREADS_ACCESS_TOKEN');
+    if (!token || !commentId) return { success: false, error: 'Token o commentId mancante' };
+
+    var cleanId = String(commentId).replace(/^th_/i, '').trim();
+    var url = 'https://graph.facebook.com/v21.0/' + cleanId + '/replies?access_token=' + encodeURIComponent(token);
+    var res = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ text: testo, message: testo }),
+      muteHttpExceptions: true
+    });
+    var code = res.getResponseCode();
+    if (code === 200 || code === 201) return { success: true };
+
+    var urlTh = 'https://graph.threads.net/v1.0/' + cleanId + '/replies?access_token=' + encodeURIComponent(token);
+    var resTh = UrlFetchApp.fetch(urlTh, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ text: testo }),
+      muteHttpExceptions: true
+    });
+    var codeTh = resTh.getResponseCode();
+    return { success: codeTh === 200 || codeTh === 201 };
   } catch(e) {
     return { success: false, error: e.toString() };
   }

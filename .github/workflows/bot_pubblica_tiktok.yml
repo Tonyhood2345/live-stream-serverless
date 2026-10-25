@@ -1,0 +1,86 @@
+name: 🎵 Bot TikTok Automatico — Immobiliare Giancani
+
+on:
+  # Schedulazione automatica quotidiana negli orari a massimo engagement su TikTok
+  schedule:
+    # 🕛 Slot Pranzo: ore 12:30 italiane (11:30 UTC)
+    - cron: '30 11 * * *'
+    # 🌆 Slot Preserale: ore 18:30 italiane (17:30 UTC)
+    - cron: '30 17 * * *'
+
+  # Trigger manuale per test e lanci immediati
+  workflow_dispatch:
+    inputs:
+      story_id:
+        description: 'ID specifico della pillola/immobile dal database (lascia vuoto per selezione automatica da Colonna F)'
+        required: false
+        default: ''
+      force:
+        description: 'Forza la pubblicazione anche se già pubblicato oggi'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  pubblica_tiktok:
+    runs-on: ubuntu-latest
+    name: 🎵 Caricamento Video su TikTok (@immobiliare_giancani)
+    timeout-minutes: 25
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Configura Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 🎞️ Installa Dipendenze di Sistema & Browser Chromium
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg fonts-dejavu fonts-freefont-ttf fonts-liberation libgbm1 libnss3 libasound2
+
+      - name: 📦 Installa Librerie Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests urllib3 playwright pillow
+          playwright install chromium
+
+      - name: 🚀 Esecuzione Bot TikTok Publisher (Colonna F & Branding)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TIKTOK_COOKIES_JSON: ${{ secrets.TIKTOK_COOKIES_JSON }}
+        run: |
+          CMD="python3 scripts/bot_tiktok_publisher.py"
+          if [ -n "${{ github.event.inputs.story_id }}" ]; then
+            CMD="$CMD --story_id ${{ github.event.inputs.story_id }}"
+          fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            CMD="$CMD --force"
+          fi
+          echo "Avvio comando: $CMD"
+          $CMD
+
+      - name: 💾 Salva Cronologia Pubblicazioni su GitHub
+        if: always()
+        run: |
+          git config --global user.name "Giancani TikTok Bot"
+          git config --global user.email "bot@immobiliaregiancani.it"
+          git add scripts/immobili_pubblicati_history.json 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "chore: Aggiornata cronologia pubblicazioni TikTok [skip ci]" && git push)
+
+      - name: 📸 Archivia Screenshot di Conferma TikTok come Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-conferma-pubblicazione
+          path: video_storie_output/*.png
+          retention-days: 7

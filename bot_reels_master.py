@@ -666,17 +666,17 @@ def ottieni_ancora_personaggio(story_id="", titolo="", categoria="BIBBIA"):
                 "sunny biblical landscape with rainbow, blooming flowers and olive trees, bold clean thick black outlines"
             )
 
-    # Mappatura Mitologia
+    # Mappatura Mitologia: Personaggi Umani Cartoni Animati Massima Qualità (No animali, No gatti)
     if "MITOLOGIA" in cat:
         if "perseo" in tit or "medusa" in tit:
-            return "authentic 1990s 2D animated cartoon series cel art, heroic Perseus with bronze helmet and shining shield, ancient Greece, vintage 90s cartoon style, natural body proportions"
+            return "masterpiece 2D Disney animated movie style, handsome heroic ancient Greek warrior Perseus with shining bronze helmet and polished mirror shield, human cartoon character, rich vivid colors, golden sunlight, highly detailed digital art, cinematic lighting, 9:16 vertical"
         elif "dedalo" in tit or "icaro" in tit:
-            return "authentic 1990s 2D animated cartoon series cel art, young Icarus with feathered wings flying near ancient sunny Greek shore, vintage 90s cartoon style, natural body proportions"
+            return "masterpiece 2D Disney animated movie style, handsome young Greek youth Icarus with majestic feathered wings flying near sunlit Aegean shore, human cartoon character, rich vivid colors, golden sunlight, 9:16 vertical"
         elif "ulisse" in tit or "odisseo" in tit:
-            return "authentic 1990s 2D animated cartoon series cel art, adventurous hero Odysseus on ancient wooden galley on Aegean Sea, vintage 90s cartoon style, natural body proportions"
+            return "masterpiece 2D Disney animated movie style, adventurous Greek king Odysseus on wooden galley on turquoise Aegean Sea, human cartoon character, rich vivid colors, 9:16 vertical"
         elif "ercole" in tit or "eracle" in tit:
-            return "authentic 1990s 2D animated cartoon series cel art, strong heroic Hercules in ancient Greek tunic, vintage 90s cartoon style, natural body proportions"
-        return "authentic 1990s 2D animated cartoon series cel art, ancient Greek mythic heroes and gods, marble temples, sunny Mediterranean landscape, vintage 90s cartoon style, natural body proportions"
+            return "masterpiece 2D Disney animated movie style, strong handsome Greek hero Hercules in ancient tunic, human cartoon character, rich vivid colors, 9:16 vertical"
+        return "masterpiece 2D Disney animated movie style, heroic ancient Greek human heroes and gods in marble temples and sunny Mediterranean landscapes, human cartoon character, rich vivid colors, 9:16 vertical"
 
     # Mappatura Grandi Classici della Letteratura (Gattino Avventuriero nei Libri)
     if "STANDARD" in cat or "LIBRI" in cat or "CLASSICI" in cat:
@@ -1075,12 +1075,10 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                 except Exception as ec:
                     print(f"  ⚠️ Errore caricamento immagine personalizzata {custom_name}: {ec}")
 
-    # 2. Asset pre-renderizzati Cartoni Animati 2D (BIBBIA, MITOLOGIA, CLASSICI)
-    if "BIBBIA" in cat_upper or "MITOLOGIA" in cat_upper or "CLASSICI" in cat_upper or "STANDARD" in cat_upper or "LIBRI" in cat_upper:
+    # 2. Asset pre-renderizzati Cartoni Animati 2D (BIBBIA, CLASSICI) - MITOLOGIA genera sempre live su Pollinations
+    if ("BIBBIA" in cat_upper or "CLASSICI" in cat_upper or "STANDARD" in cat_upper or "LIBRI" in cat_upper) and "MITOLOGIA" not in cat_upper:
         if "BIBBIA" in cat_upper:
             prefix = "bibbia"
-        elif "MITOLOGIA" in cat_upper:
-            prefix = "mitologia"
         else:
             prefix = "classici"
         cartoons_dir = os.path.join(assets_dir, f"{prefix}_scene_cartoons")
@@ -1182,14 +1180,18 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
         return False
 
     clean_sub = final_prompt.replace(", " + LOCKED_STYLE, "").strip(" ,")
-    if "sticker" not in clean_sub.lower() and "cartoon" not in clean_sub.lower():
+    if "MITOLOGIA" in cat_upper:
+        poll_prompt = f"{clean_sub}, masterpiece 2D Disney animated movie style, handsome heroic ancient Greek human cartoon character, rich vivid colors, golden sunlight, highly detailed digital art, cinematic lighting, no animals, no cat, vertical 9:16"
+        encoded_neg = urllib.parse.quote("animal, cat, dog, furry, bad anatomy, deformed fingers, extra limbs, ugly, 3D photograph, realistic photo, blurry, dark")
+    elif "sticker" not in clean_sub.lower() and "cartoon" not in clean_sub.lower():
         poll_prompt = f"{clean_sub}, cute cheerful 2D children cartoon sticker illustration, Warner cartoon style, bold clean thick black outlines, bright cheerful flat saturated colors, big round cartoon eyes, rosy cheeks, clean vector line art, no 3D, no realism, no gouache"
+        encoded_neg = urllib.parse.quote(LOCKED_NEGATIVE)
     else:
         poll_prompt = clean_sub
+        encoded_neg = urllib.parse.quote(LOCKED_NEGATIVE)
     if len(poll_prompt) > 480:
         poll_prompt = poll_prompt[:480].rstrip(" ,")
     encoded_prompt = urllib.parse.quote(poll_prompt)
-    encoded_neg = urllib.parse.quote(LOCKED_NEGATIVE)
 
     max_retries = 6
     scene_seed = (int(seed) + int(idx) * 123) % 1000000
@@ -1217,11 +1219,12 @@ def scarica_immagine_pollinations(prompt, output_img, seed=100, use_cache=True, 
                         os.remove(temp_file)
                 if immagine_valida(output_img):
                     print(f"  ✅ Immagine valida ({round(os.path.getsize(output_img)/1024, 1)} KB): {os.path.basename(output_img)}")
-                    time.sleep(15)  # rispetta il limite gratuito tra una scena e l'altra
+                    pausa_poll = 3 if "MITOLOGIA" in cat_upper else 15
+                    time.sleep(pausa_poll)  # rispetta il rate limit ottimizzato
                     return True
                 print("  ⚠️ Immagine scartata (vuota/monocolore), nuovo tentativo...")
                 os.remove(output_img)
-                time.sleep(16)
+                time.sleep(4 if "MITOLOGIA" in cat_upper else 16)
             elif resp.status_code in (402, 429):
                 print(f"  ⏳ Limite gratuito (HTTP {resp.status_code}): attendo 16s...", flush=True)
                 time.sleep(16)
@@ -1421,7 +1424,7 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
             draw.text((360, 75), "🏛️ — STORIE DELLA MITOLOGIA GRECA — 🏛️", fill=(245, 215, 110), font=font_kicker, anchor="mm")
             draw.text((361, 126), titolo_libro.upper(), fill=(0, 0, 0, 240), font=font_hero_title, anchor="mm")
             draw.text((360, 125), titolo_libro.upper(), fill=(255, 255, 255), font=font_hero_title, anchor="mm")
-            draw.text((360, 175), "⚡ Eroi e Leggende dell'Olimpo in 2 Minuti ⚡", fill=(215, 230, 255), font=font_autore, anchor="mm")
+            draw.text((360, 175), "⚡ Eroi e Leggende dell'Olimpo in 3 Minuti ⚡", fill=(215, 230, 255), font=font_autore, anchor="mm")
         elif "BIBBIA" in cat_upper:
             draw.rounded_rectangle([40, 40, 680, 155], radius=16, fill=(18, 24, 38, 225), outline=(212, 175, 55, 230), width=2)
             draw.rounded_rectangle([46, 46, 674, 149], radius=12, outline=(212, 175, 55, 100), width=1)
@@ -1442,41 +1445,42 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
             draw.text((360, 132), f"di {autore}", fill=(210, 225, 245), font=font_autore, anchor="mm")
     # DOPO LA PRIMA SCENA (idx > 1): IL TITOLO SCOMPARE PER LASCIARE PIENA VISIBILITÀ ALL'ILLUSTRAZIONE
 
-    # 2. SOTTOTITOLI IN STILE REELS PROFESSIONALE (Font nitido, pillola scura soft, leggibilità impeccabile)
-    import textwrap
-    font_subtitles = carica_font(None, ["segoeuib.ttf", "arialbd.ttf", "dejavusans-bold.ttf", "arial.ttf"], 28)
-    wrapped_lines = textwrap.wrap(testo, width=28)
-    line_height = 42
-    total_h = len(wrapped_lines) * line_height
-    start_y = (1030 if not is_outro else 960) - (total_h // 2)
+    # 2. SOTTOTITOLI TESTO RECITATO (Disattivati categoricamente per BIBBIA su direttiva utente: ZERO scritte recitate e ZERO riquadro)
+    if "BIBBIA" not in cat_upper:
+        import textwrap
+        font_subtitles = carica_font(None, ["segoeuib.ttf", "arialbd.ttf", "dejavusans-bold.ttf", "arial.ttf"], 28)
+        wrapped_lines = textwrap.wrap(testo, width=28)
+        line_height = 42
+        total_h = len(wrapped_lines) * line_height
+        start_y = (1030 if not is_outro else 960) - (total_h // 2)
 
-    colore_font_solare = (255, 235, 90)   # Oro solare
-    colore_bianco_puro = (255, 255, 255)  # Bianco pulito
+        colore_font_solare = (255, 235, 90)   # Oro solare
+        colore_bianco_puro = (255, 255, 255)  # Bianco pulito
 
-    # Pillola di contrasto soft semi-trasparente dietro i sottotitoli
-    box_pad_x = 24
-    box_pad_y = 14
-    max_w = 0
-    for line in wrapped_lines:
-        bbox = draw.textbbox((0, 0), line, font=font_subtitles)
-        max_w = max(max_w, bbox[2] - bbox[0])
-    
-    box_x0 = max(30, 360 - (max_w // 2) - box_pad_x)
-    box_x1 = min(690, 360 + (max_w // 2) + box_pad_x)
-    box_y0 = start_y - box_pad_y
-    box_y1 = start_y + total_h + box_pad_y
-    draw.rounded_rectangle([box_x0, box_y0, box_x1, box_y1], radius=16, fill=(10, 16, 28, 205), outline=(212, 175, 55, 140), width=1)
+        # Pillola di contrasto soft semi-trasparente dietro i sottotitoli
+        box_pad_x = 24
+        box_pad_y = 14
+        max_w = 0
+        for line in wrapped_lines:
+            bbox = draw.textbbox((0, 0), line, font=font_subtitles)
+            max_w = max(max_w, bbox[2] - bbox[0])
+        
+        box_x0 = max(30, 360 - (max_w // 2) - box_pad_x)
+        box_x1 = min(690, 360 + (max_w // 2) + box_pad_x)
+        box_y0 = start_y - box_pad_y
+        box_y1 = start_y + total_h + box_pad_y
+        draw.rounded_rectangle([box_x0, box_y0, box_x1, box_y1], radius=16, fill=(10, 16, 28, 205), outline=(212, 175, 55, 140), width=1)
 
-    for l_idx, line in enumerate(wrapped_lines):
-        y_pos = start_y + (l_idx * line_height) + (line_height // 2)
-        testo_color = colore_font_solare if (l_idx == 0 or len(wrapped_lines) == 1) else colore_bianco_puro
+        for l_idx, line in enumerate(wrapped_lines):
+            y_pos = start_y + (l_idx * line_height) + (line_height // 2)
+            testo_color = colore_font_solare if (l_idx == 0 or len(wrapped_lines) == 1) else colore_bianco_puro
 
-        # Ombra soft e testo nitido
-        draw.text((360 + 2, y_pos + 2), line, fill=(0, 0, 0, 220), font=font_subtitles, anchor="mm")
-        draw.text((360, y_pos), line, fill=testo_color, font=font_subtitles, anchor="mm")
+            # Ombra soft e testo nitido
+            draw.text((360 + 2, y_pos + 2), line, fill=(0, 0, 0, 220), font=font_subtitles, anchor="mm")
+            draw.text((360, y_pos), line, fill=testo_color, font=font_subtitles, anchor="mm")
 
-    # 3. OUTRO BADGE (y tra 1115 e 1245 px): Personal Branding Immobiliare Giancani
-    if is_outro:
+    # 3. OUTRO BADGE (y tra 1115 e 1245 px): Personal Branding Immobiliare Giancani (disattivato per BIBBIA per non coprire i disegni)
+    if is_outro and "BIBBIA" not in cat_upper:
         outro_bg = (11, 27, 61, 240) if "MITOLOGIA" in cat_upper else (16, 22, 36, 235)
         draw.rounded_rectangle([35, 1115, 685, 1245], radius=18, fill=outro_bg, outline=(234, 198, 108, 245), width=2)
         draw.rounded_rectangle([41, 1121, 679, 1239], radius=14, outline=(212, 175, 55, 110), width=1)
@@ -1484,7 +1488,7 @@ def crea_overlay_grafico(testo, titolo_libro, autore, output_overlay, is_outro=F
         if "MITOLOGIA" in cat_upper:
             draw.text((360, 1145), "🏛️ RUBRICA MITI E CULTURA CLASSICA 🏛️", fill=(245, 215, 110), font=font_submotto, anchor="mm")
             draw.text((360, 1180), "IMMOBILIARE GIANCANI", fill=(255, 255, 255), font=font_brand, anchor="mm")
-            draw.text((360, 1215), "⚡ Grandi Miti in 2 Minuti | Valori che Superano il Tempo ⚡", fill=(215, 230, 255), font=font_submotto, anchor="mm")
+            draw.text((360, 1215), "⚡ Grandi Miti in 3 Minuti | Valori che Superano il Tempo ⚡", fill=(215, 230, 255), font=font_submotto, anchor="mm")
         elif "BIBBIA" in cat_upper:
             draw.text((360, 1145), "📖 STORIE PER BAMBINI DELLA BIBBIA 📖", fill=(234, 198, 108), font=font_submotto, anchor="mm")
             draw.text((360, 1180), "STORIE DELLA BIBBIA", fill=(255, 255, 255), font=font_brand, anchor="mm")
@@ -1818,7 +1822,7 @@ def invia_su_telegram(video_path, storia):
                     "-F", "supports_streaming=true",
                     url
                 ]
-                res_curl = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                res_curl = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
                 if '"ok":true' in res_curl.stdout:
                     print(f"  ✅ Video inviato con successo a {chat_target} (tramite curl)!")
                     almeno_uno_inviato = True
@@ -2038,6 +2042,14 @@ def esegui_routing_pubblicazione(video_path, clips, storia, mode="standard", sol
 
     # 1. Telegram (TUTTI i contenuti obbligatoriamente su Chat e Canale Broadcast)
     invia_su_telegram(video_path, storia)
+
+    # 2. TikTok (@immobiliare_giancani)
+    if pubblica_video_tiktok:
+        try:
+            print("\n🎵 [TIKTOK] Sincronizzazione video per @immobiliare_giancani...")
+            pubblica_video_tiktok(video_path, storia)
+        except Exception as e_tk:
+            print(f"  ⚠️ Errore sincronizzazione TikTok: {e_tk}")
 
     # 2. YouTube Shorts (se richiesto e supportato per la modalità)
     if upload_youtube:

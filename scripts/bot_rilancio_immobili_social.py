@@ -127,14 +127,41 @@ def main():
     print(f"📅 Data/Ora: {datetime.datetime.now().isoformat()}")
     print("═══════════════════════════════════════════════════════════════════")
 
-    # 1. Verifica se oggi c'è già una nuova pubblicazione
+    # 1. Controllo CODA di pubblicazione (Regola 1 immobile al giorno)
+    # Se ci sono immobili in attesa nella coda intelligente, esegui il flush per pubblicare l'immobile del giorno
+    if not force_run:
+        try:
+            r_q = requests.get(f"{WP_BASE}/wp-json/giancani/v1/queue-status", verify=False, timeout=15)
+            if r_q.status_code == 200:
+                q_data = r_q.json()
+                items_in_q = q_data.get("items_in_queue", 0)
+                published_today = q_data.get("published_today", False)
+                print(f"📊 Stato Coda Intelligente: {items_in_q} annunci in attesa | Pubblicato oggi: {published_today}")
+
+                if items_in_q > 0 and not published_today:
+                    print("⏳ Trovato annuncio programmato in coda da pubblicare oggi! Esecuzione /process-queue...")
+                    r_proc = requests.post(f"{WP_BASE}/wp-json/giancani/v1/process-queue", json={"token": WP_TOKEN}, verify=False, timeout=30)
+                    if r_proc.status_code == 200:
+                        proc_res = r_proc.json()
+                        print(f"🚀 Immobile in coda pubblicato con successo su tutti i canali: {proc_res}")
+                        print("— Immobiliare Giancani")
+                        return
+                    else:
+                        print(f"⚠️ Risposta /process-queue: {r_proc.status_code} - {r_proc.text}")
+                elif published_today:
+                    print("✅ Oggi è già stato pubblicato un immobile (o dalla coda o direttamente). Nessun rilancio necessario.")
+                    return
+        except Exception as e:
+            print(f"⚠️ Errore controllo coda: {e}")
+
+    # 2. Verifica secondaria se oggi c'è già una nuova pubblicazione
     if not force_run:
         has_new = check_new_publications_today()
         if has_new:
             print("✅ Nessun rilancio necessario: una nuova proprietà o video è già stata pubblicata oggi.")
             return
 
-    # 2. Carica archivio
+    # 3. Carica archivio
     immobili = load_immobili_catalog()
     if not immobili:
         print("❌ Nessun immobile valido trovato nell'archivio.")

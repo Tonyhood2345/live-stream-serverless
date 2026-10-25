@@ -4,14 +4,17 @@ on:
   schedule:
     # Esecuzione quotidiana alle 13:00 italiane (12:00 UTC)
     - cron: '0 12 * * *'
-    # Seconda verifica serale alle 18:00 italiane (17:00 UTC) se ancora nulla è stato pubblicato
-    - cron: '0 17 * * *'
+    # Seconda verifica pomeridiana alle 17:30 italiane (16:30 UTC)
+    - cron: '30 16 * * *'
   workflow_dispatch:
     inputs:
       force:
         description: 'Forza la proposta di rilancio anche se oggi è già stato pubblicato un post (true/false)'
         required: false
         default: 'false'
+
+permissions:
+  contents: write
 
 jobs:
   rilancio_immobili:
@@ -37,20 +40,24 @@ jobs:
 
       - name: 🚀 Esecuzione Bot Rilancio Social
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_API_TOKEN: ${{ secrets.WP_API_TOKEN }}
         run: |
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            python scripts/bot_rilancio_immobili_social.py --force
+            python3 scripts/bot_rilancio_immobili_social.py --force
           else
-            python scripts/bot_rilancio_immobili_social.py
+            python3 scripts/bot_rilancio_immobili_social.py
           fi
 
       - name: 💾 Commit & Push Aggiornamento Indice Rotazione
         run: |
-          git config --local user.email "bot@immobiliaregiancani.it"
-          git config --local user.name "Bot Immobiliare Giancani"
-          git add scripts/data/last_reposted_index.json || true
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: aggiornato indice rotazione rilancio immobili [skip ci]" && git push)
+          git config --global user.name "Giancani Social Bot"
+          git config --global user.email "bot@immobiliaregiancani.it"
+          git add -A scripts/data/last_reposted_index.json || true
+          git commit -m "chore: aggiornato indice rotazione rilancio immobili [skip ci]" || echo "Nessuna modifica da salvare"
+          for i in 1 2 3; do
+            git pull --rebase origin main || true
+            git push origin main && break || sleep 2
+          done

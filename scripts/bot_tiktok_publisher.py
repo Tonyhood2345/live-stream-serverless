@@ -336,6 +336,31 @@ def scarica_o_genera_video(video_url=None, foto_url=None):
     if candidati:
         return candidati[0]
 
+    # 4. Fallback garantito: genera video MP4 verticale (1080x1920) con audio da assets
+    fallback_img = os.path.join(BASE_DIR, "assets", "pillola_master_fallback.jpg")
+    fallback_audio = os.path.join(BASE_DIR, "assets", "classica_vivaldi_primavera_short.mp3")
+    target_fallback_mp4 = os.path.join(OUTPUT_DIR, f"tiktok_video_master_{ts}.mp4")
+
+    if os.path.exists(fallback_img):
+        logger.info(f"Generazione video verticale fallback da {fallback_img}...")
+        try:
+            cmd_fb = ["ffmpeg", "-y", "-loop", "1", "-i", fallback_img]
+            if os.path.exists(fallback_audio):
+                cmd_fb += ["-i", fallback_audio, "-c:a", "aac", "-b:a", "192k", "-shortest"]
+            cmd_fb += [
+                "-c:v", "libx264",
+                "-t", "10",
+                "-pix_fmt", "yuv420p",
+                "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920",
+                target_fallback_mp4
+            ]
+            res_fb = subprocess.run(cmd_fb, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+            if res_fb.returncode == 0 and os.path.exists(target_fallback_mp4) and os.path.getsize(target_fallback_mp4) > 10000:
+                logger.info(f"Video MP4 verticale generato con successo da assets: {target_fallback_mp4}")
+                return target_fallback_mp4
+        except Exception as e_fb:
+            logger.warning(f"Errore generazione video fallback da assets: {e_fb}")
+
     return None
 
 
@@ -432,8 +457,18 @@ def carica_su_tiktok_playwright(video_path, caption):
 
             # Caricamento del file video tramite input[type=file]
             logger.info(f"Invio del file video: {video_path}")
+            target_scope = page
             file_input = page.locator('input[type="file"]')
-            file_input.wait_for(state="attached", timeout=30000)
+            try:
+                file_input.wait_for(state="attached", timeout=15000)
+            except Exception:
+                for frame in page.frames:
+                    f_inp = frame.locator('input[type="file"]')
+                    if f_inp.count() > 0:
+                        file_input = f_inp
+                        target_scope = frame
+                        logger.info("File input trovato dentro un iframe!")
+                        break
             file_input.first.set_input_files(video_path)
             logger.info("File inviato all'input di caricamento!")
 

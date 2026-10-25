@@ -524,10 +524,35 @@ def carica_su_tiktok_playwright(video_path, caption):
                     logger.info(f"Pulsante Pubblica trovato con selettore: {sel}")
                     break
 
+            # Chiudi eventuali modali o popup sovrapposti (TUXModal-overlay)
+            for close_sel in ['button:has-text("Chiudi")', 'button:has-text("Ho capito")', 'button:has-text("OK")', 'button[aria-label="Close"]', 'button[aria-label="Chiudi"]', 'div[class*="close"]']:
+                try:
+                    c_btn = page.locator(close_sel).first
+                    if c_btn.count() > 0 and c_btn.is_visible():
+                        c_btn.click(force=True, timeout=2000)
+                        logger.info(f"Chiuso popup sovrapposto con: {close_sel}")
+                except Exception:
+                    pass
+
+            try:
+                page.keyboard.press("Escape")
+                time.sleep(1)
+            except Exception:
+                pass
+
             if publish_btn:
-                publish_btn.click()
-                logger.info("Pulsante 'Pubblica' cliccato!")
-                time.sleep(8)
+                try:
+                    publish_btn.click(force=True, timeout=10000)
+                    logger.info("Pulsante 'Pubblica' cliccato con force=True!")
+                except Exception as e_fclick:
+                    logger.warning(f"Click force fallito: {e_fclick}. Tento dispatch_event...")
+                    try:
+                        publish_btn.dispatch_event('click')
+                        logger.info("Pulsante 'Pubblica' attivato con dispatch_event('click')!")
+                    except Exception as e_disp:
+                        page.evaluate('() => { const b = document.querySelector("button[data-e2e=\'post_video_button\']"); if(b) b.click(); }')
+                        logger.info("Pulsante 'Pubblica' attivato via JS evaluation!")
+                time.sleep(12)
             else:
                 logger.warning("Pulsante Pubblica non identificato univocamente. Salvo screenshot dello stato.")
 

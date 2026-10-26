@@ -15,15 +15,17 @@ on:
         required: false
         default: 'https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?view=screen'
       fb_key:
-        description: 'Facebook RTMP URL completo'
+        description: 'Facebook RTMP URL completo o Stream Key'
         required: false
+        default: 'FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe' 
       yt_key:
         description: 'YouTube Stream Key o URL RTMP completo'
         required: false
         default: 'byga-0tdf-uu9w-zetp-392s'
       tk_key:
-        description: 'TikTok RTMP URL completo'
+        description: 'TikTok RTMP URL completo o Stream Key'
         required: false
+        default: 'rtmp://push-rtmp-f5-tt04.tiktokcdn-eu.com/game/stream-1272994221341541709?amun=true&c=IT&dsnp=1&expire=1789827708&l_region=EU-TTP2&offsetTime=1789222908399&sign=50005d4f87770f1e8eb2c9af258f7273&th_region=no&volcSecret=50005d4f87770f1e8eb2c9af258f7273&volcTime=1789827708&pri=1789222920344' 
       ig_key:
         description: 'Instagram RTMP URL completo'
         required: false
@@ -293,11 +295,11 @@ jobs:
           # --- AVVIO ESTRAZIONE CHIAVI MULTISTREAM (FACEBOOK, TIKTOK, INSTAGRAM) ---
           if [ -f scripts/estrai_chiavi_live_social.py ]; then
             echo "🤖 Avvio Bot Estrazione Chiavi Multistream (Facebook, TikTok, Instagram)..."
-            python3 scripts/estrai_chiavi_live_social.py --headless &
-            echo "⏳ In attesa delle coordinate social (max 40 secondi)..."
-            for i in $(seq 1 20); do
-              if [ -f /tmp/facebook_rtmp.txt ] && [ -f /tmp/tiktok_rtmp.txt ] && [ -f /tmp/instagram_rtmp.txt ]; then
-                echo "✅ Tutte e 3 le destinazioni social (FB, TK, IG) pronte in $((i*2))s!"
+            python3 -u scripts/estrai_chiavi_live_social.py --headless &
+            echo "⏳ In attesa aggiornamento coordinate social dinamiche (max 30s)..."
+            for i in $(seq 1 15); do
+              if [ -f /tmp/instagram_rtmp.txt ]; then
+                echo "📸 Endpoint dinamico Instagram Live rilevato in $((i*2))s!"
                 break
               fi
               sleep 2
@@ -306,13 +308,13 @@ jobs:
 
           # --- DESTINAZIONE 2: FACEBOOK LIVE ---
           FB_KEY="${{ github.event.inputs.fb_key }}"
-          if [ -z "$FB_KEY" ] || [ "$FB_KEY" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
-            if [ -f /tmp/facebook_rtmp.txt ]; then
-              FB_KEY=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')
-            fi
+          if [ -f /tmp/facebook_rtmp.txt ]; then
+            FB_KEY=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')
           fi
-
-          if [ -n "$FB_KEY" ] && [ "$FB_KEY" != "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
+          if [ -z "$FB_KEY" ]; then
+            FB_KEY="FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe"
+          fi
+          if [ -n "$FB_KEY" ]; then
             FB_URL=""
             if [[ "$FB_KEY" == rtmp* ]]; then
               FB_URL="$FB_KEY"
@@ -325,14 +327,15 @@ jobs:
             # Avvia demone storie in diretta ogni 30 min (Facebook e TikTok)
             echo "📱 Avvio demone Storie Social in diretta ogni 30 minuti..."
             python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 1800 &
-          else
-            echo "📘 [Facebook Live] Chiave non disponibile. Saltato."
           fi
 
-          # --- DESTINAZIONE 3: TIKTOK LIVE (se presente chiave) ---
+          # --- DESTINAZIONE 3: TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"
-          if [ -z "$TK_KEY" ] && [ -f /tmp/tiktok_rtmp.txt ]; then
+          if [ -f /tmp/tiktok_rtmp.txt ]; then
             TK_KEY=$(cat /tmp/tiktok_rtmp.txt | tr -d '\r\n')
+          fi
+          if [ -z "$TK_KEY" ]; then
+            TK_KEY="rtmp://push-rtmp-f5-tt04.tiktokcdn-eu.com/game/stream-1272994221341541709?amun=true&c=IT&dsnp=1&expire=1789827708&l_region=EU-TTP2&offsetTime=1789222908399&sign=50005d4f87770f1e8eb2c9af258f7273&th_region=no&volcSecret=50005d4f87770f1e8eb2c9af258f7273&volcTime=1789827708&pri=1789222920344"
           fi
           if [ -n "$TK_KEY" ]; then
             TK_URL=""
@@ -345,9 +348,9 @@ jobs:
             TEE_DESTS+=("[f=flv:onfail=ignore]${TK_URL}")
           fi
 
-          # --- DESTINAZIONE 4: INSTAGRAM LIVE (se presente chiave) ---
+          # --- DESTINAZIONE 4: INSTAGRAM LIVE ---
           IG_KEY="${{ github.event.inputs.ig_key }}"
-          if [ -z "$IG_KEY" ] && [ -f /tmp/instagram_rtmp.txt ]; then
+          if [ -f /tmp/instagram_rtmp.txt ]; then
             IG_KEY=$(cat /tmp/instagram_rtmp.txt | tr -d '\r\n')
           fi
           if [ -n "$IG_KEY" ]; then

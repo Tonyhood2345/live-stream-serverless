@@ -176,41 +176,73 @@ def ottieni_o_crea_facebook_live() -> tuple:
 
 def estrai_instagram_live(page) -> tuple:
     """
-    Accede a Instagram Web con i cookie salvati, apre il flusso 'Crea' -> 'Video in diretta',
+    Accede a Instagram Web con i cookie salvati, apre Instagram Live Producer,
     e recupera l'URL RTMP e la Stream Key per la trasmissione.
     """
-    print("\n📸 [INSTAGRAM] Connessione a Instagram con cookie...")
+    print("\n📸 [INSTAGRAM] Connessione a Instagram Live Producer con sessione salvata...")
     try:
-        page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=45000)
-        time.sleep(3)
+        # 1. Prova navigazione diretta all'endpoint Live Producer ufficiale
+        opened_producer = False
+        try:
+            print("📸 [INSTAGRAM] Tentativo apertura diretta https://www.instagram.com/live/producer/ ...")
+            page.goto("https://www.instagram.com/live/producer/", wait_until="domcontentloaded", timeout=25000)
+            time.sleep(3)
+            if "login" not in page.url and ("producer" in page.url or "live" in page.url):
+                opened_producer = True
+                print("✅ [INSTAGRAM] Schermata Live Producer aperta direttamente con successo!")
+        except Exception as e_direct:
+            print(f"ℹ️ Navigazione diretta Live Producer: {e_direct}")
 
-        # Chiudi eventuali popup 'Non ora', cookie e notifiche
-        for txt in ["Non ora", "Not Now", "Not now", "Rifiuta", "Decline", "Accetta tutti", "Allow all"]:
+        # Se non aperta direttamente, passa dal menu 'Crea' sulla home
+        if not opened_producer:
+            page.goto("https://www.instagram.com/", wait_until="domcontentloaded", timeout=30000)
+            time.sleep(3)
+
+            # Chiudi eventuali popup 'Non ora', cookie e notifiche
+            for txt in ["Non ora", "Not Now", "Not now", "Rifiuta", "Decline", "Accetta tutti", "Allow all"]:
+                try:
+                    btn_no = page.locator(f"button:has-text('{txt}')")
+                    if btn_no.count() > 0:
+                        btn_no.first.click(timeout=1500)
+                except Exception:
+                    pass
+
             try:
-                btn_no = page.locator(f"button:has-text('{txt}')")
-                if btn_no.count() > 0:
-                    btn_no.first.click(timeout=2000)
+                page.keyboard.press("Escape")
             except Exception:
                 pass
+            time.sleep(1)
 
-        try:
-            page.keyboard.press("Escape")
-        except Exception:
-            pass
-        time.sleep(1)
+            # Clicca su 'Crea'
+            print("📸 [INSTAGRAM] Apertura menu 'Crea'...")
+            crea_btn = page.locator("svg[aria-label*='Crea' i], svg[aria-label*='Create' i], span:has-text('Crea'), span:has-text('Create'), a[href='#'][role='link']").first
+            if crea_btn.count() > 0:
+                crea_btn.click(force=True)
+                time.sleep(2)
 
-        # 1. Clicca su 'Crea'
-        print("📸 [INSTAGRAM] Apertura menu 'Crea'...")
-        crea_btn = page.locator("svg[aria-label*='Crea' i], svg[aria-label*='Create' i], span:has-text('Crea'), span:has-text('Create')").first
-        crea_btn.click(force=True)
-        time.sleep(2)
-
-        # 2. Clicca su 'Video in diretta' (supporta sia italiano che inglese)
-        print("📸 [INSTAGRAM] Selezione voce 'Video in diretta' / 'Live video'...")
-        live_btn = page.locator("span:has-text('Video in diretta'), div:has-text('Video in diretta'), span:has-text('Live video'), div:has-text('Live video')").last
-        live_btn.wait_for(state="visible", timeout=12000)
-        live_btn.click(force=True)
-        time.sleep(4)
+            # Cerca qualsiasi voce relativa alla diretta
+            print("📸 [INSTAGRAM] Ricerca opzione 'Video in diretta' / 'Live'...")
+            live_selectors = [
+                "span:has-text('Video in diretta')",
+                "div:has-text('Video in diretta')",
+                "span:has-text('In diretta')",
+                "span:has-text('Live video')",
+                "div:has-text('Live video')",
+                "a[href*='live']",
+                "[role='menuitem']:has-text('diretta')",
+                "[role='menuitem']:has-text('Live')"
+            ]
+            for sel in live_selectors:
+                try:
+                    target = page.locator(sel).last
+                    if target.count() > 0 and target.is_visible():
+                        target.click(force=True)
+                        print(f"✅ Selezionata voce live con selettore: {sel}")
+                        opened_producer = True
+                        time.sleep(3)
+                        break
+                except Exception:
+                    continue
 
         # 3. Imposta titolo se richiesto e clicca 'Avanti'
         dialog = page.locator("[role='dialog']").last

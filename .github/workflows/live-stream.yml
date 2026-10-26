@@ -75,19 +75,9 @@ jobs:
           echo "yt_enabled=true" >> $GITHUB_OUTPUT
           echo "▶️ YouTube Live: ATTIVO 24H PERPETUO (Canale Immobiliare Giancani)"
 
-          # Facebook Live è attivo specificamente alle ore 19:00 italiane (finestra 18:50 - 01:00)
-          # oppure se forzato da workflow_dispatch con fb_key
-          FB_INPUT="${{ github.event.inputs.fb_key }}"
-          if [ -n "$FB_INPUT" ]; then
-            echo "fb_enabled=true" >> $GITHUB_OUTPUT
-            echo "📘 Facebook Live: FORZATO DA INPUT DISPATCH"
-          elif [ "$ROME_HOUR" -ge 18 ] || [ "$ROME_HOUR" -le 1 ]; then
-            echo "fb_enabled=true" >> $GITHUB_OUTPUT
-            echo "📘 Facebook Live: ATTIVO (Fascia serale 19:00 - 01:00 Europe/Rome)"
-          else
-            echo "fb_enabled=false" >> $GITHUB_OUTPUT
-            echo "⏸️ Facebook Live: IN PAUSA (attivo ogni giorno alle 19:00 IT). Solo YouTube 24H in onda."
-          fi
+          # Tutti i canali (YouTube, Facebook, TikTok, Instagram) sono SEMPRE ATTIVI nel multistream
+          echo "social_enabled=true" >> $GITHUB_OUTPUT
+          echo "🌐 Multistream Live Totale: ATTIVO su YouTube, Facebook, TikTok e Instagram! — Immobiliare Giancani"
           echo "should_run=true" >> $GITHUB_OUTPUT
 
       - name: Setup Headless Environment and Audio Engine
@@ -300,45 +290,43 @@ jobs:
           echo "▶️ [YouTube Live] Destinazione 24H Attiva: $YT_URL"
           TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")
 
-          # --- DESTINAZIONE 2: FACEBOOK LIVE (Ore 19:00 Italiane) ---
-          FB_ENABLED="${{ steps.timeguard.outputs.fb_enabled }}"
-          if [ "$FB_ENABLED" = "true" ]; then
-            FB_KEY="${{ github.event.inputs.fb_key }}"
-            if [ -z "$FB_KEY" ] || [ "$FB_KEY" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
-              if [ -f scripts/estrai_chiavi_live_social.py ]; then
-                echo "🤖 Avvio Bot Estrazione Chiavi Social (FB, IG, TK)..."
-                python3 scripts/estrai_chiavi_live_social.py --headless &
-                for i in $(seq 1 30); do
-                  if [ -f /tmp/facebook_rtmp.txt ]; then break; fi
-                  sleep 2
-                done
+          # --- AVVIO ESTRAZIONE CHIAVI MULTISTREAM (FACEBOOK, TIKTOK, INSTAGRAM) ---
+          if [ -f scripts/estrai_chiavi_live_social.py ]; then
+            echo "🤖 Avvio Bot Estrazione Chiavi Multistream (Facebook, TikTok, Instagram)..."
+            python3 scripts/estrai_chiavi_live_social.py --headless &
+            echo "⏳ In attesa delle coordinate social (max 40 secondi)..."
+            for i in $(seq 1 20); do
+              if [ -f /tmp/facebook_rtmp.txt ] && [ -f /tmp/tiktok_rtmp.txt ] && [ -f /tmp/instagram_rtmp.txt ]; then
+                echo "✅ Tutte e 3 le destinazioni social (FB, TK, IG) pronte in $((i*2))s!"
+                break
               fi
+              sleep 2
+            done
+          fi
+
+          # --- DESTINAZIONE 2: FACEBOOK LIVE ---
+          FB_KEY="${{ github.event.inputs.fb_key }}"
+          if [ -z "$FB_KEY" ] || [ "$FB_KEY" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
+            if [ -f /tmp/facebook_rtmp.txt ]; then
+              FB_KEY=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')
             fi
+          fi
 
-            if [ -z "$FB_KEY" ] || [ "$FB_KEY" == "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
-              if [ -f /tmp/facebook_rtmp.txt ]; then
-                FB_KEY=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')
-              fi
-            fi
-
-            if [ -n "$FB_KEY" ] && [ "$FB_KEY" != "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
-              FB_URL=""
-              if [[ "$FB_KEY" == rtmp* ]]; then
-                FB_URL="$FB_KEY"
-              else
-                FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
-              fi
-              echo "📘 [Facebook Live 19:00] Destinazione Serale Attiva: $FB_URL"
-              TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
-
-              # Avvia anche la pubblicazione automatica delle storie Facebook ogni 30 min solo durante la diretta serale
-              echo "📱 Avvio demone Storie Facebook in diretta ogni 30 minuti..."
-              python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 1800 &
+          if [ -n "$FB_KEY" ] && [ "$FB_KEY" != "FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe" ]; then
+            FB_URL=""
+            if [[ "$FB_KEY" == rtmp* ]]; then
+              FB_URL="$FB_KEY"
             else
-              echo "📘 [Facebook Live] Chiave non disponibile o fuori finestra. Lo stream prosegue regolarmente su YouTube."
+              FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
             fi
+            echo "📘 [Facebook Live] Destinazione Attiva: $FB_URL"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
+
+            # Avvia demone storie in diretta ogni 30 min (Facebook e TikTok)
+            echo "📱 Avvio demone Storie Social in diretta ogni 30 minuti..."
+            python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 1800 &
           else
-            echo "📘 [Facebook Live] Non in finestra serale (19:00 Europe/Rome). YouTube continua in modalità solitaria 24H."
+            echo "📘 [Facebook Live] Chiave non disponibile. Saltato."
           fi
 
           # --- DESTINAZIONE 3: TIKTOK LIVE (se presente chiave) ---

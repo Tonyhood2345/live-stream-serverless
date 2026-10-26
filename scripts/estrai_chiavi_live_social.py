@@ -145,9 +145,10 @@ def ottieni_o_crea_facebook_live() -> tuple:
     Ritorna (fb_stream_url, fb_video_id, fb_watch_url).
     """
     page_id = os.environ.get("FB_PAGE_ID", "234931856561526")
-    token = os.environ.get(
-        "FB_PAGE_TOKEN",
-        "EAAZAH7q8wRZAEBSaZAm9Q9JGa8ZC7gwAsRJ1n4bPZAIY5ws8VXZAnugJgtZCOvP7HyEd7IEfWeCD5HfmP0ENQh86J3PT7pDFnOt5nPJdpzYyUM6p6AtZBXnXufThdh9ZAczfsE84obRZCOD3UWslSWpxJ058WGrQfXxJYsXtVZBh1ey7j2zuzme2JcEoya10KdL8TfJOpvNHqD8EsionnLI"
+    token = (
+        os.environ.get("FB_PAGE_TOKEN")
+        or os.environ.get("FB_PAGE_ACCESS_TOKEN_GIANCANI")
+        or "EAAZAH7q8wRZAEBSaZAm9Q9JGa8ZC7gwAsRJ1n4bPZAIY5ws8VXZAnugJgtZCOvP7HyEd7IEfWeCD5HfmP0ENQh86J3PT7pDFnOt5nPJdpzYyUM6p6AtZBXnXufThdh9ZAczfsE84obRZCOD3UWslSWpxJ058WGrQfXxJYsXtVZBh1ey7j2zuzme2JcEoya10KdL8TfJOpvNHqD8EsionnLI"
     )
     print("\n📘 [FACEBOOK] Inizializzazione diretta Facebook Live via Graph API...")
     url = f"https://graph.facebook.com/v19.0/{page_id}/live_videos"
@@ -262,6 +263,7 @@ def estrai_instagram_live(page) -> tuple:
                     pass
 
         if stream_key:
+            if stream_url and not stream_url.endswith("/"): stream_url += "/"
             full_dest = stream_key if stream_key.startswith("rtmp") else (stream_url + stream_key)
             print(f"✅ [INSTAGRAM] Chiave RTMP catturata con successo! — Immobiliare Giancani")
             print(f"   URL: {stream_url}")
@@ -437,26 +439,43 @@ def main():
     fb_dest = ""
     fb_id = ""
     fb_watch = ""
+    paths_to_try = [Path("/tmp"), Path(os.environ.get("TEMP", "."))]
+
     if not (args.solo_ig or args.solo_tk):
         fb_dest, fb_id, fb_watch = ottieni_o_crea_facebook_live()
-
-    if args.solo_fb:
-        # Se richiesto solo Facebook, salviamo e terminiamo
-        paths_to_try = [Path("/tmp"), Path(os.environ.get("TEMP", "."))]
-        for p_dir in paths_to_try:
-            try:
-                p_dir.mkdir(parents=True, exist_ok=True)
-                if fb_dest:
+        if fb_dest:
+            for p_dir in paths_to_try:
+                try:
+                    p_dir.mkdir(parents=True, exist_ok=True)
                     (p_dir / "facebook_rtmp.txt").write_text(fb_dest, encoding="utf-8")
                     (p_dir / "facebook_live_id.txt").write_text(fb_id, encoding="utf-8")
                     (p_dir / "facebook_watch_url.txt").write_text(fb_watch, encoding="utf-8")
-                break
-            except Exception:
-                continue
+                    print(f"📄 [FACEBOOK] Endpoint salvato subito in {p_dir / 'facebook_rtmp.txt'}")
+                    break
+                except Exception:
+                    pass
+
+    if args.solo_fb:
         print("\n═════════════════════════════════════════════════════════")
         print(" 🏁 OPERAZIONE FACEBOOK COMPLETATA — Immobiliare Giancani")
         print("═════════════════════════════════════════════════════════")
         return
+
+    # Pre-inizializzazione TikTok RTMP endpoint (attivo e verificato)
+    if not args.solo_ig:
+        tk_env_key = os.environ.get("TK_KEY", "").strip()
+        if tk_env_key:
+            tk_dest = tk_env_key if tk_env_key.startswith("rtmp") else f"rtmp://live-push.tiktok-cdns.com/live/{tk_env_key}"
+        else:
+            tk_dest = "rtmp://push-rtmp-f5-tt04.tiktokcdn-eu.com/game/stream-1272994221341541709?amun=true&c=IT&dsnp=1&expire=1789827708&l_region=EU-TTP2&offsetTime=1789222908399&sign=50005d4f87770f1e8eb2c9af258f7273&th_region=no&volcSecret=50005d4f87770f1e8eb2c9af258f7273&volcTime=1789827708&pri=1789222920344"
+        for p_dir in paths_to_try:
+            try:
+                p_dir.mkdir(parents=True, exist_ok=True)
+                (p_dir / "tiktok_rtmp.txt").write_text(tk_dest, encoding="utf-8")
+                print(f"📄 [TIKTOK] Endpoint pronto salvato subito in {p_dir / 'tiktok_rtmp.txt'}")
+                break
+            except Exception:
+                pass
 
     storage_path = BASE_DIR / "scripts" / "session_cookies.json"
 

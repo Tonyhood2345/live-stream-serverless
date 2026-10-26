@@ -1,15 +1,13 @@
-name: Serverless Multistream Live 24H YouTube & 19:00 Facebook
+name: 🔴 Diretta Serale DarIA Multistream (Ore 19:00) — YouTube, Facebook, TikTok & Instagram
 
 on:
   schedule:
-    # 🔁 Staffetta Perpetua 24/7 ogni 6 ore (UTC):
-    - cron: '0 0 * * *'
-    - cron: '0 6 * * *'
-    - cron: '0 12 * * *'
-    - cron: '0 18 * * *'
-    # ⏰ Sincronizzazione precisa per la diretta Facebook serale ore 19:00 Europe/Rome:
-    - cron: '55 16 * * *'
+    # 🌆 DIRETTA SERALE DARIA ORE 19:00 (Europe/Rome):
+    # Inizializzazione 5 minuti prima per riscaldamento browser, audio e connessioni RTMP (Zero Spreco Minuti):
+    # ❄️ Orario Solare / Inverno (CET, UTC+1): ore 18:55 Roma -> 17:55 UTC
     - cron: '55 17 * * *'
+    # ☀️ Orario Legale / Estate (CEST, UTC+2): ore 18:55 Roma -> 16:55 UTC
+    - cron: '55 16 * * *'
   workflow_dispatch:
     inputs:
       video_url:
@@ -30,9 +28,9 @@ on:
         description: 'Instagram RTMP URL completo'
         required: false
       duration_hours:
-        description: 'Durata massima della diretta in ore (max 5.8 per staffetta serverless)'
+        description: 'Durata massima della diretta serale in ore (default 1.1 ore = 65 minuti per zero spreco minuti)'
         required: false
-        default: '5.8'
+        default: '1.1'
       stream_quality:
         description: 'Qualità stream (1080p_high, 1080p_std, 1080p_eco, 720p_hq, 720p_std, 720p_eco, 480p, custom)'
         required: false
@@ -57,7 +55,7 @@ concurrency:
 jobs:
   multistream:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 85
     permissions:
       contents: write
       actions: write
@@ -383,9 +381,9 @@ jobs:
           IFS="|"
           TEE_STRING="${TEE_DESTS[*]}"
 
-          # Durata per staffetta serverless: 5.8 ore (20880s) per consentire il passaggio fluido al runner successivo
+          # Durata ottimizzata per la diretta serale delle 19:00: 1.1 ore (65 minuti) per zero spreco minuti
           DUR_HOURS="${{ github.event.inputs.duration_hours }}"
-          if [ -z "$DUR_HOURS" ]; then DUR_HOURS="5.8"; fi
+          if [ -z "$DUR_HOURS" ]; then DUR_HOURS="1.1"; fi
           DUR_SECS=$(awk "BEGIN {print int($DUR_HOURS * 3600)}")
           echo "⏱️ Durata prevista per questa sessione staffetta: $DUR_HOURS ore ($DUR_SECS secondi)"
 
@@ -424,13 +422,9 @@ jobs:
 
           echo "🏁 Turno di trasmissione completato con successo. Passaggio alla staffetta successiva! — Immobiliare Giancani"
 
-      - name: Staffetta Automatica (Trigger Prossima Sessione 24H)
+      - name: 🔒 Chiusura Regolare Diretta Serale (Zero Consumo Minuti)
         if: always()
         run: |
-          echo "🔄 Preparazione rilancio automatico per diretta perpetua 24H YouTube..."
-          # Se disponibile il secret GITHUB_TOKEN con permessi actions, scatena il ciclo successivo
-          curl -s -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/live-stream.yml/dispatches \
-            -d '{"ref":"main"}' || echo "Staffetta delegata al cron schedulato."
+          echo "🏁 Diretta serale delle ore 19:00 di DarIA completata regolarmente!"
+          echo "🔒 Runner arrestato alle ore 20:00: nessuna staffetta avviata per azzerare il consumo di minuti e server."
+          echo "— Immobiliare Giancani"

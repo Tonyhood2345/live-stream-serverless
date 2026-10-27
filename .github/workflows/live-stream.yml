@@ -306,7 +306,11 @@ jobs:
             done
           fi
 
-          # --- DESTINAZIONE 2: FACEBOOK LIVE ---
+          # --- DESTINAZIONE 2: FACEBOOK LIVE (DINAMICA VIA GRAPH API) ---
+          if [ -f scripts/crea_diretta_facebook_dinamica.py ]; then
+            echo "📘 Creazione automatica stream RTMP Facebook Live via Graph API..."
+            FB_PAGE_TOKEN="${{ secrets.FB_PAGE_TOKEN || secrets.FB_PAGE_ACCESS_TOKEN }}" FB_PAGE_ID="234931856561526" python3 scripts/crea_diretta_facebook_dinamica.py || true
+          fi
           FB_KEY="${{ github.event.inputs.fb_key }}"
           if [ -f /tmp/facebook_rtmp.txt ]; then
             FB_KEY=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')

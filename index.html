@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>🔴 DIRETTA STREAMING — Immobiliare Giancani</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { width:100%; height:100%; overflow:hidden; background:#020408; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+    #wrapper { position:fixed; inset:0; width:100vw; height:100vh; overflow:hidden; }
+    iframe { width:100%; height:100%; border:none; display:block; }
+  </style>
+</head>
+<body>
+  <div id="wrapper">
+    <iframe id="liveFrame" allow="autoplay; camera; microphone; fullscreen; display-capture; clipboard-read; clipboard-write" allowfullscreen></iframe>
+  </div>
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby2zYqPhMKSVn-jPoOvL8RS-92j2pjzImn8ll6VWMdVVG1VWuzEnGK5w4CU3Rv89EXYEA/exec";
+    const search = window.location.search;
+    const query = search ? search : "?page=diretta";
+    document.getElementById("liveFrame").src = SCRIPT_URL + query;
+  </script>
+</body>
+</html>

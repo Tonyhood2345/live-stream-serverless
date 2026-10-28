@@ -148,7 +148,7 @@ def ottieni_o_crea_facebook_live() -> tuple:
     token = (
         os.environ.get("FB_PAGE_TOKEN")
         or os.environ.get("FB_PAGE_ACCESS_TOKEN_GIANCANI")
-        or "EAAZAH7q8wRZAEBSaZAm9Q9JGa8ZC7gwAsRJ1n4bPZAIY5ws8VXZAnugJgtZCOvP7HyEd7IEfWeCD5HfmP0ENQh86J3PT7pDFnOt5nPJdpzYyUM6p6AtZBXnXufThdh9ZAczfsE84obRZCOD3UWslSWpxJ058WGrQfXxJYsXtVZBh1ey7j2zuzme2JcEoya10KdL8TfJOpvNHqD8EsionnLI"
+        or "EAAZAH7q8wRZAEBSzTkBqcUBDxlorlwv7dNR1WWCAlimAmfCUjjeIYT6viHp9aCEnWtZBNVpGGSuE7qtZBRKTnWBmvkLFxCHZBGFKaPxvAAYyiWN2p3goYm37d8JTKwo9JOhGGSI5qE7oZBWr1pH8BHjYDlHHu6yJvRywZCYnyuBIuZAS7Maj9Bx49WtpIH9W8ddJBgPVu9GMF92UWLg6"
     )
     print("\n📘 [FACEBOOK] Inizializzazione diretta Facebook Live via Graph API...")
     url = f"https://graph.facebook.com/v19.0/{page_id}/live_videos"

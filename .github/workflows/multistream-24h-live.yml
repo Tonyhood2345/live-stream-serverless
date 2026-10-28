@@ -1,0 +1,316 @@
+﻿name: 🔴 Multistream 24H Infinito — Facebook Live 24H & YouTube Live 24H
+
+on:
+  schedule:
+    # ⏰ Heartbeat ogni 6 ore per garantire la continuità assoluta 24/7 (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 0,6,12,18 * * *'
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'URL Web App Player 360 Studio'
+        required: false
+        default: 'https://tonyhood2345.github.io/live-stream-serverless/?formato=orizzontale'
+      yt_key:
+        description: 'YouTube Stream Key'
+        required: false
+        default: 'byga-0tdf-uu9w-zetp-392s'
+      fb_key:
+        description: 'Facebook Stream Key o RTMP URL (lasciare vuoto per generazione automatica continua)'
+        required: false
+        default: ''
+      duration_minutes:
+        description: 'Durata streaming runner in minuti (max 350 per rispetto limiti GitHub)'
+        required: false
+        default: '350'
+      stream_quality:
+        description: 'Qualità streaming (720p_hq, 720p_std, 1080p_std, 1080p_eco)'
+        required: false
+        default: '720p_hq'
+      scale_factor:
+        description: 'Scala Device Chrome'
+        required: false
+        default: '1.0'
+
+concurrency:
+  group: multistream-24h-perpetual
+  cancel-in-progress: true
+
+jobs:
+  multistream_live_24h:
+    name: Streaming 24H Infinito (Facebook Live + YouTube Live)
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Headless Environment, Audio Engine and Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core
+          
+          # Installazione Google Chrome stabile
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
+          ffmpeg -version | head -1
+
+      - name: Configurazione Audio PulseAudio e Display Virtuale Xvfb
+        run: |
+          mkdir -p /tmp/pulse-config
+          cat << 'EOF' > /tmp/pulse.pa
+          load-module module-native-protocol-unix socket=/tmp/pulse-socket
+          load-module module-null-sink sink_name=VirtualSink sink_properties=device.description=VirtualSink
+          set-default-sink VirtualSink
+          EOF
+
+          pulseaudio -D --exit-idle-time=-1 -F /tmp/pulse.pa || true
+          sleep 2
+
+          # Configura ALSA
+          cat << 'EOF' > ~/.asoundrc
+          pcm.!default {
+              type pulse
+          }
+          ctl.!default {
+              type pulse
+          }
+          EOF
+
+          # Avvio Xvfb a 1920x1080
+          Xvfb :99 -screen 0 1920x1080x24 &
+          export DISPLAY=:99
+          openbox &
+          sleep 2
+
+      - name: Configurazione Anti-Banner Google Apps Script
+        run: |
+          mkdir -p /tmp/hide_banner_ext
+          cat << 'EOF' > /tmp/hide_banner_ext/manifest.json
+          {
+            "manifest_version": 3,
+            "name": "Hide Apps Script Banner",
+            "version": "1.0",
+            "content_scripts": [
+              {
+                "matches": ["*://script.google.com/*", "*://script.googleusercontent.com/*"],
+                "css": ["style.css"],
+                "js": ["content.js"],
+                "run_at": "document_start"
+              }
+            ]
+          }
+          EOF
+
+          cat << 'EOF' > /tmp/hide_banner_ext/style.css
+          #warning,
+          .warning-bar,
+          #warning-bar-table tr:first-child,
+          #warning-bar-table > tbody > tr:first-child,
+          .docs-butter-bar-container,
+          div[aria-label*="Apps Script"],
+          .app-bar,
+          #guest-banner {
+            display: none !important;
+            height: 0px !important;
+            max-height: 0px !important;
+            min-height: 0px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 0 !important;
+            overflow: hidden !important;
+            visibility: hidden !important;
+          }
+          #warning-bar-table,
+          #warning-bar-table > tbody,
+          #warning-bar-table > tbody > tr:last-child,
+          #warning-bar-table > tbody > tr:last-child > td,
+          #sandboxFrame {
+            height: 100% !important;
+            width: 100% !important;
+            min-height: 100vh !important;
+            min-width: 100vw !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          html, body {
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
+          }
+          EOF
+
+          cat << 'EOF' > /tmp/hide_banner_ext/content.js
+          (function() {
+            function removeBanner() {
+              var w = document.getElementById('warning');
+              if (w) {
+                w.style.setProperty('display', 'none', 'important');
+                if (w.parentElement && w.parentElement.parentElement) {
+                  w.parentElement.parentElement.style.setProperty('display', 'none', 'important');
+                }
+              }
+              var tbl = document.getElementById('warning-bar-table');
+              if (tbl) {
+                var rows = tbl.querySelectorAll('tr');
+                if (rows.length > 1) {
+                  rows[0].style.setProperty('display', 'none', 'important');
+                }
+              }
+              var iframe = document.getElementById('sandboxFrame');
+              if (iframe) {
+                iframe.style.setProperty('height', '100vh', 'important');
+                iframe.style.setProperty('width', '100vw', 'important');
+                iframe.style.setProperty('border', 'none', 'important');
+              }
+            }
+            removeBanner();
+            document.addEventListener('DOMContentLoaded', removeBanner);
+            window.addEventListener('load', removeBanner);
+            setInterval(removeBanner, 300);
+          })();
+          EOF
+
+      - name: Avvio Browser Headless Google Chrome
+        run: |
+          mkdir -p /tmp/chrome_clean_profile
+          touch "/tmp/chrome_clean_profile/First Run"
+
+          SCALE="${{ github.event.inputs.scale_factor }}"
+          if [ -z "$SCALE" ]; then SCALE="1.0"; fi
+
+          VIDEO_URL="${{ github.event.inputs.video_url }}"
+          if [ -z "$VIDEO_URL" ]; then
+            VIDEO_URL="https://tonyhood2345.github.io/live-stream-serverless/?formato=orizzontale"
+          fi
+
+          echo "🚀 Avvio Chrome per Diretta 24H Multistream su: $VIDEO_URL (Scala: $SCALE)"
+          google-chrome \
+            --kiosk \
+            --window-position=0,0 \
+            --window-size=1920,1080 \
+            --force-device-scale-factor=$SCALE \
+            --enable-extensions \
+            --load-extension=/tmp/hide_banner_ext \
+            --disable-extensions-except=/tmp/hide_banner_ext \
+            --enable-webgl \
+            --ignore-gpu-blocklist \
+            --use-gl=swiftshader \
+            --disable-web-security \
+            --allow-running-insecure-content \
+            --no-sandbox \
+            --no-first-run \
+            --no-default-browser-check \
+            --disable-notifications \
+            --disable-features=AudioServiceOutOfProcess \
+            --enable-features=UsePulseAudio \
+            --autoplay-policy=no-user-gesture-required \
+            --alsa-output-device=pulse \
+            --user-data-dir=/tmp/chrome_clean_profile \
+            "$VIDEO_URL" &
+
+          echo "Attesa di 15 secondi per il caricamento completo del player..."
+          sleep 15
+
+      - name: Innesco Relais Staffetta 24H (Auto-rinnovo automatico prima del timeout)
+        run: |
+          DUR_MIN="${{ github.event.inputs.duration_minutes }}"
+          if [ -z "$DUR_MIN" ]; then DUR_MIN="350"; fi
+          
+          RELAY_SEC=$(( (DUR_MIN - 5) * 60 ))
+          echo "⏱️ Durata runner: $DUR_MIN minuti ($(( DUR_MIN * 60 )) secondi)"
+          echo "🔄 Innesco staffetta programmato a: $RELAY_SEC secondi ($(( DUR_MIN - 5 )) minuti)"
+
+          (
+            sleep $RELAY_SEC
+            echo "📢 [STAFFETTA 24H] Innesco del prossimo runner Multistream per garantire continuità 24/7..."
+            GH_TOKEN="${{ secrets.LIVE_GITHUB_TOKEN }}"
+            if [ -z "$GH_TOKEN" ]; then
+              GH_TOKEN="${{ secrets.LIVE_GITHUB_TOKEN }}"
+            if [ -z "$GH_TOKEN" ]; then GH_TOKEN="${{ github.token }}"; fi
+            fi
+            curl -s -X POST \
+              -H "Authorization: token $GH_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/actions/workflows/multistream-24h-live.yml/dispatches \
+              -d '{"ref":"main"}' && echo " ✅ Staffetta 24H inviata con successo!" || echo " ⚠️ Errore chiamata staffetta 24H"
+          ) &
+
+      - name: Configurazione Destinazioni Multistream (Facebook 24H + YouTube 24H)
+        run: |
+          TEE_DESTS=()
+
+          # 1. YOUTUBE LIVE 24H
+          YT_KEY="${{ github.event.inputs.yt_key }}"
+          if [ -z "$YT_KEY" ]; then YT_KEY="byga-0tdf-uu9w-zetp-392s"; fi
+          YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
+          echo "🔴 [YouTube Live 24H] Destinazione: $YT_URL"
+          TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")
+
+          # 2. FACEBOOK LIVE 24H (DINAMICA VIA GRAPH API)
+          echo "📘 [Facebook Live 24H] Generazione automatica sessione Live via Meta Graph API..."
+          python3 scripts/crea_diretta_facebook_dinamica.py || true
+
+          FB_URL=""
+          if [ -f /tmp/facebook_rtmp.txt ]; then
+            FB_URL=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')
+          elif [ -f facebook_rtmp.txt ]; then
+            FB_URL=$(cat facebook_rtmp.txt | tr -d '\r\n')
+          fi
+
+          if [ -n "$FB_URL" ]; then
+            echo "📘 [Facebook Live 24H] Destinazione OBBLIGATORIA ATTIVA: $FB_URL"
+            TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
+          else
+            echo "⚠️ [Facebook Live 24H] Endpoint non generato. Verifica token Meta."
+          fi
+
+          IFS="|"
+          echo "TEE_STRING=${TEE_DESTS[*]}" >> $GITHUB_ENV
+          echo "🌐 Destinazioni RTMP 24H configurate: ${TEE_DESTS[*]} — Immobiliare Giancani"
+
+      - name: Avvio FFmpeg Encoding & Trasmissione Multistream 24H (Facebook + YouTube)
+        run: |
+          export DISPLAY=:99
+          export PULSE_SERVER=unix:/tmp/pulse-socket
+
+          DUR_MIN="${{ github.event.inputs.duration_minutes }}"
+          if [ -z "$DUR_MIN" ]; then DUR_MIN="350"; fi
+          DUR_SEC=$(( DUR_MIN * 60 ))
+
+          QUALITY="${{ github.event.inputs.stream_quality }}"
+          if [ -z "$QUALITY" ]; then QUALITY="720p_hq"; fi
+
+          if [ "$QUALITY" = "1080p_std" ]; then
+            BITRATE="4000k"; MINRATE="3500k"; MAXRATE="4500k"; BUFSIZE="8000k"; VF="scale=1920:1080:flags=lanczos"
+          elif [ "$QUALITY" = "1080p_eco" ]; then
+            BITRATE="3200k"; MINRATE="2800k"; MAXRATE="3600k"; BUFSIZE="6400k"; VF="scale=1920:1080:flags=bicubic"
+          elif [ "$QUALITY" = "720p_std" ]; then
+            BITRATE="2200k"; MINRATE="1800k"; MAXRATE="2500k"; BUFSIZE="4400k"; VF="scale=1280:720:flags=bicubic"
+          else
+            BITRATE="2800k"; MINRATE="2400k"; MAXRATE="3200k"; BUFSIZE="5600k"; VF="scale=1280:720:flags=lanczos"
+          fi
+
+          echo "🚀 Configurazione FFmpeg Multistream 24H: $QUALITY ($BITRATE), Durata: $DUR_MIN minuti"
+          echo "🎯 Invio stream contemporaneo verso: $TEE_STRING"
+
+          timeout --kill-after=30s "${DUR_SEC}s" ffmpeg -thread_queue_size 2048 \
+            -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 \
+            -thread_queue_size 2048 \
+            -f pulse -i VirtualSink.monitor \
+            -vf "$VF" \
+            -c:v libx264 -preset veryfast \
+            -b:v $BITRATE -minrate $MINRATE -maxrate $MAXRATE -bufsize $BUFSIZE \
+            -pix_fmt yuv420p -g 60 -keyint_min 60 -sc_threshold 0 \
+            -c:a aac -b:a 128k -ar 44100 -ac 2 \
+            -vsync cfr \
+            -flags +global_header \
+            -f tee -map 0:v -map 1:a "$TEE_STRING" || true
+
+          echo "✅ Sessione staffetta Multistream 24H completata. Passaggio di testimone al runner successivo! — Immobiliare Giancani"

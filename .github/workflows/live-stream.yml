@@ -17,7 +17,7 @@ on:
       fb_key:
         description: 'Facebook RTMP URL completo o Stream Key'
         required: false
-        default: 'FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe' 
+        default: '' 
       yt_key:
         description: 'YouTube Stream Key o URL RTMP completo'
         required: false
@@ -25,7 +25,7 @@ on:
       tk_key:
         description: 'TikTok RTMP URL completo o Stream Key'
         required: false
-        default: 'rtmp://push-rtmp-f5-tt04.tiktokcdn-eu.com/game/stream-1272994221341541709?amun=true&c=IT&dsnp=1&expire=1789827708&l_region=EU-TTP2&offsetTime=1789222908399&sign=50005d4f87770f1e8eb2c9af258f7273&th_region=no&volcSecret=50005d4f87770f1e8eb2c9af258f7273&volcTime=1789827708&pri=1789222920344' 
+        default: '' 
       ig_key:
         description: 'Instagram RTMP URL completo'
         required: false
@@ -306,18 +306,19 @@ jobs:
             done
           fi
 
-          # --- DESTINAZIONE 2: FACEBOOK LIVE (DINAMICA VIA GRAPH API) ---
-          if [ -f scripts/crea_diretta_facebook_dinamica.py ]; then
-            echo "📘 Creazione automatica stream RTMP Facebook Live via Graph API..."
-            FB_PAGE_TOKEN="${{ secrets.FB_PAGE_TOKEN || secrets.FB_PAGE_ACCESS_TOKEN }}" FB_PAGE_ID="234931856561526" python3 scripts/crea_diretta_facebook_dinamica.py || true
-          fi
-          FB_KEY="${{ github.event.inputs.fb_key }}"
+          # --- DESTINAZIONE 2: FACEBOOK LIVE (OBBLIGATORIO) ---
+          echo "📘 [Facebook Live] Creazione obbligatoria sessione Live via Meta Graph API..."
+          python3 scripts/crea_diretta_facebook_dinamica.py || true
+
+          FB_KEY=""
           if [ -f /tmp/facebook_rtmp.txt ]; then
             FB_KEY=$(cat /tmp/facebook_rtmp.txt | tr -d '\r\n')
+          elif [ -f facebook_rtmp.txt ]; then
+            FB_KEY=$(cat facebook_rtmp.txt | tr -d '\r\n')
+          elif [ -n "${{ github.event.inputs.fb_key }}" ] && [[ "${{ github.event.inputs.fb_key }}" != *"FB-1761836115505207"* ]]; then
+            FB_KEY="${{ github.event.inputs.fb_key }}"
           fi
-          if [ -z "$FB_KEY" ]; then
-            FB_KEY="FB-1761836115505207-0-Ab4NotixqCElXbBE4ynoHVYe"
-          fi
+
           if [ -n "$FB_KEY" ]; then
             FB_URL=""
             if [[ "$FB_KEY" == rtmp* ]]; then
@@ -325,14 +326,15 @@ jobs:
             else
               FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
             fi
-            echo "📘 [Facebook Live] Destinazione Attiva: $FB_URL"
+            echo "📘 [Facebook Live] Destinazione OBBLIGATORIA ATTIVA: $FB_URL"
             TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
 
-            # Avvia demone storie in diretta ogni 30 min (Facebook e TikTok)
+            # Avvia demone storie in diretta ogni 30 min (Facebook)
             echo "📱 Avvio demone Storie Social in diretta ogni 30 minuti..."
             python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 1800 &
+          else
+            echo "⚠️ [Facebook Live] Stream RTMP non disponibile: verificare credenziali Meta."
           fi
-
           # --- DESTINAZIONE 3: TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"
           if [ -f /tmp/tiktok_rtmp.txt ]; then

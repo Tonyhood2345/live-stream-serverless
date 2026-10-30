@@ -46,11 +46,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core
           
-          # Installazione Google Chrome stabile
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+          # Verifica o installazione Google Chrome
+          if ! command -v google-chrome &> /dev/null; then
+            sudo install -d -m 0755 /etc/apt/keyrings
+            curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg
+            echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+            sudo apt-get update
+            sudo apt-get install -y google-chrome-stable
+          fi
           google-chrome --version
           ffmpeg -version | head -1
 

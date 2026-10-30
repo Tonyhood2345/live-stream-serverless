@@ -1,0 +1,81 @@
+name: 🎭 Master Orchestratore 15 Minuti Social (Storie Immagini & Video YouTube)
+
+on:
+  schedule:
+    # Esegue automaticamente ogni 15 minuti, 24 ore su 24
+    - cron: '*/15 * * * *'
+
+  # Trigger manuale per test immediato dalla dashboard di GitHub
+  workflow_dispatch:
+    inputs:
+      forza_tipo:
+        description: 'Forza tipo storia (auto = alterna normalmente, IMMAGINE, VIDEO)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - IMMAGINE
+          - VIDEO
+      invia_report_subito:
+        description: 'Invia subito il report cumulativo su Telegram (senza attendere le 4 ore)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: bot-orchestratore-15min
+  cancel-in-progress: false
+
+jobs:
+  esegui-orchestratore:
+    runs-on: ubuntu-latest
+    name: 🚀 Esegui Ciclo 15 Minuti Storie
+    permissions:
+      contents: write
+    timeout-minutes: 25
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Installa Dipendenze di Sistema (FFmpeg & Font)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core fonts-liberation fonts-freefont-ttf
+
+      - name: 📦 Installa Dipendenze Python
+        run: |
+          pip install --no-cache-dir requests pillow yt-dlp edge-tts google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib httplib2 numpy urllib3
+
+      - name: 🎬 Esegui Ciclo Orchestratore 15 Minuti
+        env:
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_ANTONIO_ID: ${{ secrets.FB_ANTONIO_ID }}
+          FB_ANTONIO_TOKEN: ${{ secrets.FB_ANTONIO_TOKEN }}
+          IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+        run: |
+          if [ "${{ github.event.inputs.invia_report_subito }}" = "true" ]; then
+            python bot_orchestratore_15min_social.py --report-now
+          else
+            python bot_orchestratore_15min_social.py --once
+          fi
+
+      - name: 💾 Salva e Committa Registri Stato su GitHub
+        if: always()
+        run: |
+          git config --global user.name "Giancani Orchestrator Bot"
+          git config --global user.email "bot@immobiliaregiancani.it"
+          git add stato_orchestratore_15min.json storico_immagini_pubblicate.json registro_video_pubblicati.json registro_video_pubblicati_orari.json buffer_report_4ore.json catalogo_youtube_cache.json live_stream_appscript/*.json 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "chore: Aggiornato stato orchestratore 15min e report buffer [skip ci]" && git pull --rebase origin main && git push origin main)

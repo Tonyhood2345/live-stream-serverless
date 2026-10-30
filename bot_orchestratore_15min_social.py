@@ -582,17 +582,13 @@ def verifica_e_invia_report_4ore(stato, forza=False):
         riga = f"<b>{i}. [{ev.get('ora')}] {ev.get('tipo')}</b>\n"
         riga += f"   📌 <i>{ev.get('titolo')}</i>\n"
         if ev.get("link_fb"):
-            riga += f"   📘 Facebook Story: <a href=\"{ev.get('link_fb')}\">Apri Storia</a>
-"
+            riga += f"   📘 Facebook Story: <a href=\"{ev.get('link_fb')}\">Apri Storia</a>\n"
         if ev.get("link_ig"):
-            riga += f"   📸 Instagram Story: <a href=\"{ev.get('link_ig')}\">@giancani_immobiliare</a>
-"
+            riga += f"   📸 Instagram Story: <a href=\"{ev.get('link_ig')}\">@giancani_immobiliare</a>\n"
         if ev.get("link_yt"):
-            riga += f"   🎬 YouTube Story: <a href=\"{ev.get('link_yt')}\">{ev.get('link_yt')}</a>
-"
+            riga += f"   🎬 YouTube Story: <a href=\"{ev.get('link_yt')}\">{ev.get('link_yt')}</a>\n"
         if ev.get("link_tk"):
-            riga += f"   🎵 TikTok Story: <a href=\"{ev.get('link_tk')}\">@immobiliare_giancani</a>
-" 
+            riga += f"   🎵 TikTok Story: <a href=\"{ev.get('link_tk')}\">@immobiliare_giancani</a>\n"
         righe_report.append(riga)
 
     righe_report.append("— <b>Immobiliare Giancani</b>")

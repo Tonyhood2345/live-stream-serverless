@@ -65,6 +65,11 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+          YOUTUBE_TOKEN_GIANCANI_JSON: ${{ secrets.YOUTUBE_TOKEN_GIANCANI_JSON }}
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+          TIKTOK_COOKIES_JSON: ${{ secrets.TIKTOK_COOKIES_JSON }}
+          LIVE_GITHUB_TOKEN: ${{ secrets.LIVE_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ github.event.inputs.invia_report_subito }}" = "true" ]; then
             python bot_orchestratore_15min_social.py --report-now

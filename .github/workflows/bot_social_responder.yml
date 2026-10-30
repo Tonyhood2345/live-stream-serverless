@@ -1,0 +1,68 @@
+name: 💬 Bot Auto-Responder Social (Messenger, Post Facebook & Instagram)
+
+on:
+  schedule:
+    # Esegue automaticamente ogni 10 minuti, 24 ore su 24
+    - cron: '*/10 * * * *'
+
+  # Trigger manuale per verifica immediata
+  workflow_dispatch:
+    inputs:
+      modalita:
+        description: 'Modalità esecuzione (loop = monitoraggio 8 min in tempo reale, once = singolo controllo)'
+        required: false
+        default: 'loop'
+        type: choice
+        options:
+          - loop
+          - once
+
+concurrency:
+  group: bot-social-responder
+  cancel-in-progress: false
+
+jobs:
+  rispondi-social:
+    runs-on: ubuntu-latest
+    name: 🤖 Monitoraggio e Risposta Clienti Social
+    permissions:
+      contents: write
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Installa Dipendenze Python
+        run: |
+          pip install --no-cache-dir requests urllib3
+
+      - name: 🚀 Esegui Polling Auto-Responder Social
+        env:
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ "${{ github.event.inputs.modalita }}" = "once" ]; then
+            python bot_social_responder_polling.py --once
+          else
+            # Esegue 8 cicli distanziati da 60s (~8 minuti di monitoraggio continuo per ogni run del cron)
+            python bot_social_responder_polling.py --cycles 8 --interval 60
+          fi
+
+      - name: 💾 Salva e Committa Registro Risposte su GitHub
+        if: always()
+        run: |
+          git config --global user.name "Giancani Responder Bot"
+          git config --global user.email "bot@immobiliaregiancani.it"
+          git add risposte_social_inviate.json 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "chore: Aggiornato registro risposte social clienti [skip ci]" && git pull --rebase origin main && git push origin main)

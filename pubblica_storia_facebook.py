@@ -43,6 +43,12 @@ ssl.create_default_context = unverified_create_default_context
 import os
 import io
 import sys
+
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+for _p in [_this_dir, os.path.join(_this_dir, "scripts"), os.path.dirname(_this_dir)]:
+    if _p not in sys.path and os.path.exists(_p):
+        sys.path.insert(0, _p)
+
 import time
 import json
 import uuid
@@ -99,7 +105,7 @@ GH_REPO = os.environ.get("GH_REPO", "Tonyhood2345/live-stream-serverless")
 
 APPS_SCRIPT_URL = (
     os.environ.get("APPS_SCRIPT_URL")
-    or "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
+    or "https://script.google.com/macros/s/AKfycbwEeH82YCSoOc-KRZx6pSQa_k3Kb5i252_Ajljlo20IOBinGiqA1E0ZE_2gKljHpLu3/exec"
 ).strip()
 REMOTE_LOGO_URL = "https://lh3.googleusercontent.com/d/1BoZ_9QyYPRKjZFP__iPr7mmi0aGV0G3P"
 
@@ -250,24 +256,49 @@ def get_clean_logo(max_w=380, max_h=110, transparent=True):
         print(f"Avviso elaborazione logo pulito: {e}")
         return raw
 
+ROOT_HISTORY_PATH = os.path.join(os.path.dirname(BASE_DIR), "immobili_pubblicati_history.json")
+LOCAL_HISTORY_PATH = os.path.join(BASE_DIR, "immobili_pubblicati_history.json")
 CRONOLOGIA_STORIE_PATH = os.path.join(ASSETS_DIR, "cronologia_storie_offline.json")
 
 def carica_cronologia_storie():
-    if os.path.exists(CRONOLOGIA_STORIE_PATH):
-        try:
-            with open(CRONOLOGIA_STORIE_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
+    for p in [ROOT_HISTORY_PATH, LOCAL_HISTORY_PATH, CRONOLOGIA_STORIE_PATH]:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict) and len(data) > 0:
+                        return data
+            except Exception:
+                pass
     return {}
 
 def salva_cronologia_storie(cronologia):
-    try:
-        os.makedirs(os.path.dirname(CRONOLOGIA_STORIE_PATH), exist_ok=True)
-        with open(CRONOLOGIA_STORIE_PATH, "w", encoding="utf-8") as f:
-            json.dump(cronologia, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"Avviso salvataggio cronologia storie: {e}")
+    for p in [ROOT_HISTORY_PATH, LOCAL_HISTORY_PATH, CRONOLOGIA_STORIE_PATH]:
+        try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(cronologia, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Avviso salvataggio cronologia storie su {p}: {e}")
+
+def get_recent_photo_urls(cronologia, max_count=30):
+    """Restituisce l'insieme degli URL delle foto già pubblicate di recente."""
+    urls = set()
+    if not isinstance(cronologia, dict):
+        return urls
+    items = []
+    for k, v in cronologia.items():
+        if isinstance(v, dict):
+            ts = v.get("timestamp") or 0
+            u = v.get("fotoUrl") or v.get("mediaUrl")
+            if u:
+                items.append((ts, str(u).strip()))
+        elif isinstance(v, str) and v.startswith("http"):
+            items.append((0, v.strip()))
+    items.sort(key=lambda x: x[0], reverse=True)
+    for _, u in items[:max_count]:
+        urls.add(u)
+    return urls
 
 def normalize_mq(val):
     """Garantisce la dicitura 'metri quadri' per le superfici come da regola globale"""
@@ -396,6 +427,24 @@ def genera_voce_tts(testo, voice_id="it-IT-ElsaNeural", output_voice_path=None):
         except Exception as e:
             print(f"Avviso edge_tts ({voice_id}): {e}")
     return None
+
+FRASI_HOOK_DIRETTA = [
+    "🔴 Siamo in diretta adesso! Aprite le porte a una straordinaria opportunità che vi conquisterà al primo sguardo.",
+    "✨ Diretta live aperta! Mettetevi comodi: stiamo per svelarvi ogni angolo di questa dimora esclusiva.",
+    "🏡 Benvenuti in tour live! Se cercate comfort, luce e spazi veri, questa casa è fatta apposta per voi.",
+    "🌟 In onda in questo istante! Entrate con noi per scoprire una casa pronta a farvi battere il cuore.",
+    "📍 Diretta streaming accesa! Oggi vi portiamo dentro una soluzione immobiliare davvero introvabile.",
+    "🔑 Chiavi in mano e porte aperte! Guardate dal vivo la meraviglia di questo immobile prima di tutti gli altri.",
+    "🎉 Siamo live dal territorio! Ecco l'ambiente perfetto per iniziare a scrivere la vostra nuova storia familiare.",
+    "☀️ Che luce meravigliosa! Unitevi alla diretta per ammirare da vicino le finiture e la distribuzione degli spazi.",
+    "🔥 Occasione imperdibile in onda ora! Un immobile di grande pregio con un potenziale unico tutto da scoprire.",
+    "🚪 Entriamo insieme in diretta! Guardate la cura di ogni dettaglio e immaginate già il vostro futuro qui.",
+    "💎 Una gemma immobiliare in diretta streaming! Seguiteci stanza per stanza per non perdere nessun particolare.",
+    "🎯 La ricerca della vostra casa ideale potrebbe finire proprio adesso: collegatevi subito alla nostra diretta live!",
+    "💫 Spazi generosi e atmosfera calda: siamo in diretta per mostrarvi come si vive davvero in questa casa.",
+    "🎙️ DarIA e DarIO in diretta per voi! Lasciatevi guidare nel tour virtuale esclusivo di questa splendida proprietà.",
+    "⭐ In diretta esclusiva con Immobiliare Giancani: scoprite adesso l'immobile che stavate aspettando da tempo!"
+]
 
 FRASI_POSITIVE_FLASH = [
     "Sorridi alla vita con Immobiliare Giancani!",
@@ -538,19 +587,33 @@ def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True, 
         return random.choice(followups)
 
 def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_positiva=None, fascia_info=None):
-    """Combina la voce narrante (DarIA o DarIO) con la musica allegra e auto-ducking"""
+    """Combina le voci di DarIA e DarIO (dialogo radiofonico) con musica allegra e auto-ducking"""
     if not output_mixed_m4a:
         output_mixed_m4a = os.path.join(SCRATCH_DIR, f"story_audio_{uuid.uuid4().hex[:8]}.m4a")
 
-    personaggio = "daria" if random.random() > 0.4 else "dario"
-    voice_id = "it-IT-GiuseppeNeural" if personaggio == "dario" else "it-IT-ElsaNeural"
+    ffmpeg_bin = find_ffmpeg()
+    hook_frase = random.choice(FRASI_HOOK_DIRETTA)
 
-    if not fascia_info and not is_live:
-        fascia_info = determina_fascia_oraria()
+    testo_f_clean = (testo_f or "").strip()
+    if testo_f_clean:
+        testo_f_clean = re.sub(r'\s*—?\s*Immobiliare Giancani\s*$', '', testo_f_clean, flags=re.IGNORECASE).strip()
 
-    testo_voce = genera_intro_invito_dinamico(personaggio=personaggio, testo_f=testo_f, is_live=is_live, frase_positiva=frase_positiva, fascia_info=fascia_info)
-
-    voice_path = genera_voce_tts(testo_voce, voice_id=voice_id)
+    # Generazione narrazione con l'Inno Sequenziale e le 4 voci neurali alternate (Diego, Elsa, Giuseppe, Isabella)
+    voice_path = None
+    verso_info = None
+    try:
+        import gestore_catena_storie_vocali as gcsv
+        testo_recitato, verso_info = gcsv.componi_narrazione_storia(testo_f, is_live=is_live)
+        print(f"🎙️ [INNO CATENA] Verso {verso_info['verso_num']}/7 | Voce: {verso_info['voice_nome']} ({verso_info['voice_id']})")
+        print(f"🎵 HOOK: {verso_info['hook']}")
+        voice_path = gcsv.genera_audio_narrazione_tts(testo_recitato, voice_id=verso_info["voice_id"])
+    except Exception as e_catena:
+        print(f"Avviso fallback gestore catena vocale: {e_catena}")
+        if is_live:
+            testo_recitato = f"{hook_frase} Salve a tutti da Immobiliare Giancani! {testo_f_clean} Entrate subito in diretta per chattare con noi! — Immobiliare Giancani"
+        else:
+            testo_recitato = f"Un caloroso saluto da Immobiliare Giancani! {testo_f_clean} Contattateci oggi stesso per visitarla di persona. — Immobiliare Giancani"
+        voice_path = genera_voce_tts(testo_recitato, voice_id="it-IT-DiegoNeural")
     
     # Selezione colonna sonora royalty-free con regola anti-ripetizione (> 10 storie)
     music_path = None
@@ -1538,6 +1601,117 @@ def normalizza_foto_url(url):
         return url_str
     return url_str
 
+def parse_property_row_smart(row, headers=None, sheet_name=""):
+    """
+    Estrae i dati dell'immobile in modo intelligente e dinamico da fogli con colonne diverse.
+    REGOLA MANDATORIA: Il testo parlato/narrazione viene prelevato RIGOROSAMENTE dalla Colonna F (indice 5).
+    Riconosce autonomamente foto/video, prezzo, mq e titolo/stanza anche se posizionati in colonne diverse.
+    """
+    if not row or len(row) <= 5:
+        return None
+    
+    # 1. TESTO PARLATO: RIGOROSAMENTE COLONNA F (indice 5, 0-indexed)
+    testo_f = str(row[5] or "").strip()
+    if not testo_f:
+        return None
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f += " — Immobiliare Giancani"
+
+    # Mappa colonne per header (se presenti)
+    col_by_header = {}
+    if headers:
+        for idx, h in enumerate(headers):
+            h_clean = str(h or "").lower().strip()
+            if any(k in h_clean for k in ["foto", "media", "immagine", "link", "url"]):
+                col_by_header.setdefault("media", idx)
+            elif any(k in h_clean for k in ["prezzo", "costo", "euro", "€"]):
+                col_by_header.setdefault("prezzo", idx)
+            elif any(k in h_clean for k in ["mq", "metri", "superficie", "mq."]):
+                col_by_header.setdefault("mq", idx)
+            elif any(k in h_clean for k in ["stanza", "ambiente", "vano", "locale"]):
+                col_by_header.setdefault("stanza", idx)
+            elif any(k in h_clean for k in ["titolo", "nome", "immobile"]):
+                col_by_header.setdefault("titolo", idx)
+
+    foto_url = ""
+    video_url = None
+    prezzo = ""
+    mq_val = ""
+    stanza = ""
+
+    # Se abbiamo mappa da header, usa prioritariamente quella
+    if "media" in col_by_header and col_by_header["media"] < len(row):
+        val_m = str(row[col_by_header["media"]] or "").strip()
+        if "youtube.com" in val_m or "youtu.be" in val_m or val_m.endswith(('.mp4', '.mov', '.avi')):
+            video_url = val_m
+        elif val_m.startswith("http") or "lh3.googleusercontent.com" in val_m or "drive.google.com" in val_m:
+            foto_url = normalizza_foto_url(val_m)
+    
+    if "prezzo" in col_by_header and col_by_header["prezzo"] < len(row):
+        prezzo = str(row[col_by_header["prezzo"]] or "").strip()
+    if "mq" in col_by_header and col_by_header["mq"] < len(row):
+        mq_val = str(row[col_by_header["mq"]] or "").strip()
+    if "stanza" in col_by_header and col_by_header["stanza"] < len(row):
+        stanza = str(row[col_by_header["stanza"]] or "").strip()
+
+    # Se mancano valori o non abbiamo header, scansione euristica su tutte le colonne (tranne Col F che è testo)
+    for c_idx, cell in enumerate(row):
+        if c_idx == 5:
+            continue  # Colonna F riservata al testo
+        c_str = str(cell or "").strip()
+        if not c_str:
+            continue
+        
+        # Riconoscimento Foto / Video
+        if not foto_url and not video_url:
+            if "youtube.com" in c_str or "youtu.be" in c_str or c_str.endswith(('.mp4', '.mov', '.avi')):
+                video_url = c_str
+                # Cerca eventuale thumbnail nelle colonne successive
+                for next_c in range(c_idx + 1, min(len(row), c_idx + 3)):
+                    if next_c != 5:
+                        nc_str = str(row[next_c] or "").strip()
+                        if nc_str.startswith("http") and not ("youtube.com" in nc_str or "youtu.be" in nc_str):
+                            foto_url = normalizza_foto_url(nc_str)
+                            break
+            elif c_str.startswith("http") or "lh3.googleusercontent.com" in c_str or "drive.google.com" in c_str or re.match(r'^[-\w]{25,}$', c_str):
+                foto_url = normalizza_foto_url(c_str)
+
+        # Riconoscimento Prezzo
+        if not prezzo:
+            if "€" in c_str or "euro" in c_str.lower() or "trattativa" in c_str.lower() or (c_str.replace(".", "").replace(" ", "").isdigit() and len(c_str) >= 4 and int(c_str.replace(".", "").replace(" ", "")) >= 10000):
+                prezzo = c_str
+
+        # Riconoscimento Metri Quadri
+        if not mq_val:
+            if any(unit in c_str.lower() for unit in ["mq", "m²", "metri quadri", "metri"]):
+                mq_val = c_str
+            elif c_str.isdigit() and 20 <= int(c_str) <= 50000 and c_idx in (1, 2, 3, 4):
+                mq_val = f"{c_str} metri quadri"
+
+        # Riconoscimento Stanza / Ambiente
+        if not stanza and c_idx in (1, 2, 3, 4) and len(c_str) > 2:
+            if not c_str.startswith("http") and not c_str.replace(".", "").replace(" ", "").isdigit() and not any(kw in c_str.lower() for kw in ["€", "euro", "trattativa", "mq", "m²", "metri"]):
+                stanza = c_str
+
+    if not foto_url and not video_url:
+        return None
+
+    s_clean = sheet_name.replace("_", " ").strip() if sheet_name else ""
+    if stanza and stanza.lower() not in ["ambiente", ""] and stanza.lower() != s_clean.lower():
+        titolo_completo = f"{s_clean} — {stanza}" if s_clean else stanza
+    else:
+        titolo_completo = s_clean or "Immobile in Vendita"
+
+    return {
+        "titolo": titolo_completo,
+        "stanza": stanza,
+        "prezzo": prezzo or "Trattativa Riservata",
+        "mq": normalize_mq(mq_val or "120 metri quadri"),
+        "fotoUrl": foto_url,
+        "videoUrl": video_url,
+        "testoF": testo_f
+    }
+
 def scarica_foto_url(url):
     """
     Scarica un'immagine autentica e in alta definizione dell'immobile assicurandosi che non sia corrotta o nera.
@@ -1612,35 +1786,63 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
     testo_f = media_info.get('testoF', 'Immobile esclusivo selezionato ad Agrigento e Favara.')
     is_live = media_info.get('isLive', False)
 
-    # Selezione Stile Grafico (10 grafiche professionali alternate ogni 30 minuti con palette del giorno/settimana)
-    styles = [
-        "gabetti_diagonal", "capellupo_sidebar", "marketing_banner", "split_screen", "luxury_glass", "editorial",
-        "room_label", "ideacasa_layout", "casait_card", "tecnocasa_multi",
-    ]
-    if not style or style == "auto":
-        chosen_style = styles[(int(time.time() / 1800)) % len(styles)]
-    else:
-        chosen_style = style if style in styles else "gabetti_diagonal"
-    print(f"🎨 Stile grafico selezionato: {chosen_style.upper()} (rotazione ogni 30 min + palette del giorno/settimana)")
+    # Determina indice progressivo per cambiare colore e forma di impostazione ad OGNI storia
+    slot_stile = int(time.time() / 1800)
+    story_seq = media_info.get("story_index", slot_stile)
+    try:
+        story_seq = int(story_seq)
+    except Exception:
+        story_seq = slot_stile
 
-    # ── ANNUNCIO DIRETTA LIVE a random (25% delle pubblicazioni ogni 30 min) ──
-    import random as _rand_live
-    if _rand_live.random() < 0.25:
-        print("📡 [RANDOM LIVE] Pubblicazione card annuncio diretta live!")
-        try:
-            import motore_grafica_storie as mgs
-            annuncio_path = mgs.crea_card_annuncio_diretta_9_16(media_info)
-            return annuncio_path  # Usa la card al posto del video normale
-        except Exception as e_ann:
-            print(f"⚠️  Fallback annuncio diretta: {e_ann}")
-
-
-    # 1. Genera overlay video 9:16 tramite il Motore Grafico Unificato
+    # Caricamento del Motore Grafico Unificato e della Palette specifica per questa storia
+    mgs = None
+    palette_giorno = None
     try:
         import motore_grafica_storie as mgs
-        overlay_png_path = mgs.crea_story_9_16(media_info, style=chosen_style)
-    except Exception as e_mgs:
-        print(f"Avviso fallback motore grafico: {e_mgs}")
+        palette_giorno = mgs.get_palette_del_giorno(slot_idx=story_seq)
+        print(f"🎨 PALETTE STORIA: {palette_giorno.get('nome')} [ID: {palette_giorno.get('id')}]")
+    except Exception as eImportMgs:
+        print(f"Avviso importazione motore_grafica_storie: {eImportMgs}")
+
+    # 21 stili professionali per variare la forma di impostazione ad ogni storia
+    styles = [
+        "auto", "daily", "daily_lunedi", "daily_martedi", "daily_mercoledi",
+        "daily_giovedi", "daily_venerdi", "daily_sabato", "daily_domenica",
+        "cb_curved_wave", "metroquadro_gradient", "professionecasa_sidebar",
+        "frosted_glass", "arco_architettonico", "gabetti_diagonal", "minimal_terracotta",
+        "twilight_penthouse", "tech_card_modern", "mediterranean_coastal",
+        "vogue_editorial", "diamond_prestige", "country_chic_sage", "cinematic_hero",
+        "card_live"
+    ]
+    # Rotazione continua dei 6 stili mandatori per garantire assoluta varietà visiva
+    ROTATING_STYLES_LIST = [
+        "split_screen",
+        "luxury_glass",
+        "editorial",
+        "gabetti_diagonal",
+        "capellupo_sidebar",
+        "marketing_banner"
+    ]
+    if not style or style in ("auto", "daily", "giorno", "settimanale", "rotazione"):
+        chosen_style = ROTATING_STYLES_LIST[story_seq % len(ROTATING_STYLES_LIST)]
+    else:
+        chosen_style = style.strip().lower()
+        if chosen_style not in styles and chosen_style not in ROTATING_STYLES_LIST:
+            chosen_style = ROTATING_STYLES_LIST[story_seq % len(ROTATING_STYLES_LIST)]
+    
+    giorno_label = palette_giorno.get('giorno', 'Oggi') if palette_giorno else 'Standard'
+    palette_nome = palette_giorno.get('nome', 'Default') if palette_giorno else 'Default'
+    print(f"🎨 Stile Grafico selezionato: {chosen_style.upper()} | Tema del Giorno ({giorno_label}): {palette_nome}")
+
+    # 1. Genera overlay video 9:16 tramite il Motore Grafico Unificato con la palette del giorno
+    overlay_png_path = None
+    if mgs:
+        try:
+            overlay_png_path = mgs.crea_story_9_16(media_info, style=chosen_style, palette=palette_giorno)
+        except Exception as eMgsGen:
+            print(f"Avviso render 9:16 mgs ({chosen_style}): {eMgsGen}")
+
+    if not overlay_png_path or not os.path.exists(overlay_png_path):
         if chosen_style == "luxury_glass":
             overlay_png_path = crea_story_luxury_glass_9_16(media_info)
         elif chosen_style == "editorial":
@@ -1648,22 +1850,31 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
         else:
             overlay_png_path = crea_story_splitscreen_9_16(media_info)
 
-    # Genera e salva anche il volantino promozionale 1:1 per feed e archivio
+    # Genera e salva anche il volantino promozionale 1:1 coordinato con il tema del giorno
     flyer_1x1_path = os.path.join(SCRATCH_DIR, f"flyer_giancani_1x1_{uuid.uuid4().hex[:6]}.png")
-    try:
-        import motore_grafica_storie as mgs
-        if chosen_style == "gabetti_diagonal":
-            mgs.crea_flyer_gabetti_diagonal_1_1(media_info, output_path=flyer_1x1_path)
-        elif chosen_style == "capellupo_sidebar":
-            mgs.crea_flyer_capellupo_sidebar_1_1(media_info, output_path=flyer_1x1_path)
-        elif chosen_style == "luxury_glass":
-            crea_grafica_luxury_glass(media_info, flyer_1x1_path, size=(1080, 1080))
-        elif chosen_style == "editorial":
-            crea_grafica_editorial(media_info, flyer_1x1_path, size=(1080, 1080))
-        else:
+    if mgs and hasattr(mgs, 'crea_flyer_1_1'):
+        try:
+            mgs.crea_flyer_1_1(media_info, style=chosen_style, palette=palette_giorno, output_path=flyer_1x1_path)
+        except Exception as e_fl:
+            print(f"Avviso generazione flyer 1:1: {e_fl}")
             crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
-    except Exception as e_fl:
-        print(f"Avviso generazione flyer 1:1: {e_fl}")
+    elif mgs:
+        try:
+            if chosen_style == "gabetti_diagonal":
+                mgs.crea_flyer_gabetti_diagonal_1_1(media_info, palette=palette_giorno, output_path=flyer_1x1_path)
+            elif chosen_style == "capellupo_sidebar":
+                mgs.crea_flyer_capellupo_sidebar_1_1(media_info, palette=palette_giorno, output_path=flyer_1x1_path)
+            elif chosen_style == "luxury_glass":
+                crea_grafica_luxury_glass(media_info, flyer_1x1_path, size=(1080, 1080))
+            elif chosen_style == "editorial":
+                crea_grafica_editorial(media_info, flyer_1x1_path, size=(1080, 1080))
+            else:
+                crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
+        except Exception as e_fl:
+            print(f"Avviso generazione flyer 1:1: {e_fl}")
+            crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
+    else:
+        crea_grafica_flyer_split_screen(media_info, flyer_1x1_path, size=(1080, 1080))
 
     # 2. Determina fascia oraria se offline
     fascia_info = determina_fascia_oraria() if not is_live else None
@@ -1752,28 +1963,126 @@ def pubblica_storia_instagram(ig_user_id, page_token, video_path):
 
 def pubblica_short_youtube(video_path, item_data):
     """
-    Pubblica o registra il video come YouTube Short sul canale @immobiliaregiancani761.
-    Comunica con l'endpoint Apps Script per indicizzazione e pubblicazione diretta.
+    Pubblica direttamente il video come YouTube Short sul canale ufficiale
+    @immobiliaregiancani761 (ID: UC7jCI1x_cwh_sOrNPJpaKyQ) tramite YouTube Data API v3.
     """
     print(f"\n🎬 Pubblicazione YouTube Short sul Canale (@immobiliaregiancani761)...")
     try:
         titolo = item_data.get('titolo', 'Opportunità Immobiliare')
         prezzo = item_data.get('prezzo', 'Trattativa Riservata')
         mq = item_data.get('mq', '120 metri quadri')
-        testo_f = item_data.get('testoF', '')
-        video_url = item_data.get('videoUrl', '')
-        thumb_url = item_data.get('thumbUrl', '')
+        testo_f = item_data.get('testoF', '').strip()
+        is_live = item_data.get('isLive', False)
 
+        # 1. Ricerca token OAuth2 valido
+        token_paths = [
+            os.path.join(os.path.dirname(__file__), "token_youtube.json"),
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_youtube_giancani.json"),
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_youtube_mitologia.json")
+        ]
+        token_file = None
+        creds = None
+        for tp in token_paths:
+            if not os.path.exists(tp):
+                continue
+            try:
+                from google.oauth2.credentials import Credentials
+                from google.auth.transport.requests import Request
+                from googleapiclient.discovery import build
+                from googleapiclient.http import MediaFileUpload
+                import google_auth_httplib2
+                import httplib2
+                import requests as _rq
+                import urllib3 as _u3
+                _u3.disable_warnings()
+
+                c = Credentials.from_authorized_user_file(tp)
+                if c.expired and c.refresh_token:
+                    for _att in range(3):
+                        try:
+                            _s = _rq.Session()
+                            _s.verify = False
+                            _req = Request(session=_s)
+                            c.refresh(_req)
+                            with open(tp, "w", encoding="utf-8") as tf:
+                                tf.write(c.to_json())
+                            break
+                        except Exception as _ex:
+                            time.sleep(1)
+                if c.valid:
+                    creds = c
+                    token_file = tp
+                    print(f"  ✅ Token OAuth YouTube valido acquisito da: {os.path.basename(tp)}")
+                    break
+            except Exception as _e_tok:
+                print(f"  ⚠️ Tentativo token {tp} fallito: {_e_tok}")
+
+        if creds and creds.valid:
+                http_client = httplib2.Http(disable_ssl_certificate_validation=True)
+                auth_http = google_auth_httplib2.AuthorizedHttp(creds, http=http_client)
+                youtube = build("youtube", "v3", http=auth_http)
+
+                # Formattazione titolo Shorts (< 95 caratteri)
+                short_title = f"{titolo} | {prezzo} #Shorts"
+                if len(short_title) > 95:
+                    short_title = f"{titolo[:60]} | #Shorts"
+
+                # Descrizione completa conforme a Colonna F e Personal Branding
+                prefix_live = "🔴 IN DIRETTA ORA! " if is_live else ""
+                description = (
+                    f"🏢 {prefix_live}{titolo.upper()}\n"
+                    f"📐 Superficie: {mq}\n"
+                    f"💰 Prezzo: {prezzo}\n\n"
+                    f"📜 Descrizione Ufficiale (Colonna F):\n"
+                    f"«{testo_f}»\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"👉 Per informazioni e visite:\n"
+                    f"🏠 IMMOBILIARE GIANCANI — Favara (Agrigento)\n"
+                    f"📍 Corso Vittorio Veneto 151, Favara (AG)\n"
+                    f"🌐 Sito Web Ufficiale: https://immobiliaregiancani.it\n"
+                    f"📞 Telefono: +39 320 166 7156\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"#Shorts #ImmobiliareGiancani #Favara #Agrigento #CaseInVendita #DarIA #AntonioGiancani"
+                )
+
+                body = {
+                    "snippet": {
+                        "title": short_title,
+                        "description": description,
+                        "tags": ["Immobiliare Giancani", "Favara", "Agrigento", "Case in Vendita", "Immobiliare", "DarIA", "Shorts", "YouTube Shorts", "Antonio Giancani"],
+                        "categoryId": "27",
+                        "defaultLanguage": "it"
+                    },
+                    "status": {
+                        "privacyStatus": "public",
+                        "selfDeclaredMadeForKids": False
+                    }
+                }
+
+                media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
+                print(f"  🚀 [YouTube Data API] Upload in corso su @immobiliaregiancani761...")
+                request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+                response = request.execute()
+                v_id = response.get("id")
+                yt_short_url = f"https://youtube.com/shorts/{v_id}"
+                print(f"  ✅ [YouTube Shorts] Pubblicato con successo! URL: {yt_short_url}")
+                return {
+                    "nome": "YouTube Shorts (@immobiliaregiancani761)",
+                    "success": True,
+                    "story_id": v_id,
+                    "url": yt_short_url
+                }
+
+        # Fallback secondario su Apps Script se il token non è presente
         payload = {
             "action": "pubblica_youtube_short",
             "titolo": titolo,
             "mq": mq,
             "prezzo": prezzo,
             "testoF": testo_f,
-            "videoUrl": video_url,
-            "thumbUrl": thumb_url
+            "videoUrl": item_data.get('videoUrl', ''),
+            "thumbUrl": item_data.get('thumbUrl', '')
         }
-        
         if os.path.exists(video_path) and os.path.getsize(video_path) < 8 * 1024 * 1024:
             with open(video_path, 'rb') as f:
                 payload["base64Video"] = base64.b64encode(f.read()).decode('utf-8')
@@ -1915,17 +2224,17 @@ def pubblica_nota_facebook_pagina(page_id, page_token, media_info, fascia_info=N
         print(f"Errore pubblicazione nota su Facebook ({page_id}): {e}")
         return {"success": False, "error": str(e), "fascia": fascia_info["fascia"]}
 
-def invia_notifica_telegram(titolo, mq, prezzo, risultati, is_live=True):
-    """Invia notifica Telegram aziendale"""
+def invia_notifica_telegram(titolo, mq, prezzo, risultati, is_live=True, video_path=None):
+    """Invia notifica Telegram aziendale e recapita il video su Telegram a Chat ID 1723292483"""
     try:
-        tipo_str = "🔴 STORIA LIVE (OGNI 30 MIN)" if is_live else "🕒 STORIA ORARIA (OFFLINE)"
+        tipo_str = "🔴 STORIA LIVE (OGNI 30 MIN)" if is_live else "🕒 STORIA FACEBOOK (OGNI 30 MIN)"
         lines = [
             f"🎬 <b>{tipo_str} PUBBLICATA CON SUCCESSO!</b> ✨",
             f"🏠 <b>Immobile:</b> {titolo}",
             f"📐 <b>Superficie:</b> {mq}",
             f"💰 <b>Prezzo:</b> {prezzo}",
-            f"🎵 <b>Audio:</b> Musica Allegra (124 BPM) + Voce Neural HD",
-            f"⏱️ <b>Durata video:</b> 15 secondi continui Full HD\n"
+            f"🎵 <b>Audio:</b> Inno Sequenziale alla Vita + Voce Neurale HD",
+            f"⏱️ <b>Durata video:</b> 15 secondi continui Full HD (1080x1920)\n"
         ]
         for r in risultati:
             status = "✅ Pubblicata" if r.get("success") else f"⚠️ {r.get('error', 'Fallita')}"
@@ -1933,9 +2242,40 @@ def invia_notifica_telegram(titolo, mq, prezzo, risultati, is_live=True):
 
         lines.append("\n— <b>Immobiliare Giancani</b>")
         msg = "\n".join(lines)
-        url_tg = f"{APPS_SCRIPT_URL}?action=invia_notifica&msg={urllib.parse.quote(msg)}"
-        req_tg = urllib.request.Request(url_tg, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req_tg, timeout=10, context=ctx) as r:
+
+        tg_token = "8671578336:AAEHI-s-2g3dY9qnIIVc_hWzDdOuHm-MS6M"
+        tg_chat = "1723292483"
+
+        if video_path and os.path.exists(video_path):
+            try:
+                with open(video_path, 'rb') as f_vid:
+                    requests.post(
+                        f"https://api.telegram.org/bot{tg_token}/sendVideo",
+                        data={'chat_id': tg_chat, 'caption': msg[:1024], 'parse_mode': 'HTML'},
+                        files={'video': f_vid},
+                        timeout=90,
+                        verify=False
+                    )
+                    print(f"[OK] Video storia recapitato su Telegram ({tg_chat})!")
+            except Exception as e_v:
+                print(f"Avviso invio video Telegram: {e_v}")
+
+        try:
+            requests.post(
+                f"https://api.telegram.org/bot{tg_token}/sendMessage",
+                data={'chat_id': tg_chat, 'text': msg, 'parse_mode': 'HTML'},
+                timeout=15,
+                verify=False
+            )
+        except Exception:
+            pass
+
+        try:
+            url_tg = f"{APPS_SCRIPT_URL}?action=invia_notifica&msg={urllib.parse.quote(msg)}"
+            req_tg = urllib.request.Request(url_tg, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req_tg, timeout=10, context=ctx) as r:
+                pass
+        except Exception:
             pass
     except Exception as e:
         print(f"Avviso notifica Telegram: {e}")
@@ -1962,21 +2302,63 @@ def esegui_ciclo_live(style="auto"):
 
     print(f"🔴 DIRETTA STREAMING ATTIVA (Run ID: {run_id}). Avvio generazione storia live con rotazione grafica...")
 
-    # Recupera immobile attivo dal backend
-    url_imm = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=current"
+    cronologia = carica_cronologia_storie()
+    recent_urls = get_recent_photo_urls(cronologia, max_count=30)
+
+    # Recupera immobile attivo dal backend con rotazione ('next' / 'current')
+    url_imm = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=next"
     prop_data = {}
     try:
-        r_imm = requests.get(url_imm, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=20)
+        r_imm = requests.get(url_imm, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=15)
         if r_imm.status_code == 200:
             prop_data = r_imm.json()
+            cand_foto = prop_data.get('mediaUrl') or prop_data.get('fotoUrl')
+            if cand_foto and normalizza_foto_url(cand_foto) in recent_urls:
+                print("🔄 [LIVE ANTI-RIPETIZIONE] Foto già mostrata di recente, forzatura al prossimo immobile...")
+                url_next_imm = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=next_immobile"
+                r_next = requests.get(url_next_imm, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=15)
+                if r_next.status_code == 200:
+                    prop_data = r_next.json()
     except Exception as e:
         print(f"Avviso recupero dati immobile in diretta via requests: {e}")
         try:
-            req_imm = urllib.request.Request(url_imm, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req_imm, timeout=20, context=ctx) as resp:
-                prop_data = json.loads(resp.read().decode('utf-8'))
+            url_curr = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=current"
+            r_curr = requests.get(url_curr, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=15)
+            if r_curr.status_code == 200:
+                prop_data = r_curr.json()
         except Exception as e2:
-            print(f"Avviso fallback urllib: {e2}")
+            print(f"Avviso fallback current: {e2}")
+
+    # Fallback su catalogo cache offline per garantire rotazione di immobili sempre diversi
+    f_curr = prop_data.get('mediaUrl') or prop_data.get('fotoUrl')
+    if not prop_data or not f_curr or normalizza_foto_url(f_curr) in recent_urls:
+        cache_cat_candidates = [
+            os.path.join(ASSETS_DIR, "catalogo_immobili_cache.json"),
+            os.path.join(os.path.dirname(BASE_DIR), "assets", "catalogo_immobili_cache.json")
+        ]
+        for cat_p in cache_cat_candidates:
+            if os.path.exists(cat_p):
+                try:
+                    with open(cat_p, "r", encoding="utf-8") as fC:
+                        c_list = json.load(fC)
+                        if c_list:
+                            mai_visti = [c for c in c_list if normalizza_foto_url(c.get("fotoUrl") or c.get("mediaUrl")) not in recent_urls]
+                            if not mai_visti:
+                                mai_visti = c_list
+                            slot_30min = int(time.time() / 1800)
+                            sel_imm = mai_visti[slot_30min % len(mai_visti)]
+                            prop_data = {
+                                "titolo": sel_imm.get("titolo"),
+                                "stanza": sel_imm.get("stanza"),
+                                "prezzo": sel_imm.get("prezzo"),
+                                "mq": sel_imm.get("mq"),
+                                "fotoUrl": sel_imm.get("fotoUrl"),
+                                "testoDaLeggere": sel_imm.get("testoF")
+                            }
+                            print(f"🎯 Rotazione Immobile Live da catalogo cache anti-ripetizione: {sel_imm.get('titolo')} ({sel_imm.get('stanza')})")
+                            break
+                except Exception as eCc:
+                    print(f"Avviso fallback catalogo live: {eCc}")
 
     titolo_base = prop_data.get('titolo') or "Immobile in Diretta"
     stanza = prop_data.get('stanza')
@@ -1990,20 +2372,35 @@ def esegui_ciclo_live(style="auto"):
     foto_raw = prop_data.get('mediaUrl') or prop_data.get('fotoUrl')
     foto_url = normalizza_foto_url(foto_raw)
     testo_f = prop_data.get('testoDaLeggere') or prop_data.get('testo') or "Tour virtuale in diretta streaming con Dario e DarIA. — Immobiliare Giancani"
+    if "immobiliare giancani" not in testo_f.lower():
+        testo_f += " — Immobiliare Giancani"
 
+    story_seq = int(time.time() / 1800) + len(cronologia)
     media_info = {
         "titolo": titolo,
         "prezzo": prezzo,
         "mq": mq,
         "fotoUrl": foto_url,
         "testoF": testo_f,
-        "isLive": True
+        "isLive": True,
+        "story_index": story_seq
     }
 
     video_path = genera_video_da_clip_o_foto(media_info, style=style)
     if not video_path:
         print("❌ Errore generazione video storia live.")
         return []
+
+    # Registra immediatamente nella cronologia anti-ripetizione
+    story_ref = f"live_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+    cronologia[story_ref] = {
+        "timestamp": time.time(),
+        "titolo": titolo,
+        "fotoUrl": foto_url,
+        "stanza": stanza,
+        "isLive": True
+    }
+    salva_cronologia_storie(cronologia)
 
     risultati = []
     for target in PAGES:
@@ -2048,162 +2445,221 @@ def esegui_ciclo_live(style="auto"):
     print("✨ Ciclo storia live multi-piattaforma completato. — Immobiliare Giancani\n")
     return risultati
 
+
 # ═════════════════════════════════════════════════════════════════════════════
 # GESTIONE MODALITÀ OFFLINE (OGNI ORA)
 # ═════════════════════════════════════════════════════════════════════════════
-def esegui_ciclo_offline(style="auto"):
+def esegui_ciclo_offline(style="auto", sheet_filter=None, room_filter=None, custom_text=None, custom_image=None, custom_title=None):
     """
-    Esegue la pubblicazione di una storia ogni ora quando NON si è in diretta live.
-    Verifica che non vi sia una diretta in corso, quindi estrae da Post_YouTube o fogli immobili.
+    Esegue la pubblicazione di una storia ogni ora quando NON si è in diretta live,
+    oppure su richiesta manuale da regia Generator.html.
+    Ruota su TUTTI gli immobili e stanze del catalogo senza mai bloccarsi sullo stesso immobile.
+    Supporta anche storie NON immobiliari (Buone Notizie, Mindset, Notizie, Custom) con testo e immagine specificati.
     """
     print("\n" + "═" * 70)
-    print("🕒 CONTROLLO PUBBLICAZIONE STORIA ORARIA OFFLINE")
+    print("🕒 CONTROLLO PUBBLICAZIONE STORIA OFFLINE / CUSTOM")
     print("═" * 70)
 
-    # 1. Verifica se la diretta streaming è in corso su GitHub Actions
-    is_live, run_id = check_is_live_active()
-    if is_live:
-        print(f"🔴 Diretta Live attualmente IN CORSO su GitHub Actions (Workflow Run ID: {run_id}).")
-        print("ℹ️ La pubblicazione storie a 10 minuti è gestita attivamente dal flusso live. Uscita per evitare duplicati.")
-        print("— Immobiliare Giancani")
-        return []
+    # 1. Se non è una chiamata esplicita da utente/manuale, verifica se la diretta streaming è in corso
+    is_manual = bool(custom_text or custom_image or sheet_filter or room_filter)
+    if not is_manual:
+        is_live, run_id = check_is_live_active()
+        if is_live:
+            print(f"🔴 Diretta Live attualmente IN CORSO su GitHub Actions (Workflow Run ID: {run_id}).")
+            print("ℹ️ La pubblicazione storie a 10 minuti è gestita attivamente dal flusso live. Uscita per evitare duplicati.")
+            print("— Immobiliare Giancani")
+            return []
 
-    print("✅ Nessuna diretta live in corso: procedo con la pubblicazione della storia oraria da catalogo immobili & YouTube...")
+    print("✅ Procedo con la pubblicazione della storia offline / personalizzata...")
 
-    # 2. Recupero prioritario immobile attivo & catalogo fogli
-    candidates = []
-
-    # Priorità 1: Recupera l'immobile attivo dal backend (istantaneo <1.5s)
-    try:
-        url_curr = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=current"
-        r_curr = requests.get(url_curr, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=18)
-        if r_curr.status_code == 200:
-            d_curr = r_curr.json()
-            foto_curr = normalizza_foto_url(d_curr.get('fotoUrl') or d_curr.get('mediaUrl'))
-            testo_curr = d_curr.get('testoDaLeggere') or d_curr.get('testo') or 'Splendido immobile selezionato ad Agrigento e Favara. — Immobiliare Giancani'
-            if "immobiliare giancani" not in testo_curr.lower():
-                testo_curr += " — Immobiliare Giancani"
-            if foto_curr:
-                tit_c = d_curr.get('titolo', 'Immobile in Vendita')
-                st_c = d_curr.get('stanza', '')
-                if st_c and st_c.lower() not in ['ambiente', ''] and st_c.lower() != tit_c.lower():
-                    tit_c = f"{tit_c} — {st_c}"
-                candidates.append({
-                    "id": f"active_immobile_{d_curr.get('titolo', 'imm')[:20]}",
-                    "fonte": "Immobile Attivo Palinsesto",
-                    "sheet": "ACTIVE",
-                    "rowIndex": 2,
-                    "videoUrl": None,
-                    "fotoUrl": foto_curr,
-                    "prezzo": str(d_curr.get('prezzo') or 'Trattativa Riservata').strip(),
-                    "mq": normalize_mq(d_curr.get('mq', '120 metri quadri')),
-                    "titolo": tit_c,
-                    "testoF": testo_curr
-                })
-    except Exception as eCurr:
-        print(f"Avviso recupero immobile attivo: {eCurr}")
-
-    # Priorità 2: Scansione fogli per arricchire la rotazione oraria
-    try:
-        url_sheets = f"{APPS_SCRIPT_URL}?action=debug_all_sheets"
-        r_sheets = requests.get(url_sheets, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=30)
-        if r_sheets.status_code == 200:
-            data_sh = r_sheets.json()
-            all_sheets = data_sh.get('sheets', [])
-            ignora_fogli = ['IMPOSTAZIONI_SOCIAL', 'CONFIGURAZIONE_TEMPI', 'RISULTATI_GIORNATA', 'FRASI_CALCIO', 'ANALYTICS_SOCIAL', 'MUSICA_SOTTOFONDO', 'ARCHIVIO_CLIENTI', 'PALINSESTO_ORARIO', 'PUBBLICITA_SPOT']
-            
-            for s in all_sheets:
-                s_name = s.get('name', '')
-                if s_name.upper() in ignora_fogli:
-                    continue
+    # Gestione CASO A: Contenuto NON immobiliare o personalizzato con testo/immagine scelti
+    if custom_text or custom_image:
+        print("🎨 Modalità Storia Personalizzata / Non Immobiliare attiva.")
+        t_clean = str(custom_text or "Novità e aggiornamenti da Favara e Agrigento").strip()
+        if "immobiliare giancani" not in t_clean.lower():
+            t_clean += " — Immobiliare Giancani"
+        
+        img_sel = custom_image or random.choice(GUARANTEED_FALLBACK_IMAGES)
+        tit_sel = custom_title or "Comunicazione Speciale"
+        
+        media_info = {
+            "titolo": tit_sel,
+            "prezzo": "",
+            "mq": "",
+            "videoUrl": None,
+            "fotoUrl": img_sel,
+            "testoF": t_clean,
+            "isLive": False
+        }
+        selected = {
+            "id": f"custom_{int(time.time())}",
+            "titolo": tit_sel,
+            "fonte": "Storia Personalizzata / Non Immobiliare",
+            "mq": "",
+            "prezzo": ""
+        }
+    else:
+        # Gestione CASO B: Catalogo Immobili (rotazione deterministica anti-ripetizione su tutti gli immobili e stanze)
+        candidates = []
+        try:
+            url_sheets = f"{APPS_SCRIPT_URL}?action=debug_all_sheets"
+            r_sheets = requests.get(url_sheets, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=30)
+            if r_sheets.status_code == 200:
+                data_sh = r_sheets.json()
+                all_sheets = data_sh.get('sheets', [])
+                ignora_fogli = ['IMPOSTAZIONI_SOCIAL', 'CONFIGURAZIONE_TEMPI', 'RISULTATI_GIORNATA', 'FRASI_CALCIO', 'ANALYTICS_SOCIAL', 'MUSICA_SOTTOFONDO', 'ARCHIVIO_CLIENTI', 'PALINSESTO_ORARIO', 'PUBBLICITA_SPOT', 'PUBBLICITA_SCHERMO_CENTRALE', 'BATTUTE_DARIO']
                 
-                sample = s.get('sample', [])
-                for row_idx, r in enumerate(sample[1:], start=2):
-                    if len(r) > 5 and r[5] and str(r[5]).strip():
-                        raw_media = str(r[0] or '').strip()
-                        foto_url = ""
-                        video_url = None
+                for s in all_sheets:
+                    s_name = s.get('name', '')
+                    if any(ig in s_name.upper() for ig in ignora_fogli):
+                        continue
+                    if sheet_filter and sheet_filter.lower() not in s_name.lower() and s_name.lower() not in sheet_filter.lower():
+                        continue
+                    
+                    sample = s.get('sample', [])
+                    headers = sample[0] if sample else []
+                    for row_idx, r in enumerate(sample[1:], start=2):
+                        parsed = parse_property_row_smart(r, headers=headers, sheet_name=s_name)
+                        if not parsed:
+                            continue
                         
-                        if 'youtube.com' in raw_media or 'youtu.be' in raw_media:
-                            video_url = raw_media
-                            if len(r) > 6 and str(r[6]).startswith('http'):
-                                foto_url = normalizza_foto_url(str(r[6]).strip())
-                        elif raw_media.endswith(('.mp4', '.mov', '.avi')):
-                            video_url = raw_media
-                        elif raw_media.startswith('http') or 'lh3.googleusercontent.com' in raw_media or 'drive.google.com' in raw_media:
-                            foto_url = normalizza_foto_url(raw_media)
+                        stanza_riga = parsed.get("stanza", "")
+                        if room_filter:
+                            rf_str = str(room_filter).strip().lower()
+                            if rf_str.isdigit():
+                                if int(rf_str) != row_idx and int(rf_str) != (row_idx - 1):
+                                    continue
+                            elif rf_str not in stanza_riga.lower() and stanza_riga.lower() not in rf_str:
+                                continue
 
-                        stanza_riga = str(r[3] or '').strip() if len(r) > 3 else ''
-                        s_clean = s_name.replace('_', ' ').strip()
-                        if stanza_riga and stanza_riga.lower() not in ['ambiente', ''] and stanza_riga.lower() != s_clean.lower():
-                            titolo_atomico = f"{s_clean} — {stanza_riga}"
-                        else:
-                            titolo_atomico = s_clean
-
-                        cand_id = f"{s_name}_riga{row_idx}_{abs(hash(raw_media or titolo_atomico)) % 100000}"
-                        testo_riga = str(r[5]).strip()
-                        if "immobiliare giancani" not in testo_riga.lower():
-                            testo_riga += " — Immobiliare Giancani"
-
+                        cand_id = f"{s_name}_riga{row_idx}_{abs(hash(parsed.get('fotoUrl') or parsed.get('videoUrl') or parsed.get('titolo'))) % 100000}"
                         candidates.append({
                             "id": cand_id,
-                            "fonte": s_clean,
+                            "fonte": s_name.replace('_', ' ').strip(),
                             "sheet": s_name,
                             "rowIndex": row_idx,
-                            "videoUrl": video_url,
-                            "fotoUrl": foto_url,
-                            "prezzo": str(r[1] or 'Trattativa Riservata').strip(),
-                            "mq": normalize_mq(r[2]),
-                            "titolo": titolo_atomico,
-                            "testoF": testo_riga
+                            "stanza": stanza_riga,
+                            "videoUrl": parsed.get("videoUrl"),
+                            "fotoUrl": parsed.get("fotoUrl"),
+                            "prezzo": parsed.get("prezzo"),
+                            "mq": parsed.get("mq"),
+                            "titolo": parsed.get("titolo"),
+                            "testoF": parsed.get("testoF")
                         })
-    except Exception as eSheets:
-        print(f"Avviso lettura catalogo fogli: {eSheets}")
+        except Exception as eSheets:
+            print(f"Avviso lettura catalogo fogli: {eSheets}")
 
-    if not candidates:
-        print("⚠️ Nessun immobile estratto dai fogli. Utilizzo immobile garantito di default...")
-        candidates.append({
-            "id": "default_favara_1",
-            "fonte": "Default",
-            "videoUrl": "https://www.youtube.com/watch?v=f5pirIIs8FQ",
-            "titolo": "Villa Esclusiva con Giardino a Favara",
-            "prezzo": "Trattativa Riservata",
-            "mq": "140 metri quadri",
-            "testoF": "Splendida soluzione abitativa indipendente con ampi spazi esterni, rifiniture di pregio e massimo comfort ad Agrigento e Favara. — Immobiliare Giancani",
-            "fotoUrl": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=1200&auto=format&fit=crop"
-        })
+        # Fallback A: Catalogo Immobili Locale in Cache (16 immobili reali e verificati)
+        if not candidates:
+            cache_cat_candidates = [
+                os.path.join(ASSETS_DIR, "catalogo_immobili_cache.json"),
+                os.path.join(os.path.dirname(BASE_DIR), "assets", "catalogo_immobili_cache.json"),
+                os.path.join(BASE_DIR, "catalogo_immobili_cache.json")
+            ]
+            for cat_path in cache_cat_candidates:
+                if os.path.exists(cat_path):
+                    try:
+                        with open(cat_path, "r", encoding="utf-8") as fCat:
+                            cat_data = json.load(fCat)
+                            if isinstance(cat_data, list) and len(cat_data) > 0:
+                                for item in cat_data:
+                                    t_f = str(item.get("testoF") or item.get("testoDaLeggere") or "").strip()
+                                    if not t_f:
+                                        continue
+                                    if "immobiliare giancani" not in t_f.lower():
+                                        t_f += " — Immobiliare Giancani"
+                                    candidates.append({
+                                        "id": item.get("id") or f"cache_{abs(hash(item.get('titolo')))%100000}",
+                                        "fonte": item.get("fonte") or item.get("tabName", "Archivio Immobili"),
+                                        "sheet": item.get("tabName", "CATALOGO"),
+                                        "rowIndex": 2,
+                                        "stanza": item.get("stanza", ""),
+                                        "videoUrl": item.get("videoUrl"),
+                                        "fotoUrl": normalizza_foto_url(item.get("fotoUrl")),
+                                        "prezzo": str(item.get("prezzo") or "Trattativa Riservata").strip(),
+                                        "mq": normalize_mq(item.get("mq", "120 metri quadri")),
+                                        "titolo": item.get("titolo", "Immobile Giancani"),
+                                        "testoF": t_f
+                                    })
+                                if candidates:
+                                    print(f"✅ Caricati con successo {len(candidates)} immobili dal catalogo cache offline.")
+                                    break
+                    except Exception as eC:
+                        print(f"Avviso lettura catalogo cache {cat_path}: {eC}")
 
-    # ROTAZIONE PERSISTENTE ANTI-RIPETIZIONE (Garantisce che non ripubblichi mai lo stesso immobile!)
-    cronologia = carica_cronologia_storie()
-    # Filtra solo i candidati che NON sono ancora stati pubblicati
-    candidati_mai_visti = [c for c in candidates if c["id"] not in cronologia]
-    
-    if not candidati_mai_visti:
-        print("🔄 Tutti gli immobili del catalogo sono stati pubblicati! Reset ciclo cronologia per iniziare nuova rotazione...")
-        cronologia = {}
-        candidati_mai_visti = candidates
+        # Fallback B: Immobile attualmente attivo dal server
+        if not candidates:
+            try:
+                url_curr = f"{APPS_SCRIPT_URL}?action=debug_immobile&q=current"
+                r_curr = requests.get(url_curr, headers={'User-Agent': 'Mozilla/5.0'}, verify=False, timeout=15)
+                if r_curr.status_code == 200:
+                    d_curr = r_curr.json()
+                    foto_curr = normalizza_foto_url(d_curr.get('fotoUrl') or d_curr.get('mediaUrl'))
+                    testo_curr = d_curr.get('testoDaLeggere') or d_curr.get('testo') or 'Splendido immobile selezionato ad Agrigento e Favara. — Immobiliare Giancani'
+                    if "immobiliare giancani" not in testo_curr.lower():
+                        testo_curr += " — Immobiliare Giancani"
+                    candidates.append({
+                        "id": f"active_{int(time.time())}",
+                        "fonte": "Immobile Corrente",
+                        "sheet": "ACTIVE",
+                        "rowIndex": 2,
+                        "videoUrl": None,
+                        "fotoUrl": foto_curr or GUARANTEED_FALLBACK_IMAGES[0],
+                        "prezzo": str(d_curr.get('prezzo') or 'Trattativa Riservata').strip(),
+                        "mq": normalize_mq(d_curr.get('mq', '120 metri quadri')),
+                        "titolo": d_curr.get('titolo', 'Immobile in Vendita'),
+                        "testoF": testo_curr
+                    })
+            except Exception:
+                pass
 
-    # Seleziona il prossimo immobile univoco
-    selected = candidati_mai_visti[0]
-    # Salva nella cronologia persistente con timestamp
-    cronologia[selected["id"]] = {
-        "timestamp": time.time(),
-        "titolo": selected["titolo"],
-        "fonte": selected["fonte"]
-    }
-    salva_cronologia_storie(cronologia)
-    print(f"🎯 Immobile selezionato per la storia di quest'ora ({len(cronologia)}/{len(candidates)} nel ciclo): {selected['titolo']} ({selected['fonte']})")
-    print(f"   Dati sincronizzati atomici: Foto={bool(selected.get('fotoUrl'))}, Prezzo={selected.get('prezzo')}, MQ={selected.get('mq')}, Colonna F='{selected.get('testoF')[:60]}...'")
+        if not candidates:
+            print("⚠️ Nessun immobile estratto dai fogli. Caricamento catalogo dinamico multi-foto...")
+            # Importa dal catalogo immobili per garantire assoluta diversità di foto e testi
+            pool_default = [
+                {"id": "c1", "titolo": "Appartamento 4° Piano Corso Vittorio Veneto", "mq": "140 metri quadri", "prezzo": "Trattativa Riservata", "fotoUrl": "https://lh3.googleusercontent.com/d/1J_dumkLBgmNO14H2Ga0sTkEJR25jWbSw", "testoF": "Luminoso appartamento al 4° piano in pieno centro a Favara con vista panoramica e comodi spazi. — Immobiliare Giancani"},
+                {"id": "c2", "titolo": "Villa Panoramica a Zingarello", "mq": "120 metri quadri", "prezzo": "€ 95.000", "fotoUrl": "https://lh3.googleusercontent.com/d/1ZeFvgW36oabdrE0lGUzuTg2kcx8vJgBT", "testoF": "Suggestivo terrazzo verso l'orizzonte dove respirare libertà e godersi la brezza siciliana. — Immobiliare Giancani"},
+                {"id": "c3", "titolo": "Appartamento 2° Piano Via Pavia", "mq": "120 metri quadri", "prezzo": "€ 38.000", "fotoUrl": "https://lh3.googleusercontent.com/d/12DCZfaRB3l2LzlKLsLD_idBzD65ipBhM", "testoF": "Soluzione luminosa a Favara in zona servita con vista panoramica e ottima esposizione. — Immobiliare Giancani"},
+                {"id": "c4", "titolo": "Villa con Terreno ad Aragona", "mq": "120 metri quadri", "prezzo": "Trattativa Riservata", "fotoUrl": "https://lh3.googleusercontent.com/d/13DCw7jS4GzKRhN7qH3U9RRPnh1V45vKF", "testoF": "Prestigiosa proprietà indipendente circondata dal verde con finiture di alto livello. — Immobiliare Giancani"},
+                {"id": "c5", "titolo": "Appartamento 1° Piano con Box ad Aragona", "mq": "120 metri quadri", "prezzo": "€ 85.000", "fotoUrl": "https://lh3.googleusercontent.com/d/15uuETuZVsZ1eOoxkv-YMM_8mngBkpHT3", "testoF": "Appartamento rifinito con box auto e terrazza privata, ideale per famiglie esigenti. — Immobiliare Giancani"}
+            ]
+            candidates.extend(pool_default)
 
-    media_info = {
-        "titolo": selected.get('titolo', 'Immobile in Vendita'),
-        "prezzo": selected.get('prezzo', 'Trattativa Riservata'),
-        "mq": normalize_mq(selected.get('mq')),
-        "videoUrl": selected.get('videoUrl'),
-        "fotoUrl": selected.get('fotoUrl'),
-        "testoF": selected.get('testoF'),
-        "isLive": False
-    }
+        # ROTAZIONE DETERMINISTICA ANTI-RIPETIZIONE
+        cronologia = carica_cronologia_storie()
+        candidati_mai_visti = [c for c in candidates if c["id"] not in cronologia]
+        
+        slot_orario = int(time.time() / 3600)
+        if not candidati_mai_visti:
+            print(f"🔄 Tutti gli {len(candidates)} candidati del catalogo sono stati pubblicati! Reset ciclo cronologia per nuova rotazione...")
+            cronologia = {}
+            candidati_mai_visti = candidates
+
+        # Selezione oraria ciclica e deterministica
+        idx_sel = slot_orario % len(candidati_mai_visti)
+        selected = candidati_mai_visti[idx_sel]
+
+        # Salva nella cronologia persistente con timestamp
+        cronologia[selected["id"]] = {
+            "timestamp": time.time(),
+            "titolo": selected["titolo"],
+            "fonte": selected["fonte"],
+            "stanza": selected.get("stanza", ""),
+            "fotoUrl": selected.get("fotoUrl", "")
+        }
+        salva_cronologia_storie(cronologia)
+        print(f"🎯 Immobile/Stanza selezionata per la storia ({len(cronologia)}/{len(candidates)} nel ciclo): {selected['titolo']} ({selected['fonte']})")
+        print(f"   Dati sincronizzati atomici: Foto={bool(selected.get('fotoUrl'))}, Prezzo={selected.get('prezzo')}, MQ={selected.get('mq')}, Colonna F='{selected.get('testoF')[:60]}...'")
+
+        media_info = {
+            "titolo": selected.get('titolo', 'Immobile in Vendita'),
+            "prezzo": selected.get('prezzo', 'Trattativa Riservata'),
+            "mq": normalize_mq(selected.get('mq')),
+            "videoUrl": selected.get('videoUrl'),
+            "fotoUrl": selected.get('fotoUrl'),
+            "testoF": selected.get('testoF'),
+            "isLive": False
+        }
 
     video_path = genera_video_da_clip_o_foto(media_info, style=style)
     if not video_path:
@@ -2221,8 +2677,6 @@ def esegui_ciclo_offline(style="auto"):
         except Exception as ePub:
             print(f"❌ Errore upload su {target['nome']}: {ePub}")
             risultati.append({"nome": target['nome'], "success": False, "error": str(ePub)})
-
-    # Nota: Pubblicazione Instagram esclusa su richiesta utente (solo Facebook)
 
     # Pubblica su YouTube Shorts (@immobiliaregiancani761)
     try:
@@ -2242,9 +2696,7 @@ def esegui_ciclo_offline(style="auto"):
         print(f"❌ Errore TikTok Stories: {eTk}")
         risultati.append({"nome": "TikTok Stories (@immobiliare_giancani)", "success": False, "error": str(eTk)})
 
-    # Nota Facebook rimossa su richiesta utente
-
-    invia_notifica_telegram(selected['titolo'], selected['mq'], selected['prezzo'], risultati, is_live=False)
+    invia_notifica_telegram(selected['titolo'], selected.get('mq', ''), selected.get('prezzo', ''), risultati, is_live=False, video_path=video_path)
     print("✨ Ciclo storia oraria multi-piattaforma completato con successo. — Immobiliare Giancani\n")
     return risultati
 
@@ -2256,6 +2708,14 @@ def main():
     parser.add_argument("--loop", action="store_true", help="Esegue in ciclo continuo (per la diretta live ogni 30 minuti (1800s))")
     parser.add_argument("--style", default="auto", help="Stile grafico per la storia (default: auto)")
     parser.add_argument("--interval", type=int, default=1800, help="Intervallo in secondi per la modalità loop (default: 1800s = 30 minuti)")
+    parser.add_argument("--delay_start", type=int, default=0, help="Secondi di attesa prima del primo ciclo (default: 0)")
+    
+    # Parametri per selezione mirata o storie non immobiliari
+    parser.add_argument("--sheet", "--immobile", dest="sheet", default=None, help="Filtra per immobile o nome foglio specifico")
+    parser.add_argument("--stanza", "--room", dest="room", default=None, help="Filtra per stanza o indice riga specifico")
+    parser.add_argument("--custom_text", dest="custom_text", default=None, help="Testo personalizzato per storie non immobiliari o comunicazioni")
+    parser.add_argument("--custom_image", dest="custom_image", default=None, help="URL o percorso immagine personalizzata")
+    parser.add_argument("--custom_title", dest="custom_title", default=None, help="Titolo personalizzato per la storia")
     args = parser.parse_args()
 
     if args.offline:
@@ -2278,7 +2738,34 @@ def main():
         else:
             esegui_ciclo_live(style=getattr(args, 'style', 'auto'))
     elif args.mode == "offline":
-        esegui_ciclo_offline(style=getattr(args, 'style', 'auto'))
+        if args.loop:
+            print(f"🔄 Avvio demone storie Facebook ogni {args.interval} secondi ({args.interval // 60} minuti)...")
+            if getattr(args, "delay_start", 0) > 0:
+                print(f"⏳ Attesa iniziale di {args.delay_start // 60} minuti prima del prossimo ciclo...")
+                time.sleep(args.delay_start)
+            while True:
+                try:
+                    esegui_ciclo_offline(
+                        style=getattr(args, 'style', 'auto'),
+                        sheet_filter=getattr(args, 'sheet', None),
+                        room_filter=getattr(args, 'room', None),
+                        custom_text=getattr(args, 'custom_text', None),
+                        custom_image=getattr(args, 'custom_image', None),
+                        custom_title=getattr(args, 'custom_title', None)
+                    )
+                except Exception as eOff:
+                    print(f"Errore ciclo offline: {eOff}")
+                print(f"⏳ Prossima storia tra {args.interval // 60} minuti... — Immobiliare Giancani")
+                time.sleep(args.interval)
+        else:
+            esegui_ciclo_offline(
+                style=getattr(args, 'style', 'auto'),
+                sheet_filter=getattr(args, 'sheet', None),
+                room_filter=getattr(args, 'room', None),
+                custom_text=getattr(args, 'custom_text', None),
+                custom_image=getattr(args, 'custom_image', None),
+                custom_title=getattr(args, 'custom_title', None)
+            )
     elif args.mode == "nota":
         fascia_scelta = None
         if getattr(args, 'fascia', 'auto') != 'auto':

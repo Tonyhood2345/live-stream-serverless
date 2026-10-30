@@ -462,8 +462,14 @@ def esegui_ciclo_video_youtube():
     aggiungi_a_storico_video_yt(scelto['id'])
     log(f"🎯 Video YouTube selezionato: {scelto['title']} (ID: {scelto['id']})")
 
-    # 1. Download video completo
-    video_locale = scarica_video_completo(scelto['id'], scelto['url'])
+    # 1. Download video completo con fallback resiliente
+    try:
+        video_locale = scarica_video_completo(scelto['id'], scelto['url'])
+    except Exception as eDl:
+        log(f"⚠️ Impossibile scaricare video YouTube da server cloud: {eDl}")
+        log("🔄 Esecuzione fallback immediato: generazione storia immagine multi-stile!")
+        indice_stile = carica_stato().get("indice_stile", 0)
+        return esegui_ciclo_immagini(indice_stile)
 
     # 2. Generazione clip 30s con card inferiore semi-trasparente e top libero per logo
     clip_path = genera_clip_30s(video_locale, scelto, per_antonio=False)

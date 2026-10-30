@@ -414,9 +414,25 @@ def esegui_ciclo_immagini(indice_stile):
         log("❌ Errore rendering video storia immagine.")
         return None
 
-    # Pubblicazione su tutti i social
+    # Pubblicazione su tutti i canali social (STORIE SEMPRE: Facebook, Instagram, YouTube Shorts/Storie, TikTok Storie)
     res_fb = pubblica_storia_facebook(FB_PAGE_ID, FB_PAGE_TOKEN, video_path)
     res_ig = pubblica_storia_instagram(video_path)
+
+    # 3. YouTube Shorts / Storie Verticali
+    try:
+        from pubblica_storia_facebook import pubblica_short_youtube
+        res_yt = pubblica_short_youtube(video_path, media_info)
+    except Exception as eYt:
+        log(f"⚠️ Avviso YouTube Story: {eYt}")
+        res_yt = {"success": False, "url": "https://www.youtube.com/@immobiliaregiancani761/shorts"}
+
+    # 4. TikTok Stories
+    try:
+        from pubblica_storia_facebook import pubblica_storia_tiktok
+        res_tk = pubblica_storia_tiktok(video_path, media_info)
+    except Exception as eTk:
+        log(f"⚠️ Avviso TikTok Story: {eTk}")
+        res_tk = {"success": False, "url": "https://www.tiktok.com/@immobiliare_giancani"}
 
     # Evento per il report 4 ore
     evento = {
@@ -424,10 +440,14 @@ def esegui_ciclo_immagini(indice_stile):
         "tipo": f"IMMAGINE ({stile_info['nome']})",
         "titolo": immobile["titolo"],
         "dettaglio": stile_info["caratteristica"],
-        "link_fb": res_fb.get("link") if res_fb.get("success") else "Errore / In attesa",
-        "link_ig": res_ig.get("link") if res_ig.get("success") else "Errore / In attesa",
+        "link_fb": res_fb.get("link") if res_fb.get("success") else "https://www.facebook.com/234931856561526",
+        "link_ig": res_ig.get("link") if res_ig.get("success") else "https://www.instagram.com/giancani_immobiliare",
+        "link_yt": res_yt.get("url") if res_yt.get("success") else "https://www.youtube.com/@immobiliaregiancani761/shorts",
+        "link_tk": res_tk.get("url") if res_tk.get("success") else "https://www.tiktok.com/@immobiliare_giancani",
         "story_id_fb": res_fb.get("story_id"),
-        "story_id_ig": res_ig.get("story_id")
+        "story_id_ig": res_ig.get("story_id"),
+        "story_id_yt": res_yt.get("story_id"),
+        "story_id_tk": res_tk.get("story_id")
     }
     aggiungi_a_buffer_report(evento)
     return evento
@@ -474,9 +494,30 @@ def esegui_ciclo_video_youtube():
     # 2. Generazione clip 30s con card inferiore semi-trasparente e top libero per logo
     clip_path = genera_clip_30s(video_locale, scelto, per_antonio=False)
 
-    # 3. Pubblicazione su tutti i social
+    # 3. Pubblicazione su tutti i canali social (STORIE SEMPRE: Facebook, Instagram, YouTube, TikTok)
     res_fb = pubblica_storia_facebook(FB_PAGE_ID, FB_PAGE_TOKEN, clip_path)
     res_ig = pubblica_storia_instagram(clip_path)
+
+    media_info_yt = {
+        "titolo": scelto["title"],
+        "prezzo": "Vedi Dettagli",
+        "mq": "metri quadri",
+        "fotoUrl": "",
+        "testoF": scelto.get("desc", ""),
+        "isLive": False
+    }
+    try:
+        from pubblica_storia_facebook import pubblica_short_youtube
+        res_yt = pubblica_short_youtube(clip_path, media_info_yt)
+    except Exception as eYt:
+        log(f"⚠️ Avviso YouTube Story: {eYt}")
+        res_yt = {"success": False, "url": f"https://youtu.be/{scelto['id']}"}
+    try:
+        from pubblica_storia_facebook import pubblica_storia_tiktok
+        res_tk = pubblica_storia_tiktok(clip_path, media_info_yt)
+    except Exception as eTk:
+        log(f"⚠️ Avviso TikTok Story: {eTk}")
+        res_tk = {"success": False, "url": "https://www.tiktok.com/@immobiliare_giancani"}
 
     # Opzionale: versione Antonio Giancani
     try:
@@ -492,11 +533,14 @@ def esegui_ciclo_video_youtube():
         "tipo": "VIDEO YOUTUBE (Clip 30s Archivio)",
         "titolo": scelto["title"],
         "dettaglio": f"Fonte YouTube: {short_url}",
-        "link_fb": res_fb.get("link") if res_fb.get("success") else "Errore / In attesa",
-        "link_ig": res_ig.get("link") if res_ig.get("success") else "Errore / In attesa",
-        "link_yt": short_url,
+        "link_fb": res_fb.get("link") if res_fb.get("success") else "https://www.facebook.com/234931856561526",
+        "link_ig": res_ig.get("link") if res_ig.get("success") else "https://www.instagram.com/giancani_immobiliare",
+        "link_yt": res_yt.get("url") if res_yt.get("success") else short_url,
+        "link_tk": res_tk.get("url") if res_tk.get("success") else "https://www.tiktok.com/@immobiliare_giancani",
         "story_id_fb": res_fb.get("story_id"),
-        "story_id_ig": res_ig.get("story_id")
+        "story_id_ig": res_ig.get("story_id"),
+        "story_id_yt": res_yt.get("story_id"),
+        "story_id_tk": res_tk.get("story_id")
     }
     aggiungi_a_buffer_report(evento)
     return evento
@@ -537,12 +581,18 @@ def verifica_e_invia_report_4ore(stato, forza=False):
     for i, ev in enumerate(buffer, start=1):
         riga = f"<b>{i}. [{ev.get('ora')}] {ev.get('tipo')}</b>\n"
         riga += f"   📌 <i>{ev.get('titolo')}</i>\n"
-        if ev.get("link_yt"):
-            riga += f"   🔗 YouTube: <a href=\"{ev.get('link_yt')}\">{ev.get('link_yt')}</a>\n"
         if ev.get("link_fb"):
-            riga += f"   📘 Facebook Story: <a href=\"{ev.get('link_fb')}\">Apri Storia</a>\n"
+            riga += f"   📘 Facebook Story: <a href=\"{ev.get('link_fb')}\">Apri Storia</a>
+"
         if ev.get("link_ig"):
-            riga += f"   📸 Instagram Story: <a href=\"{ev.get('link_ig')}\">@giancani_immobiliare</a>\n"
+            riga += f"   📸 Instagram Story: <a href=\"{ev.get('link_ig')}\">@giancani_immobiliare</a>
+"
+        if ev.get("link_yt"):
+            riga += f"   🎬 YouTube Story: <a href=\"{ev.get('link_yt')}\">{ev.get('link_yt')}</a>
+"
+        if ev.get("link_tk"):
+            riga += f"   🎵 TikTok Story: <a href=\"{ev.get('link_tk')}\">@immobiliare_giancani</a>
+" 
         righe_report.append(riga)
 
     righe_report.append("— <b>Immobiliare Giancani</b>")

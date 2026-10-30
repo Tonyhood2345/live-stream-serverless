@@ -43,7 +43,7 @@ def genera_didascalia_tiktok(titolo, mq, prezzo, testo_colonna_f, is_live=False,
     Formatta la didascalia nativa per TikTok (<2200 caratteri)
     rispettando la Colonna F e il Personal Branding di Immobiliare Giancani.
     """
-    prefix = "🔴 LIVE ORA! " if is_live else "🏡 "
+    prefix = "🔴 LIVE ORA! " if is_live else "🎬 STORIA TIKTOK: "
     titolo_clean = (titolo or "Opportunità Immobiliare").strip()
     mq_clean = str(mq or "").replace("mq", "metri quadri").strip()
     prezzo_clean = str(prezzo or "").strip()
@@ -56,7 +56,7 @@ def genera_didascalia_tiktok(titolo, mq, prezzo, testo_colonna_f, is_live=False,
         info_line.append(f"💰 {prezzo_clean}")
     info_str = " | ".join(info_line)
 
-    default_hashtags = "#ImmobiliareGiancani #CaseInVendita #Favara #Agrigento #DarIA #AntonioGiancani #RealEstateSicilia #Immobiliare"
+    default_hashtags = "#ImmobiliareGiancani #TikTokStories #StorieTikTok #CaseInVendita #Favara #Agrigento #DarIA #AntonioGiancani #RealEstateSicilia #Immobiliare"
     tags = hashtags_custom if hashtags_custom else default_hashtags
 
     caption = (

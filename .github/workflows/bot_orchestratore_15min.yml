@@ -51,9 +51,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg fonts-dejavu-core fonts-liberation fonts-freefont-ttf
 
-      - name: 📦 Installa Dipendenze Python
+      - name: 📦 Installa Dipendenze Python & Browser Chromium Playwright
         run: |
-          pip install --no-cache-dir requests pillow yt-dlp edge-tts google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib httplib2 numpy urllib3
+          pip install --no-cache-dir requests pillow yt-dlp edge-tts google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib httplib2 numpy urllib3 playwright
+          playwright install --with-deps chromium
 
       - name: 🎬 Esegui Ciclo Orchestratore 15 Minuti
         env:
@@ -82,5 +83,5 @@ jobs:
         run: |
           git config --global user.name "Giancani Orchestrator Bot"
           git config --global user.email "bot@immobiliaregiancani.it"
-          git add stato_orchestratore_15min.json storico_immagini_pubblicate.json registro_video_pubblicati.json registro_video_pubblicati_orari.json buffer_report_4ore.json catalogo_youtube_cache.json live_stream_appscript/*.json 2>/dev/null || true
+          git add stato_orchestratore_15min.json storico_immagini_pubblicate.json registro_video_pubblicati.json registro_video_pubblicati_orari.json buffer_report_4ore.json catalogo_youtube_cache.json assets/catalogo_immobili_cache.json output_storie/*.png live_stream_appscript/*.json 2>/dev/null || true
           git diff --staged --quiet || (git commit -m "chore: Aggiornato stato orchestratore 15min e report buffer [skip ci]" && git pull --rebase origin main && git push origin main)

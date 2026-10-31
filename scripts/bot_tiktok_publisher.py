@@ -196,20 +196,47 @@ def seleziona_contenuto_da_colonna_f(story_id=None):
     }
 
 
-def trova_o_genera_video(args):
-    """Trova il file video MP4 da pubblicare."""
+def trova_o_genera_video(args, dati=None):
+    """Trova il file video MP4 da pubblicare oppure lo genera all'istante (1080x1920 9:16)."""
     if args.video and os.path.exists(args.video):
         return args.video
 
     # Cerca nei file video appena generati
     mp4_files = sorted(glob.glob(os.path.join(OUTPUT_DIR, "*.mp4")), key=os.path.getmtime, reverse=True)
-    if mp4_files:
-        return mp4_files[0]
+    for mp in mp4_files:
+        if os.path.exists(mp) and os.path.getsize(mp) > 100000:
+            return mp
 
     # Cerca in altre cartelle note del repository
     candidati = glob.glob(os.path.join(BASE_DIR, "video_*", "*.mp4"))
-    if candidati:
-        return candidati[0]
+    for c in candidati:
+        if os.path.exists(c) and os.path.getsize(c) > 100000:
+            return c
+
+    # Se nessun video pronto è disponibile, GENERAZIONE ISTANTANEA (15s 1080x1920) conforme a Colonna F
+    if not dati:
+        dati = seleziona_contenuto_da_colonna_f(args.story_id if hasattr(args, 'story_id') else None)
+
+    logger.info("🎬 Nessun video pre-esistente trovato. Generazione immediata video storia 9:16 per TikTok...")
+    try:
+        sys.path.insert(0, BASE_DIR)
+        from pubblica_storia_facebook import genera_video_da_clip_o_foto
+        media_info = {
+            "titolo": dati.get("titolo", "Opportunità Immobiliare"),
+            "mq": dati.get("mq", "metri quadri"),
+            "prezzo": dati.get("prezzo", "Trattativa Riservata"),
+            "testoF": dati.get("testoF", ""),
+            "fotoUrl": dati.get("fotoUrl", ""),
+            "isLive": False,
+            "story_index": int(time.time() / 900)
+        }
+        v_out = os.path.join(OUTPUT_DIR, f"tiktok_story_gen_{int(time.time())}.mp4")
+        gen_path = genera_video_da_clip_o_foto(media_info, output_video_path=v_out)
+        if gen_path and os.path.exists(gen_path) and os.path.getsize(gen_path) > 50000:
+            logger.info(f"✅ Video storia generato con successo: {gen_path}")
+            return gen_path
+    except Exception as e_gen:
+        logger.error(f"Errore generazione al volo video TikTok: {e_gen}")
 
     return None
 
@@ -419,7 +446,7 @@ def main():
     logger.info(f"Didascalia preparata (Colonna F):\n{caption[:250]}...\n— Immobiliare Giancani")
 
     # 2. Ricerca del file video
-    video_path = trova_o_genera_video(args)
+    video_path = trova_o_genera_video(args, dati)
     if not video_path:
         logger.error("Nessun video MP4 disponibile per la pubblicazione su TikTok.")
         invia_telegram(

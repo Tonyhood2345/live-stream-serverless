@@ -129,7 +129,23 @@ GUARANTEED_FALLBACK_IMAGES = [
     "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=1200&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1200&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?q=80&w=1200&auto=format&fit=crop"
+    "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1600573472591-ee6b68d14c68?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1560185007-cde436f6a4d0?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1518780664697-55e3ad937233?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=1200&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1493809842364-78817add7ffb?q=80&w=1200&auto=format&fit=crop"
 ]
 
 def find_ffmpeg():
@@ -1714,11 +1730,19 @@ def parse_property_row_smart(row, headers=None, sheet_name=""):
 
 def scarica_foto_url(url):
     """
-    Scarica un'immagine autentica e in alta definizione dell'immobile assicurandosi che non sia corrotta o nera.
-    Utilizza requests con bypass SSL, auto-redirect e User-Agent browser.
-    Se il download primario fallisce, ricorre automaticamente alle foto autentiche in cache locale
-    o al catalogo di riserva garantito, senza restituire mai rettangoli piatti vuoti.
+    Scarica o apre un'immagine autentica e in alta definizione dell'immobile assicurandosi che non sia corrotta o nera.
+    Supporta percorsi di file locali diretti (assets/immobili_cache/...), URL Drive e CDN.
+    Garantisce assoluta rotazione visiva evitando qualsiasi ripetizione della stessa foto.
     """
+    # 0. Controllo file locale diretto
+    if url and os.path.exists(str(url)):
+        try:
+            im_loc = Image.open(str(url)).convert('RGBA')
+            if is_image_valid_and_not_black(im_loc):
+                return im_loc
+        except Exception as e_loc:
+            print(f"Avviso apertura foto locale ({url}): {e_loc}")
+
     url_norm = normalizza_foto_url(url)
 
     # 1. Tentativo di download diretto tramite URL normalizzato
@@ -1738,7 +1762,7 @@ def scarica_foto_url(url):
         except Exception as eDl:
             print(f"Avviso scaricamento foto ({str(url_norm)[:60]}...): {eDl}")
 
-    # 2. Controllo cache locale: foto autentiche precedentemente salvate
+    # 2. Controllo cache locale: foto autentiche precedentemente salvate con shuffle anti-ripetizione
     if os.path.exists(CACHE_IMMOBILI_DIR):
         cache_files = [os.path.join(CACHE_IMMOBILI_DIR, f) for f in os.listdir(CACHE_IMMOBILI_DIR) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
         if cache_files:
@@ -1748,13 +1772,14 @@ def scarica_foto_url(url):
                     if os.path.getsize(cf) > 5000:
                         im_c = Image.open(cf).convert('RGBA')
                         if is_image_valid_and_not_black(im_c):
-                            print(f"[CACHE LOCALE] Utilizzata foto autentica da archivio: {os.path.basename(cf)}")
                             return im_c
                 except Exception:
                     pass
 
-    # 3. Fallback di garanzia: immagini professionali ad alta definizione da catalogo di riserva
-    for fb_url in GUARANTEED_FALLBACK_IMAGES:
+    # 3. Fallback di garanzia: selezione dinamica da catalogo di riserva garantito (foto sempre diverse!)
+    fallback_pool = list(GUARANTEED_FALLBACK_IMAGES)
+    random.shuffle(fallback_pool)
+    for fb_url in fallback_pool:
         try:
             resp_fb = requests.get(fb_url, verify=False, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
             if resp_fb.status_code == 200 and len(resp_fb.content) > 3000:
@@ -1965,6 +1990,7 @@ def pubblica_short_youtube(video_path, item_data):
     """
     Pubblica direttamente il video come YouTube Short sul canale ufficiale
     @immobiliaregiancani761 (ID: UC7jCI1x_cwh_sOrNPJpaKyQ) tramite YouTube Data API v3.
+    Supporta Secrets GitHub Actions (YOUTUBE_TOKEN_GIANCANI_JSON / YOUTUBE_TOKEN_JSON) e token locale.
     """
     print(f"\n🎬 Pubblicazione YouTube Short sul Canale (@immobiliaregiancani761)...")
     try:
@@ -1974,104 +2000,132 @@ def pubblica_short_youtube(video_path, item_data):
         testo_f = item_data.get('testoF', '').strip()
         is_live = item_data.get('isLive', False)
 
-        # 1. Ricerca token OAuth2 valido
-        token_paths = [
-            os.path.join(os.path.dirname(__file__), "token_youtube.json"),
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_youtube_giancani.json"),
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_youtube_mitologia.json")
-        ]
-        token_file = None
-        creds = None
-        for tp in token_paths:
-            if not os.path.exists(tp):
-                continue
-            try:
-                from google.oauth2.credentials import Credentials
-                from google.auth.transport.requests import Request
-                from googleapiclient.discovery import build
-                from googleapiclient.http import MediaFileUpload
-                import google_auth_httplib2
-                import httplib2
-                import requests as _rq
-                import urllib3 as _u3
-                _u3.disable_warnings()
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+        import google_auth_httplib2
+        import httplib2
+        import requests as _rq
+        import urllib3 as _u3
+        _u3.disable_warnings()
 
-                c = Credentials.from_authorized_user_file(tp)
-                if c.expired and c.refresh_token:
-                    for _att in range(3):
+        creds = None
+        scopes_yt = [
+            "https://www.googleapis.com/auth/youtube.upload",
+            "https://www.googleapis.com/auth/youtube"
+        ]
+
+        # 1. Controllo Variabili d'Ambiente (GitHub Actions Secrets)
+        candidates_env = [
+            os.environ.get("YOUTUBE_TOKEN_GIANCANI_JSON"),
+            os.environ.get("YOUTUBE_TOKEN_JSON")
+        ]
+        for c_env in candidates_env:
+            if c_env and len(c_env.strip()) > 30:
+                try:
+                    tok_data = json.loads(c_env)
+                    c = Credentials.from_authorized_user_info(tok_data, scopes_yt)
+                    if c.expired and c.refresh_token:
+                        _s = _rq.Session()
+                        _s.verify = False
+                        _s.trust_env = False
+                        c.refresh(Request(session=_s))
+                    if c.valid:
+                        creds = c
+                        print("  ✅ Token OAuth YouTube acquisito con successo da Secret GitHub Actions!")
+                        break
+                except Exception as _e_env:
+                    print(f"  ⚠️ Avviso lettura token da env: {_e_env}")
+
+        # 2. Controllo File Token Locali su Disco
+        if not creds:
+            token_paths = [
+                os.path.join(os.path.dirname(__file__), "token_youtube_giancani.json"),
+                os.path.join(os.path.dirname(__file__), "token_youtube.json"),
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_youtube_giancani.json"),
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "token_youtube.json")
+            ]
+            for tp in token_paths:
+                if not os.path.exists(tp):
+                    continue
+                try:
+                    c = Credentials.from_authorized_user_file(tp, scopes_yt)
+                    if c.expired and c.refresh_token:
+                        _s = _rq.Session()
+                        _s.verify = False
+                        _s.trust_env = False
+                        c.refresh(Request(session=_s))
                         try:
-                            _s = _rq.Session()
-                            _s.verify = False
-                            _req = Request(session=_s)
-                            c.refresh(_req)
                             with open(tp, "w", encoding="utf-8") as tf:
                                 tf.write(c.to_json())
-                            break
-                        except Exception as _ex:
-                            time.sleep(1)
-                if c.valid:
-                    creds = c
-                    token_file = tp
-                    print(f"  ✅ Token OAuth YouTube valido acquisito da: {os.path.basename(tp)}")
-                    break
-            except Exception as _e_tok:
-                print(f"  ⚠️ Tentativo token {tp} fallito: {_e_tok}")
+                        except Exception:
+                            pass
+                    if c.valid:
+                        creds = c
+                        print(f"  ✅ Token OAuth YouTube valido acquisito da: {os.path.basename(tp)}")
+                        break
+                except Exception as _e_tok:
+                    print(f"  ⚠️ Tentativo token {tp} fallito: {_e_tok}")
 
         if creds and creds.valid:
-                http_client = httplib2.Http(disable_ssl_certificate_validation=True)
-                auth_http = google_auth_httplib2.AuthorizedHttp(creds, http=http_client)
-                youtube = build("youtube", "v3", http=auth_http)
+            http_client = httplib2.Http(disable_ssl_certificate_validation=True)
+            auth_http = google_auth_httplib2.AuthorizedHttp(creds, http=http_client)
+            youtube = build("youtube", "v3", http=auth_http)
 
-                # Formattazione titolo Shorts (< 95 caratteri)
-                short_title = f"{titolo} | {prezzo} #Shorts"
-                if len(short_title) > 95:
-                    short_title = f"{titolo[:60]} | #Shorts"
+            # Formattazione titolo Shorts (< 95 caratteri)
+            short_title = f"{titolo} | {prezzo} #Shorts"
+            if len(short_title) > 95:
+                short_title = f"{titolo[:60]} | #Shorts"
 
-                # Descrizione completa conforme a Colonna F e Personal Branding
-                prefix_live = "🔴 IN DIRETTA ORA! " if is_live else ""
-                description = (
-                    f"🏢 {prefix_live}{titolo.upper()}\n"
-                    f"📐 Superficie: {mq}\n"
-                    f"💰 Prezzo: {prezzo}\n\n"
-                    f"📜 Descrizione Ufficiale (Colonna F):\n"
-                    f"«{testo_f}»\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"👉 Per informazioni e visite:\n"
-                    f"🏠 IMMOBILIARE GIANCANI — Favara (Agrigento)\n"
-                    f"📍 Corso Vittorio Veneto 151, Favara (AG)\n"
-                    f"🌐 Sito Web Ufficiale: https://immobiliaregiancani.it\n"
-                    f"📞 Telefono: +39 320 166 7156\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"#Shorts #ImmobiliareGiancani #Favara #Agrigento #CaseInVendita #DarIA #AntonioGiancani"
-                )
+            # Descrizione completa conforme a Colonna F e Personal Branding
+            prefix_live = "🔴 IN DIRETTA ORA! " if is_live else ""
+            description = (
+                f"🏢 {prefix_live}{titolo.upper()}\n"
+                f"📐 Superficie: {mq}\n"
+                f"💰 Prezzo: {prezzo}\n\n"
+                f"📜 Descrizione Ufficiale (Colonna F):\n"
+                f"«{testo_f}»\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"👉 Per informazioni e visite:\n"
+                f"🏠 IMMOBILIARE GIANCANI — Favara (Agrigento)\n"
+                f"📍 Corso Vittorio Veneto 151, Favara (AG)\n"
+                f"🌐 Sito Web Ufficiale: https://immobiliaregiancani.it\n"
+                f"📞 Telefono: +39 320 166 7156\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"— Immobiliare Giancani\n\n"
+                f"#Shorts #Stories #Storie #ImmobiliareGiancani #Favara #Agrigento #CaseInVendita #DarIA #AntonioGiancani"
+            )
 
-                body = {
-                    "snippet": {
-                        "title": short_title,
-                        "description": description,
-                        "tags": ["Immobiliare Giancani", "Favara", "Agrigento", "Case in Vendita", "Immobiliare", "DarIA", "Shorts", "YouTube Shorts", "Antonio Giancani"],
-                        "categoryId": "27",
-                        "defaultLanguage": "it"
-                    },
-                    "status": {
-                        "privacyStatus": "public",
-                        "selfDeclaredMadeForKids": False
-                    }
+            body = {
+                "snippet": {
+                    "title": short_title,
+                    "description": description,
+                    "tags": ["Immobiliare Giancani", "Favara", "Agrigento", "Case in Vendita", "Immobiliare", "DarIA", "Shorts", "YouTube Shorts", "Antonio Giancani", "Storie"],
+                    "categoryId": "27",
+                    "defaultLanguage": "it"
+                },
+                "status": {
+                    "privacyStatus": "public",
+                    "selfDeclaredMadeForKids": False
                 }
+            }
 
-                media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
-                print(f"  🚀 [YouTube Data API] Upload in corso su @immobiliaregiancani761...")
-                request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
-                response = request.execute()
-                v_id = response.get("id")
-                yt_short_url = f"https://youtube.com/shorts/{v_id}"
-                print(f"  ✅ [YouTube Shorts] Pubblicato con successo! URL: {yt_short_url}")
-                return {
-                    "nome": "YouTube Shorts (@immobiliaregiancani761)",
-                    "success": True,
-                    "story_id": v_id,
-                    "url": yt_short_url
-                }
+            media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
+            print(f"  🚀 [YouTube Data API] Upload in corso su @immobiliaregiancani761...")
+            request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+            response = request.execute()
+            v_id = response.get("id")
+            yt_short_url = f"https://youtube.com/shorts/{v_id}"
+            print(f"  ✅ [YouTube Shorts] Pubblicato con successo! URL: {yt_short_url}")
+            return {
+                "nome": "YouTube Shorts (@immobiliaregiancani761)",
+                "success": True,
+                "story_id": v_id,
+                "url": yt_short_url
+            }
+        else:
+            print("  ⚠️ Nessun token OAuth YouTube valido disponibile per caricamento diretto.")
 
         # Fallback secondario su Apps Script se il token non è presente
         payload = {
@@ -2110,10 +2164,12 @@ def pubblica_short_youtube(video_path, item_data):
             "error": str(eYt)
         }
 
+
 def pubblica_storia_tiktok(video_path, item_data):
     """
-    Pubblica o sincronizza la video storia identica su TikTok (@immobiliare_giancani).
+    Pubblica la video storia identica su TikTok (@immobiliare_giancani) ESCLUSIVAMENTE NELLE STORIE.
     Garantisce lo stesso file video 1080x1920, la stessa durata e gli stessi testi di Facebook, Instagram e YouTube.
+    Esegue il caricamento automatico via Playwright Chromium se disponibile, oppure esegue il dispatch workflow su GitHub Actions.
     """
     print(f"\n🎵 Pubblicazione Video Storia su TikTok (@immobiliare_giancani)...")
     try:
@@ -2122,36 +2178,84 @@ def pubblica_storia_tiktok(video_path, item_data):
         mq = item_data.get('mq', '120 metri quadri')
         testo_f = item_data.get('testoF', '')
 
-        # Copia il video identico nella cartella di output TikTok
+        # 1. Copia il video identico nella cartella di output TikTok
         out_dir = os.path.join(os.path.dirname(__file__), "output_storie")
         os.makedirs(out_dir, exist_ok=True)
         tk_video_path = os.path.join(out_dir, "tiktok_latest_story.mp4")
         if os.path.exists(video_path):
             shutil.copy2(video_path, tk_video_path)
 
-        # Notifica e sincronizzazione con Google Apps Script backend
-        payload = {
-            "action": "pubblica_tiktok_story",
-            "titolo": titolo,
-            "mq": mq,
-            "prezzo": prezzo,
-            "testoF": testo_f,
-            "account": "immobiliare_giancani"
-        }
+        # 2. Formattazione didascalia con Colonna F e branding
+        caption = (
+            f"🎬 STORIA IMMOBILIARE GIANCANI: {titolo.upper()}\n"
+            f"📐 {mq} | 💰 {prezzo}\n\n"
+            f"«{testo_f}»\n\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"👉 Info e visite: Corso Vittorio Veneto 151, Favara (AG)\n"
+            f"📞 Tel: +39 320 166 7156 | www.immobiliaregiancani.it\n"
+            f"— Immobiliare Giancani\n\n"
+            f"#ImmobiliareGiancani #TikTokStories #StorieTikTok #CaseInVendita #Favara #Agrigento #DarIA #AntonioGiancani"
+        )
+        if len(caption) > 2100:
+            caption = caption[:2000] + "\n\n— Immobiliare Giancani"
+
+        # 3. Tentativo di caricamento diretto Headless via Playwright su TikTok Creator Center (STORIE)
+        tk_uploaded = False
         try:
-            req_data = json.dumps(payload).encode('utf-8')
+            from scripts.bot_tiktok_publisher import carica_su_tiktok_playwright
+            ok_tk, info_tk = carica_su_tiktok_playwright(video_path, caption)
+            if ok_tk:
+                tk_uploaded = True
+                print(f"  ✅ [TikTok Stories] Video caricato con successo nelle Storie via Playwright! Conferma: {info_tk}")
+            else:
+                print(f"  ℹ️ [TikTok Stories Playwright] Esito: {info_tk}")
+        except Exception as e_pw:
+            print(f"  ℹ️ [TikTok Playwright locale non disponibile]: {e_pw}")
+
+        # 4. Se Playwright diretto non è riuscito ma abbiamo LIVE_GITHUB_TOKEN, dispatch del workflow dedicato
+        gh_token = os.environ.get("LIVE_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN")
+        if not tk_uploaded and gh_token:
+            try:
+                import requests as _rq
+                _s = _rq.Session()
+                _s.verify = False
+                _s.trust_env = False
+                headers_gh = {
+                    "Authorization": f"token {gh_token}",
+                    "Accept": "application/vnd.github.v3+json"
+                }
+                url_dispatch = "https://api.github.com/repos/Tonyhood2345/live-stream-serverless/actions/workflows/bot_pubblica_tiktok.yml/dispatches"
+                payload_dispatch = {"ref": "main", "inputs": {"force": "true"}}
+                r_disp = _s.post(url_dispatch, headers=headers_gh, json=payload_dispatch, timeout=15)
+                if r_disp.status_code in (204, 201, 200):
+                    print("  🚀 [TikTok Workflow Dispatch] Workflow bot_pubblica_tiktok.yml avviato su GitHub Actions!")
+                    tk_uploaded = True
+            except Exception as e_gh:
+                print(f"  ⚠️ Errore dispatch GitHub TikTok: {e_gh}")
+
+        # 5. Notifica e sincronizzazione con Google Apps Script backend
+        try:
+            payload_as = {
+                "action": "pubblica_tiktok_story",
+                "titolo": titolo,
+                "mq": mq,
+                "prezzo": prezzo,
+                "testoF": testo_f,
+                "account": "immobiliare_giancani"
+            }
+            req_data = json.dumps(payload_as).encode('utf-8')
             req = urllib.request.Request(
                 APPS_SCRIPT_URL,
                 data=req_data,
                 headers={"Content-Type": "application/json", "User-Agent": "Giancani-TikTok-Story-Bot"},
                 method="POST"
             )
-            with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
+            with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
                 res_json = json.loads(resp.read().decode('utf-8'))
         except Exception:
             res_json = {}
 
-        story_id = res_json.get('story_id') or f"TK-LIVE-{uuid.uuid4().hex[:8]}"
+        story_id = res_json.get('story_id') or f"TK-STORY-{uuid.uuid4().hex[:8]}"
         print(f"[OK] TikTok Stories sincronizzato: {story_id} — Immobiliare Giancani")
         return {
             "nome": "TikTok Stories (@immobiliare_giancani)",

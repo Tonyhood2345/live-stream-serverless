@@ -105,7 +105,7 @@ STILI_GRAFICI_TABELLA = [
     {
         "id": "luxury_glass",
         "nome": "Luxury Glassmorphism",
-        "caratteristica": "Card effetto vetro smerigliato (glassmorphism), bordi oro satinato e visualizzazione full photo con gradiente scuro."
+        "caratteristica": "Card effetto vetro smerigliato (glassmorphism), bordi oro satinato (#D4AF37) e visualizzazione full photo con gradiente scuro."
     },
     {
         "id": "editorial",
@@ -115,17 +115,37 @@ STILI_GRAFICI_TABELLA = [
     {
         "id": "gabetti_diagonal",
         "nome": "Gabetti Diagonal Cut",
-        "caratteristica": "Taglio diagonale dinamico con accento cromatico a forte contrasto."
+        "caratteristica": "Taglio diagonale dinamico con accento cromatico a forte contrasto e nastro geometrico."
     },
     {
         "id": "capellupo_sidebar",
         "nome": "Capellupo Sidebar",
-        "caratteristica": "Sidebar laterale con icone tecniche (camere, bagni, metri quadri)."
+        "caratteristica": "Sidebar laterale con icone tecniche vettoriali (camere, bagni, metri quadri per esteso)."
     },
     {
         "id": "marketing_banner",
-        "nome": "Marketing Banner",
-        "caratteristica": "Banner d'impatto con badge prezzo ribassato e call to action diretta."
+        "nome": "Marketing Banner 3D",
+        "caratteristica": "Banner d'impatto con badge prezzo ribassato e call to action diretta in basso."
+    },
+    {
+        "id": "minimal_clean",
+        "nome": "Minimal Clean Moderno",
+        "caratteristica": "Sfondo chiaro e luminoso, contrasti eleganti, tipografia essenziale e focus totale sulla foto."
+    },
+    {
+        "id": "cb_curved_wave",
+        "nome": "Coldwell Banker Curved Wave",
+        "caratteristica": "Onda sinusoidale fluida in basso, contrasto blu notte e azzurro, card panoramica moderna."
+    },
+    {
+        "id": "twilight_penthouse",
+        "nome": "Twilight Penthouse Luxury",
+        "caratteristica": "Atmosfera serale ed esclusiva, tonalità blu notte e oro caldo, illuminazione architettonica."
+    },
+    {
+        "id": "mediterranean_coastal",
+        "nome": "Mediterranean Coastal",
+        "caratteristica": "Stile mediterraneo con accenti sabbia, bianco caldo e azzurro costa siciliana."
     }
 ]
 

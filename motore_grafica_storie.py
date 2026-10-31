@@ -53,26 +53,26 @@ os.makedirs(SCRATCH_DIR, exist_ok=True)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 PALETTE_GIORNALIERE = {
-    0: {  # Lunedì
-        "id": "navy_blue",
-        "nome": "Navy Blue & Crisp White",
-        "giorno": "Lunedì",
-        "primary_dark": (10, 25, 47, 255),       # #0A192F
-        "primary_mid": (30, 58, 138, 255),       # #1E3A8A
-        "primary_light": (14, 165, 233, 255),    # #0EA5E9
-        "accent": (245, 158, 11, 255),           # #F59E0B Oro caldo
+    0: {  # Lunedì / Palette Attiva
+        "id": "warm_yellow",
+        "nome": "Giallo Solare & Slate Prestige",
+        "giorno": "Giallo Solare",
+        "primary_dark": (245, 190, 11, 255),       # #F5BE0B Giallo caldo solare intenso
+        "primary_mid": (234, 165, 8, 255),        # #EAA508 Ambra dorata
+        "primary_light": (254, 240, 138, 255),    # #FEF08A Crema luminoso
+        "accent": (180, 83, 9, 255),              # #B45309 Ambra di contrasto
         "accent_light": (254, 243, 199, 255),
-        "badge_bg": (245, 158, 11, 240),
-        "badge_txt": (15, 23, 42, 255),
-        "footer_bg": (10, 25, 47, 255),
-        "footer_diag": (15, 35, 65, 255),
-        "card_bg": (15, 23, 42, 220),
-        "border_color": (30, 58, 138, 180),
-        "text_primary": (255, 255, 255, 255),
-        "text_secondary": (203, 213, 225, 255),
-        "btn_cta_bg": (220, 38, 38, 255),        # Rosso vivo per CTA o accento
-        "bottom_bar_bg": (255, 255, 255, 255),
-        "bottom_bar_txt": (15, 23, 42, 255)
+        "badge_bg": (24, 24, 27, 245),            # Nero grafite elegante
+        "badge_txt": (250, 204, 21, 255),         # Giallo acceso
+        "footer_bg": (245, 190, 11, 255),         # Fondo giallo pieno
+        "footer_diag": (234, 165, 8, 255),        # Sfumatura gialla
+        "card_bg": (255, 255, 255, 245),          # Card bianca nitida
+        "border_color": (217, 119, 6, 200),
+        "text_primary": (17, 24, 39, 255),        # Nero per contrasto su giallo
+        "text_secondary": (55, 65, 81, 255),      # Grigio scuro
+        "btn_cta_bg": (17, 24, 39, 255),          # Bottone scuro di risalto
+        "bottom_bar_bg": (245, 190, 11, 255),     # Barra inferiore gialla
+        "bottom_bar_txt": (17, 24, 39, 255)
     },
     1: {  # Martedì
         "id": "luxury_gold",
@@ -202,20 +202,34 @@ PALETTE_GIORNALIERE = {
     }
 }
 
-def get_palette_del_giorno(day_of_week=None):
+def get_palette_per_storia(slot_idx=None):
     """
-    Restituisce la palette cromatica associata in modo sistematico al giorno corrente
-    (oppure a day_of_week 0..6 se specificato).
+    Restituisce una palette cromatica SEMPRE DIVERSA ad OGNI STORIA (rotazione continua dei 7 colori).
+    Utilizza un salto a passo 3 per massimizzare il contrasto cromatico tra una storia e la successiva:
+    es. Giallo Solare -> Cyan Tech -> Luxury Gold -> Terracotta -> Smeraldo -> Bordeaux -> Indigo.
     """
-    if day_of_week is None:
-        try:
-            from datetime import datetime, timezone, timedelta
-            rome_tz = timezone(timedelta(hours=2))
-            day_of_week = datetime.now(rome_tz).weekday()
-        except Exception:
-            day_of_week = datetime.datetime.now().weekday()
-    day_idx = int(day_of_week) % 7
-    return PALETTE_GIORNALIERE.get(day_idx, PALETTE_GIORNALIERE[0])
+    if slot_idx is None:
+        slot_idx = int(time.time() / 1800)
+    pal_idx = (int(slot_idx) * 3 + 1) % len(PALETTE_GIORNALIERE)
+    return PALETTE_GIORNALIERE.get(pal_idx, PALETTE_GIORNALIERE[0])
+
+def get_palette_del_giorno(day_of_week=None, slot_idx=None):
+    """
+    Restituisce la palette cromatica associata.
+    Se day_of_week è specificato manualmente (stringa o intero), rispetta la preferenza.
+    Se None o automatico, ruota la palette ad OGNI SINGOLA STORIA per garantire colore sempre diverso.
+    """
+    if str(day_of_week).lower() in ["giallo", "yellow", "fondo_giallo", "warm_yellow", "sole"]:
+        return PALETTE_GIORNALIERE[0]
+    if slot_idx is not None:
+        return get_palette_per_storia(slot_idx)
+    if day_of_week is None or day_of_week == "auto":
+        return get_palette_per_storia()
+    try:
+        day_idx = int(day_of_week) % 7
+        return PALETTE_GIORNALIERE.get(day_idx, PALETTE_GIORNALIERE[0])
+    except Exception:
+        return get_palette_per_storia()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🗓️ 1.1 ROTAZIONE SISTEMATICA SETTIMANALE DELLE PALETTE CROMATICHE DI CONTESTO
@@ -658,28 +672,54 @@ def get_clean_property_photo(media_info, target_size=(1080, 1920)):
     im = media_info.get("fotoImage")
     if not im and media_info.get("fotoUrl"):
         url = str(media_info.get("fotoUrl"))
-        if url.startswith("http"):
+        if os.path.exists(url):
             try:
-                r = requests.get(url, verify=False, timeout=10)
+                im = Image.open(url).convert("RGB")
+            except Exception:
+                pass
+        elif url.startswith("http"):
+            try:
+                r = requests.get(url, verify=False, timeout=12)
                 if r.status_code == 200:
                     im = Image.open(io.BytesIO(r.content)).convert("RGB")
             except Exception:
                 pass
+
     if not im:
-        candidati = [
-            os.path.join(ASSETS_DIR, "demo_salone_moderno.jpg"),
-            os.path.join(ASSETS_DIR, "demo_villa_piscina.jpg"),
-            os.path.join(PROJECT_DIR, "diretta_live_project", "assets", "demo_salone_moderno.jpg"),
-            os.path.join(PROJECT_DIR, "diretta_live_project", "assets", "demo_villa_piscina.jpg"),
-            os.path.join(ASSETS_DIR, "immobili_cache", "foto_01_terreno.jpg")
+        # Ricerca dinamica in assets/immobili_cache con rotazione/shuffle anti-ripetizione
+        cache_dir = os.path.join(ASSETS_DIR, "immobili_cache")
+        if os.path.exists(cache_dir):
+            c_files = [os.path.join(cache_dir, f) for f in os.listdir(cache_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+            if c_files:
+                import random
+                random.shuffle(c_files)
+                for cf in c_files:
+                    try:
+                        im = Image.open(cf).convert("RGB")
+                        break
+                    except Exception:
+                        pass
+
+    if not im:
+        # Fallback online rotativo garantito
+        fallback_urls = [
+            "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=1200&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1200&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?q=80&w=1200&auto=format&fit=crop",
+            "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1200&auto=format&fit=crop"
         ]
-        for c in candidati:
-            if os.path.exists(c):
-                try:
-                    im = Image.open(c).convert("RGB")
+        import random
+        random.shuffle(fallback_urls)
+        for fb in fallback_urls:
+            try:
+                r = requests.get(fb, verify=False, timeout=10)
+                if r.status_code == 200:
+                    im = Image.open(io.BytesIO(r.content)).convert("RGB")
                     break
-                except Exception:
-                    pass
+            except Exception:
+                pass
+
     if not im:
         im = Image.new("RGB", (W, H), (140, 120, 100))
         d = ImageDraw.Draw(im)
@@ -1019,6 +1059,7 @@ def crea_story_splitscreen_9_16(media_info, palette=None, output_path=None):
     mq = formatta_metri_quadri(media_info.get('mq', '135'))
 
     font_tit = get_font(30, bold=True, font_type="sans")
+    font_zn = get_font(20, bold=False, font_type="sans")
     draw_fitted_text(draw, titolo, (box_x + 35, info_y, box_w - 70, 42), max_font_size=30, min_font_size=18, bold=True, fill=palette["primary_dark"][:3])
     draw.text((box_x + 35, info_y + 45), f"📍 {zona}", font=font_zn, fill=palette["primary_mid"][:3])
 
@@ -3438,12 +3479,13 @@ def crea_story_cb_curved_wave_9_16(media_info, palette=None, output_path=None):
     photo = get_clean_property_photo(media_info, (W, H))
     canvas = Image.new("RGBA", (W, H), (255, 255, 255, 255))
 
-    # 1. Onda superiore blu in alto a destra
-    blue_top = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    b_draw = ImageDraw.Draw(blue_top)
+    # 1. Onda superiore gialla in alto a destra
+    wave_color = palette.get("primary_dark", (245, 190, 11, 255))
+    top_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    b_draw = ImageDraw.Draw(top_layer)
     top_split_x = int(W * 0.40)
-    b_draw.polygon([(top_split_x, 0), (W, 0), (W, int(H * 0.35)), (int(W * 0.56), 0)], fill=(16, 75, 195, 255))
-    canvas.paste(blue_top, (0, 0), blue_top)
+    b_draw.polygon([(top_split_x, 0), (W, 0), (W, int(H * 0.35)), (int(W * 0.56), 0)], fill=wave_color)
+    canvas.paste(top_layer, (0, 0), top_layer)
 
     # 2. Taglio ad arco per la foto dell'immobile
     y_start_curve = int(H * 0.28)
@@ -3472,12 +3514,12 @@ def crea_story_cb_curved_wave_9_16(media_info, palette=None, output_path=None):
     p_crop = p_res.crop(((nw - W) // 2, 0, (nw - W) // 2 + W, H))
     canvas.paste(p_crop, (0, 0), mask)
 
-    # Campo blu in basso a sinistra coordinato
-    blue_bottom = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    bb_draw = ImageDraw.Draw(blue_bottom)
+    # Campo giallo in basso a sinistra coordinato
+    bottom_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    bb_draw = ImageDraw.Draw(bottom_layer)
     bb_points = [(0, y_start_curve)] + curve_points + [(0, H)]
-    bb_draw.polygon(bb_points, fill=(16, 75, 195, 255))
-    canvas.paste(blue_bottom, (0, 0), blue_bottom)
+    bb_draw.polygon(bb_points, fill=wave_color)
+    canvas.paste(bottom_layer, (0, 0), bottom_layer)
 
     draw_line = ImageDraw.Draw(canvas)
     for i in range(len(curve_points) - 1):
@@ -3491,7 +3533,7 @@ def crea_story_cb_curved_wave_9_16(media_info, palette=None, output_path=None):
         canvas.paste(logo, (50, 55), logo.split()[3])
     else:
         f_b = get_font(32, bold=True, font_type="sans")
-        draw.text((60, 65), "IMMOBILIARE GIANCANI", font=f_b, fill=(16, 45, 120, 255))
+        draw.text((60, 65), "IMMOBILIARE GIANCANI", font=f_b, fill=(18, 24, 38, 255))
 
     # 4. Pillola Bianca Orizzontale Fluttuante di Stato
     pill_w = int(W * 0.72)
@@ -3511,7 +3553,7 @@ def crea_story_cb_curved_wave_9_16(media_info, palette=None, output_path=None):
     circle_r = 52
     cx = pill_x + 105
     cy = pill_y + pill_h // 2
-    draw.ellipse([cx - circle_r, cy - circle_r, cx + circle_r, cy + circle_r], fill=(16, 75, 195, 255))
+    draw.ellipse([cx - circle_r, cy - circle_r, cx + circle_r, cy + circle_r], fill=wave_color)
     draw_vector_check(draw, cx, cy, 54, color=(255, 255, 255, 255), width=8)
 
     stato_txt = str(media_info.get("stato", "IN VENDITA")).upper()
@@ -3526,7 +3568,7 @@ def crea_story_cb_curved_wave_9_16(media_info, palette=None, output_path=None):
     draw.line([(loc_x, loc_y - 20), (loc_x + 220, loc_y - 20)], fill=(255, 255, 255, 210), width=4)
     draw_pin_icon(draw, loc_x + 22, loc_y + 16, 36, color=(255, 255, 255, 255))
     draw.text((loc_x + 52, loc_y), zona_txt, font=font_loc, fill=(255, 255, 255, 255))
-    draw.text((loc_x + 52, loc_y + 45), "Immobiliare Giancani", font=get_font(21, bold=True, font_type="sans"), fill=(215, 235, 255, 255))
+    draw.text((loc_x + 52, loc_y + 45), "Immobiliare Giancani", font=get_font(21, bold=True, font_type="sans"), fill=(20, 20, 20, 255))
 
     canvas = canvas.convert("RGB")
     canvas.save(output_path, "PNG", quality=95)
@@ -3543,10 +3585,11 @@ def crea_flyer_cb_curved_wave_1_1(media_info, palette=None, output_path=None):
     photo = get_clean_property_photo(media_info, (W, H))
     canvas = Image.new("RGBA", (W, H), (255, 255, 255, 255))
 
-    blue_top = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    b_draw = ImageDraw.Draw(blue_top)
-    b_draw.polygon([(int(W * 0.44), 0), (W, 0), (W, int(H * 0.38)), (int(W * 0.58), 0)], fill=(16, 75, 195, 255))
-    canvas.paste(blue_top, (0, 0), blue_top)
+    wave_color = palette.get("primary_dark", (245, 190, 11, 255))
+    top_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    b_draw = ImageDraw.Draw(top_layer)
+    b_draw.polygon([(int(W * 0.44), 0), (W, 0), (W, int(H * 0.38)), (int(W * 0.58), 0)], fill=wave_color)
+    canvas.paste(top_layer, (0, 0), top_layer)
 
     y_start_curve = int(H * 0.32)
     curve_points = []
@@ -3574,11 +3617,11 @@ def crea_flyer_cb_curved_wave_1_1(media_info, palette=None, output_path=None):
     p_crop = p_res.crop(((nw - W) // 2, 0, (nw - W) // 2 + W, H))
     canvas.paste(p_crop, (0, 0), mask)
 
-    blue_bottom = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    bb_draw = ImageDraw.Draw(blue_bottom)
+    bottom_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    bb_draw = ImageDraw.Draw(bottom_layer)
     bb_points = [(0, y_start_curve)] + curve_points + [(0, H)]
-    bb_draw.polygon(bb_points, fill=(16, 75, 195, 255))
-    canvas.paste(blue_bottom, (0, 0), blue_bottom)
+    bb_draw.polygon(bb_points, fill=wave_color)
+    canvas.paste(bottom_layer, (0, 0), bottom_layer)
 
     draw_line = ImageDraw.Draw(canvas)
     for i in range(len(curve_points) - 1):
@@ -4104,9 +4147,2443 @@ def crea_flyer_tempocasa_multiphoto_1_1(media_info, palette=None, output_path=No
 # 🎯 6. DISPATCHER GENERATORE UNIFICATO (13 stili + card diretta)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🌟 NUOVI 5 STILI GRAFICI UFFICIALI IMMOBILIARE GIANCANI (RICHIESTA UTENTE)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _format_prezzo(p_raw):
+    p_str = str(p_raw or "").strip()
+    digits = "".join(c for c in p_str if c.isdigit())
+    if digits:
+        val = int(digits)
+        return f"€ {val:,}".replace(",", ".")
+    return p_str if p_str else "Trattativa Riservata"
+
+
+def _estrai_foto_multiple(media_info, target_count=4):
+    """Estrae fino a target_count foto dell'immobile, con fallback su crop intelligenti"""
+    foto_list = []
+    if isinstance(media_info.get("altreFoto"), list):
+        foto_list.extend(media_info["altreFoto"])
+    for k in ["fotoUrl", "mediaUrl", "foto_01", "foto_02", "foto_03", "foto_04"]:
+        u = media_info.get(k)
+        if u and u not in foto_list:
+            foto_list.append(u)
+
+    opened = []
+    for src in foto_list:
+        try:
+            if isinstance(src, Image.Image):
+                opened.append(src.convert("RGB"))
+            elif str(src).startswith("http"):
+                r = requests.get(src, timeout=10, verify=False)
+                if r.status_code == 200:
+                    opened.append(Image.open(io.BytesIO(r.content)).convert("RGB"))
+            elif os.path.exists(str(src)):
+                opened.append(Image.open(str(src)).convert("RGB"))
+        except Exception:
+            pass
+        if len(opened) >= target_count:
+            break
+
+    if not opened:
+        base = get_clean_property_photo(media_info, (1080, 1080))
+        opened.append(base)
+
+    # Se abbiamo meno foto di quante necessarie, creiamo crop intelligenti dalla foto principale
+    while len(opened) < target_count:
+        main = opened[0]
+        mw, mh = main.size
+        idx = len(opened)
+        if idx == 1:
+            # Crop centro-destra
+            crop = main.crop((int(mw * 0.25), 0, mw, int(mh * 0.75)))
+        elif idx == 2:
+            # Crop centro-basso
+            crop = main.crop((0, int(mh * 0.25), int(mw * 0.75), mh))
+        else:
+            # Crop centrale zoomato
+            crop = main.crop((int(mw * 0.15), int(mh * 0.15), int(mw * 0.85), int(mh * 0.85)))
+        opened.append(crop)
+
+    return opened[:target_count]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎨 STILE 1: MALFATTI SIDEBAR 1975 (Fascia sinistra IN VENDITA & Dark Card)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_flyer_malfatti_sidebar_1_1(media_info, palette=None, output_path=None):
+    """
+    Stile 1 ispirato all'immagine 1 (media_1791469687584.jpg):
+    - Formato Quadrato 1:1 (1080x1080)
+    - Fascia laterale verticale sinistra (bordeaux / colore primario)
+    - In alto a sinistra: Logo e indicazione prestigiosa
+    - Testo verticale 'IN VENDITA' lungo la fascia
+    - Foto dell'immobile a tutta altezza nella restante larghezza
+    - Badge Rif. in alto a destra
+    - Dark Card in basso a destra con Prezzo gigante bianco, Indirizzo e caratteristiche
+    - Firma 'Immobiliare Giancani' in basso
+    """
+    W, H = 1080, 1080
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"flyer_malfatti_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    sidebar_w = 150
+    photo_w = W - sidebar_w
+    bar_color = palette.get("primary_mid", (136, 19, 55, 255))  # Bordeaux / Brand color
+    if bar_color[0] > 200 and bar_color[1] > 180: # Se giallo, usa accent per contrasto
+        bar_color = (136, 19, 55, 255)
+
+    canvas = Image.new("RGBA", (W, H), (20, 24, 30, 255))
+
+    # 1. Foto immobile sulla destra
+    foto = get_clean_property_photo(media_info, (photo_w, H))
+    canvas.paste(foto, (sidebar_w, 0))
+
+    # 2. Fascia laterale sinistra
+    draw = ImageDraw.Draw(canvas)
+    draw.rectangle([(0, 0), (sidebar_w, H)], fill=bar_color)
+
+    # 2b. Logo o Monogramma in alto nella fascia sinistra
+    logo = get_logo_trasparente_ufficiale(max_w=sidebar_w - 24, max_h=60)
+    if logo:
+        # Crea card bianca per contrasto se il logo ha colori scuri
+        lw, lh = logo.size
+        lx = (sidebar_w - lw) // 2
+        ly = 30
+        draw.rounded_rectangle([lx - 6, ly - 6, lx + lw + 6, ly + lh + 6], radius=8, fill=(255, 255, 255, 240))
+        canvas.paste(logo, (lx, ly), logo)
+    else:
+        f_init = get_font(28, bold=True, font_type="sans")
+        draw.text((sidebar_w // 2, 45), "IG", font=f_init, fill=(255, 255, 255, 255), anchor="mm")
+
+    # Dicitura '1975' / Dal ...
+    f_year = get_font(18, bold=True, font_type="sans")
+    draw.text((sidebar_w // 2, 110), "GIANCANI", font=f_year, fill=(255, 255, 255, 230), anchor="mm")
+
+    # 2c. Testo Verticale 'IN VENDITA' ruotato a 90 gradi
+    txt_invendita = "IN  VENDITA"
+    f_vert = get_font(34, bold=True, font_type="sans")
+    # Disegna su immagine temporanea e ruota
+    tb = draw.textbbox((0, 0), txt_invendita, font=f_vert)
+    tw, th = tb[2] - tb[0] + 20, tb[3] - tb[1] + 10
+    img_txt = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
+    d_txt = ImageDraw.Draw(img_txt)
+    d_txt.text((10, 5), txt_invendita, font=f_vert, fill=(255, 255, 255, 255))
+    img_txt_rot = img_txt.rotate(90, expand=True)
+    rx = (sidebar_w - img_txt_rot.width) // 2
+    ry = H - img_txt_rot.height - 70
+    canvas.paste(img_txt_rot, (rx, ry), img_txt_rot)
+
+    # 3. Badge Rif. in alto a destra sulla foto
+    codice_rif = str(media_info.get("codiceRif", "RIF. GIANCANI")).replace("_", " ").upper()
+    if not codice_rif.startswith("RIF"):
+        codice_rif = f"Rif. {codice_rif}"
+    f_rif = get_font(22, bold=True, font_type="sans")
+    rb = draw.textbbox((0, 0), codice_rif, font=f_rif)
+    rw, rh = rb[2] - rb[0] + 32, rb[3] - rb[1] + 16
+    rx_pos = W - rw - 24
+    ry_pos = 24
+    draw.rounded_rectangle([rx_pos, ry_pos, rx_pos + rw, ry_pos + rh], radius=10, fill=(24, 28, 36, 230))
+    draw.text((rx_pos + 16, ry_pos + 8), codice_rif, font=f_rif, fill=(255, 255, 255, 255))
+
+    # 4. Dark Card inferiore (occupa da sidebar_w a W)
+    card_h = 250
+    card_y = H - card_h
+    # Sfondo scuro elegante
+    draw.rectangle([(sidebar_w, card_y), (W, H)], fill=(20, 23, 28, 255))
+    # Linea di stacco superiore
+    draw.line([(sidebar_w, card_y), (W, card_y)], fill=(45, 52, 64, 255), width=2)
+
+    # 4a. Prezzo Gigante Bianco
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_prz = get_font(52, bold=True, font_type="sans")
+    draw.text((sidebar_w + 40, card_y + 24), prezzo_txt, font=f_prz, fill=(255, 255, 255, 255))
+
+    # 4b. Indirizzo e Comune
+    titolo = str(media_info.get("titolo", "Favara")).strip().title()
+    zona = str(media_info.get("zona", media_info.get("indirizzo", "Centro"))).strip()
+    via_txt = f"{zona} — {titolo}" if zona and zona.lower() not in titolo.lower() else titolo
+    if len(via_txt) > 42:
+        via_txt = via_txt[:40] + "..."
+    f_via = get_font(25, bold=False, font_type="sans")
+    draw.text((sidebar_w + 42, card_y + 92), via_txt, font=f_via, fill=(203, 213, 225, 255))
+
+    # 4c. Caratteristiche con barre divisorie bordeaux
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "90"))
+    locali_txt = str(media_info.get("locali", "4")).strip() + " locali"
+    bagni_txt = str(media_info.get("bagni", "2")).strip() + " bagni"
+
+    f_spec = get_font(23, bold=True, font_type="sans")
+    f_div = get_font(24, bold=True, font_type="sans")
+
+    sx = sidebar_w + 42
+    sy = card_y + 140
+
+    draw.text((sx, sy), mq_txt, font=f_spec, fill=(255, 255, 255, 255))
+    sx += draw.textbbox((0, 0), mq_txt, font=f_spec)[2] + 14
+
+    draw.text((sx, sy - 2), "|", font=f_div, fill=bar_color)
+    sx += 20
+
+    draw.text((sx, sy), locali_txt, font=f_spec, fill=(255, 255, 255, 255))
+    sx += draw.textbbox((0, 0), locali_txt, font=f_spec)[2] + 14
+
+    draw.text((sx, sy - 2), "|", font=f_div, fill=bar_color)
+    sx += 20
+
+    draw.text((sx, sy), bagni_txt, font=f_spec, fill=(255, 255, 255, 255))
+
+    # 4d. Firma 'Immobiliare Giancani' in basso a destra
+    f_sign = get_font(20, bold=True, font_type="sans")
+    draw.text((W - 36, H - 36), "Immobiliare Giancani", font=f_sign, fill=(225, 29, 72, 255), anchor="rb")
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+def crea_story_malfatti_sidebar_9_16(media_info, palette=None, output_path=None):
+    """
+    Versione 9:16 (1080x1920) dello Stile Malfatti Sidebar:
+    - Foto a sviluppo verticale
+    - Sidebar sinistra con logo e 'IN VENDITA'
+    - Dark Card inferiore con prezzo, dettagli e testo narrativo da Colonna F
+    """
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_malfatti_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    sidebar_w = 160
+    photo_w = W - sidebar_w
+    bar_color = (136, 19, 55, 255)
+
+    canvas = Image.new("RGBA", (W, H), (20, 24, 30, 255))
+
+    # 1. Foto a tutto campo sulla destra
+    foto = get_clean_property_photo(media_info, (photo_w, H))
+    canvas.paste(foto, (sidebar_w, 0))
+
+    # 2. Fascia laterale sinistra
+    draw = ImageDraw.Draw(canvas)
+    draw.rectangle([(0, 0), (sidebar_w, H)], fill=bar_color)
+
+    # Logo in alto
+    logo = get_logo_trasparente_ufficiale(max_w=sidebar_w - 20, max_h=65)
+    if logo:
+        lw, lh = logo.size
+        lx = (sidebar_w - lw) // 2
+        ly = 45
+        draw.rounded_rectangle([lx - 6, ly - 6, lx + lw + 6, ly + lh + 6], radius=8, fill=(255, 255, 255, 240))
+        canvas.paste(logo, (lx, ly), logo)
+
+    # Testo verticale 'IN VENDITA' ruotato a 90 gradi
+    txt_invendita = "IN   VENDITA"
+    f_vert = get_font(42, bold=True, font_type="sans")
+    tb = draw.textbbox((0, 0), txt_invendita, font=f_vert)
+    tw, th = tb[2] - tb[0] + 20, tb[3] - tb[1] + 10
+    img_txt = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
+    d_txt = ImageDraw.Draw(img_txt)
+    d_txt.text((10, 5), txt_invendita, font=f_vert, fill=(255, 255, 255, 255))
+    img_txt_rot = img_txt.rotate(90, expand=True)
+    rx = (sidebar_w - img_txt_rot.width) // 2
+    ry = H - img_txt_rot.height - 120
+    canvas.paste(img_txt_rot, (rx, ry), img_txt_rot)
+
+    # Badge Rif in alto a destra
+    codice_rif = str(media_info.get("codiceRif", "RIF. GIANCANI")).replace("_", " ").upper()
+    if not codice_rif.startswith("RIF"):
+        codice_rif = f"Rif. {codice_rif}"
+    f_rif = get_font(24, bold=True, font_type="sans")
+    rb = draw.textbbox((0, 0), codice_rif, font=f_rif)
+    rw, rh = rb[2] - rb[0] + 34, rb[3] - rb[1] + 18
+    draw.rounded_rectangle([W - rw - 30, 36, W - 30, 36 + rh], radius=12, fill=(24, 28, 36, 230))
+    draw.text((W - rw - 13, 44), codice_rif, font=f_rif, fill=(255, 255, 255, 255))
+
+    # Dark Card inferiore espansa (con testo Colonna F)
+    card_h = 440
+    card_y = H - card_h
+    draw.rectangle([(sidebar_w, card_y), (W, H)], fill=(18, 22, 28, 255))
+    draw.line([(sidebar_w, card_y), (W, card_y)], fill=(45, 52, 64, 255), width=2)
+
+    # Prezzo Gigante
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_prz = get_font(60, bold=True, font_type="sans")
+    draw.text((sidebar_w + 40, card_y + 24), prezzo_txt, font=f_prz, fill=(255, 255, 255, 255))
+
+    # Indirizzo
+    titolo = str(media_info.get("titolo", "Favara")).strip().title()
+    zona = str(media_info.get("zona", media_info.get("indirizzo", "Centro"))).strip()
+    via_txt = f"{zona} — {titolo}" if zona and zona.lower() not in titolo.lower() else titolo
+    f_via = get_font(28, bold=False, font_type="sans")
+    draw.text((sidebar_w + 42, card_y + 98), via_txt, font=f_via, fill=(203, 213, 225, 255))
+
+    # Caratteristiche
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "90"))
+    locali_txt = str(media_info.get("locali", "4")).strip() + " locali"
+    bagni_txt = str(media_info.get("bagni", "2")).strip() + " bagni"
+    f_spec = get_font(25, bold=True, font_type="sans")
+    sx = sidebar_w + 42
+    sy = card_y + 144
+    draw.text((sx, sy), mq_txt, font=f_spec, fill=(255, 255, 255, 255))
+    sx += draw.textbbox((0, 0), mq_txt, font=f_spec)[2] + 14
+    draw.text((sx, sy - 2), "|", font=f_spec, fill=bar_color)
+    sx += 20
+    draw.text((sx, sy), locali_txt, font=f_spec, fill=(255, 255, 255, 255))
+    sx += draw.textbbox((0, 0), locali_txt, font=f_spec)[2] + 14
+    draw.text((sx, sy - 2), "|", font=f_spec, fill=bar_color)
+    sx += 20
+    draw.text((sx, sy), bagni_txt, font=f_spec, fill=(255, 255, 255, 255))
+
+    # Testo narrativo da Colonna F
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if testo_f:
+        draw_fitted_text(draw, testo_f, (sidebar_w + 42, card_y + 195, photo_w - 80, 165),
+                         max_font_size=23, min_font_size=17, fill=(226, 232, 240, 255), line_spacing=6)
+
+    # Firma
+    f_sign = get_font(22, bold=True, font_type="sans")
+    draw.text((W - 40, H - 36), "— Immobiliare Giancani", font=f_sign, fill=(225, 29, 72, 255), anchor="rb")
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🏛️ STILE 2: SCHEDA CURVA ISTITUZIONALE / PRESTIGIO (Asta / Incarico Certificato)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_story_scheda_curva_9_16(media_info, palette=None, output_path=None):
+    """
+    Stile 2 ispirato all'immagine 2 (uploaded_media_0_1791469719854.jpg):
+    - Layout Verticale 9:16 (1080x1920)
+    - Foto immobile sullo sfondo
+    - Overlay card a destra con curvatura morbida in alto a sinistra
+    - Header con Logo e Titolo Istituzionale
+    - Pill scura con icona casa: Tipologia Immobile
+    - Sezione 2 con icona Location Pin: Comune e Indirizzo
+    - Sezione 3 con icona Istituzione/Corte: Riferimento procedura/fascicolo
+    - Prezzo e superficie in metri quadri
+    """
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_curva_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    # 1. Foto a tutto schermo con focus a sinistra
+    foto = get_clean_property_photo(media_info, (W, H))
+    canvas = foto.convert("RGBA")
+
+    # 2. Overlay card sul lato destro (da x=490 a 1080, da y=200 a 1920)
+    card_x = 490
+    card_y = 200
+    card_w = W - card_x
+    card_h = H - card_y
+
+    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_ov = ImageDraw.Draw(overlay)
+
+    # Creazione maschera con angolo superiore-sinistro arrotondato
+    mask = Image.new("L", (card_w, card_h), 0)
+    d_mask = ImageDraw.Draw(mask)
+    d_mask.rounded_rectangle([(0, 0), (card_w + 100, card_h + 100)], radius=90, fill=255)
+
+    # Sfondo card con gradiente rosso bordeaux profondo -> blu notte
+    card_bg = Image.new("RGBA", (card_w, card_h), (115, 18, 36, 250))
+    d_cbg = ImageDraw.Draw(card_bg)
+    for y in range(card_h):
+        ratio = y / float(card_h)
+        r = int(115 * (1 - ratio) + 20 * ratio)
+        g = int(18 * (1 - ratio) + 30 * ratio)
+        b = int(36 * (1 - ratio) + 65 * ratio)
+        d_cbg.line([(0, y), (card_w, y)], fill=(r, g, b, 250))
+
+    canvas.paste(card_bg, (card_x, card_y), mask)
+
+    draw = ImageDraw.Draw(canvas)
+
+    # 3. Header della card
+    # Logo Immobiliare Giancani in alto
+    logo = get_logo_trasparente_ufficiale(max_w=220, max_h=65)
+    if logo:
+        canvas.paste(logo, (card_x + 35, card_y + 35), logo)
+
+    # Divisore e dicitura Istituzionale
+    draw.line([(card_x + 270, card_y + 40), (card_x + 270, card_y + 90)], fill=(255, 255, 255, 120), width=2)
+    f_inst_title = get_font(18, bold=True, font_type="sans")
+    f_inst_sub = get_font(14, bold=False, font_type="sans")
+    draw.text((card_x + 285, card_y + 42), "IMMOBILIARE GIANCANI", font=f_inst_title, fill=(255, 255, 255, 255))
+    draw.text((card_x + 285, card_y + 68), "Incarico Esclusivo Certificato", font=f_inst_sub, fill=(226, 232, 240, 220))
+
+    # 4. Pill scura orizzontale con icona casetta: Tipologia Immobile
+    pill_y = card_y + 140
+    pill_w = card_w - 50
+    pill_h = 130
+    draw.rounded_rectangle([card_x - 30, pill_y, card_x + pill_w, pill_y + pill_h], radius=55, fill=(13, 40, 80, 255))
+
+    # Icona Casa in cerchio bianco
+    draw.ellipse([card_x - 10, pill_y + 15, card_x + 90, pill_y + 115], fill=(255, 255, 255, 255))
+    draw_house_icon(draw, card_x + 40, pill_y + 65, size=46, color=(13, 40, 80, 255), width=4)
+
+    tipologia = str(media_info.get("tipologia", "Abitazione Di Tipo Civile")).title()
+    f_tipo = get_font(30, bold=True, font_type="sans")
+    draw.text((card_x + 115, pill_y + 45), tipologia, font=f_tipo, fill=(255, 255, 255, 255))
+
+    # 5. Sezione Indirizzo / Comune con icona Location Pin
+    sec2_y = pill_y + 190
+    draw.ellipse([card_x + 15, sec2_y + 10, card_x + 95, sec2_y + 90], fill=(13, 40, 80, 255))
+    draw_pin_icon(draw, card_x + 55, sec2_y + 50, size=42, color=(255, 255, 255, 255))
+
+    zona = str(media_info.get("zona", "Favara (AG)")).strip()
+    f_loc_bold = get_font(34, bold=True, font_type="sans")
+    draw.text((card_x + 120, sec2_y + 10), zona, font=f_loc_bold, fill=(255, 255, 255, 255))
+
+    indirizzo = str(media_info.get("indirizzo", media_info.get("titolo", "Corso Vittorio Veneto"))).strip()
+    f_loc_sub = get_font(23, bold=False, font_type="sans")
+    draw.text((card_x + 120, sec2_y + 60), indirizzo[:32], font=f_loc_sub, fill=(226, 232, 240, 230))
+
+    # 6. Sezione Procedura / Codice Rif con icona Tempio
+    sec3_y = sec2_y + 150
+    draw.ellipse([card_x + 15, sec3_y + 10, card_x + 95, sec3_y + 90], fill=(13, 40, 80, 255))
+    # Tempio / Istituzione
+    cx_t, cy_t = card_x + 55, sec3_y + 50
+    draw.polygon([(cx_t - 20, cy_t - 10), (cx_t + 20, cy_t - 10), (cx_t, cy_t - 26)], fill=(255, 255, 255, 255))
+    draw.line([(cx_t - 18, cy_t - 8), (cx_t + 18, cy_t - 8)], fill=(255, 255, 255, 255), width=3)
+    for col_x in [cx_t - 14, cx_t - 5, cx_t + 5, cx_t + 14]:
+        draw.line([(col_x, cy_t - 6), (col_x, cy_t + 14)], fill=(255, 255, 255, 255), width=3)
+    draw.line([(cx_t - 20, cy_t + 16), (cx_t + 20, cy_t + 16)], fill=(255, 255, 255, 255), width=4)
+
+    f_rif_title = get_font(32, bold=True, font_type="sans")
+    draw.text((card_x + 120, sec3_y + 12), "Rif. Ufficiale", font=f_rif_title, fill=(255, 255, 255, 255))
+    cod_rif = str(media_info.get("codiceRif", "Pratica GIANCANI #2026")).replace("_", " ").upper()
+    f_rif_sub = get_font(24, bold=False, font_type="sans")
+    draw.text((card_x + 120, sec3_y + 62), cod_rif, font=f_rif_sub, fill=(226, 232, 240, 230))
+
+    # 7. Box Prezzo & Metri Quadri in risalto
+    box_prz_y = sec3_y + 160
+    draw.rounded_rectangle([card_x + 20, box_prz_y, W - 30, box_prz_y + 140], radius=16, fill=(15, 23, 42, 220), outline=(245, 190, 11, 200), width=2)
+    f_prz_lbl = get_font(18, bold=True, font_type="sans")
+    draw.text((card_x + 40, box_prz_y + 18), "PREZZO RICHIESTO:", font=f_prz_lbl, fill=(245, 190, 11, 255))
+
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_prz_val = get_font(44, bold=True, font_type="sans")
+    draw.text((card_x + 40, box_prz_y + 45), prezzo_txt, font=f_prz_val, fill=(255, 255, 255, 255))
+
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "120"))
+    f_mq_val = get_font(22, bold=True, font_type="sans")
+    draw.text((card_x + 40, box_prz_y + 98), f"📐 Superficie: {mq_txt}", font=f_mq_val, fill=(56, 189, 248, 255))
+
+    # 8. Testo narrativo da Colonna F
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if testo_f:
+        draw_fitted_text(draw, testo_f, (card_x + 25, box_prz_y + 165, card_w - 55, 280),
+                         max_font_size=23, min_font_size=16, fill=(241, 245, 249, 255), line_spacing=6)
+
+    # Footer
+    f_ft = get_font(22, bold=True, font_type="sans")
+    draw.text((W - 35, H - 35), "— Immobiliare Giancani", font=f_ft, fill=(255, 255, 255, 230), anchor="rb")
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+def crea_flyer_scheda_curva_1_1(media_info, palette=None, output_path=None):
+    """Versione 1:1 (1080x1080) dello Stile Scheda Curva Istituzionale"""
+    W, H = 1080, 1080
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"flyer_curva_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    foto = get_clean_property_photo(media_info, (W, H))
+    canvas = foto.convert("RGBA")
+
+    card_x = 440
+    card_y = 60
+    card_w = W - card_x
+    card_h = H - card_y
+
+    mask = Image.new("L", (card_w, card_h), 0)
+    d_mask = ImageDraw.Draw(mask)
+    d_mask.rounded_rectangle([(0, 0), (card_w + 100, card_h + 100)], radius=70, fill=255)
+
+    card_bg = Image.new("RGBA", (card_w, card_h), (115, 18, 36, 250))
+    d_cbg = ImageDraw.Draw(card_bg)
+    for y in range(card_h):
+        ratio = y / float(card_h)
+        r = int(115 * (1 - ratio) + 20 * ratio)
+        g = int(18 * (1 - ratio) + 30 * ratio)
+        b = int(36 * (1 - ratio) + 65 * ratio)
+        d_cbg.line([(0, y), (card_w, y)], fill=(r, g, b, 250))
+
+    canvas.paste(card_bg, (card_x, card_y), mask)
+    draw = ImageDraw.Draw(canvas)
+
+    # Logo
+    logo = get_logo_trasparente_ufficiale(max_w=200, max_h=55)
+    if logo:
+        canvas.paste(logo, (card_x + 30, card_y + 25), logo)
+
+    # Pill Tipologia
+    pill_y = card_y + 95
+    pill_w = card_w - 40
+    draw.rounded_rectangle([card_x - 20, pill_y, card_x + pill_w, pill_y + 90], radius=45, fill=(13, 40, 80, 255))
+    draw.ellipse([card_x - 5, pill_y + 10, card_x + 65, pill_y + 80], fill=(255, 255, 255, 255))
+    draw_house_icon(draw, card_x + 30, pill_y + 45, size=34, color=(13, 40, 80, 255), width=3)
+    tipologia = str(media_info.get("tipologia", "Abitazione Civile")).title()
+    f_tipo = get_font(25, bold=True, font_type="sans")
+    draw.text((card_x + 85, pill_y + 30), tipologia, font=f_tipo, fill=(255, 255, 255, 255))
+
+    # Indirizzo
+    sec2_y = pill_y + 115
+    draw.ellipse([card_x + 15, sec2_y + 5, card_x + 75, sec2_y + 65], fill=(13, 40, 80, 255))
+    draw_pin_icon(draw, card_x + 45, sec2_y + 35, size=32, color=(255, 255, 255, 255))
+    zona = str(media_info.get("zona", "Favara (AG)")).strip()
+    f_loc = get_font(28, bold=True, font_type="sans")
+    draw.text((card_x + 95, sec2_y + 8), zona, font=f_loc, fill=(255, 255, 255, 255))
+    indirizzo = str(media_info.get("indirizzo", media_info.get("titolo", "Centro"))).strip()
+    f_sub = get_font(20, bold=False, font_type="sans")
+    draw.text((card_x + 95, sec2_y + 44), indirizzo[:28], font=f_sub, fill=(226, 232, 240, 230))
+
+    # Box Prezzo
+    box_prz_y = sec2_y + 95
+    draw.rounded_rectangle([card_x + 20, box_prz_y, W - 25, box_prz_y + 110], radius=14, fill=(15, 23, 42, 220), outline=(245, 190, 11, 200), width=2)
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_prz = get_font(38, bold=True, font_type="sans")
+    draw.text((card_x + 35, box_prz_y + 16), prezzo_txt, font=f_prz, fill=(255, 255, 255, 255))
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "120"))
+    f_mq = get_font(20, bold=True, font_type="sans")
+    draw.text((card_x + 35, box_prz_y + 68), f"📐 Superficie: {mq_txt}", font=f_mq, fill=(56, 189, 248, 255))
+
+    # Testo narrativo Colonna F
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if testo_f:
+        draw_fitted_text(draw, testo_f, (card_x + 20, box_prz_y + 130, card_w - 45, 430),
+                         max_font_size=21, min_font_size=15, fill=(241, 245, 249, 255), line_spacing=6)
+
+    # Firma
+    f_ft = get_font(20, bold=True, font_type="sans")
+    draw.text((W - 30, H - 28), "— Immobiliare Giancani", font=f_ft, fill=(255, 255, 255, 230), anchor="rb")
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🖼️ STILE 3: CORNICE MINIMAL FINE ART & SIGILLO TONDO (Studio Zero24 Versilia)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_flyer_cornice_minimal_1_1(media_info, palette=None, output_path=None):
+    """
+    Stile 3 ispirato all'immagine 3 (media_1791469687578.jpg):
+    - Formato Quadrato 1:1 (1080x1080)
+    - Foto grande a tutto schermo protagonista assoluta
+    - Bordo esterno color petrolio/teal o color palette (spessore ~36px)
+    - Cornice interna sottile a filo (fine-art inset line)
+    - Sigillo tondo bianco in basso a destra con logo Immobiliare Giancani
+    - Badge discreto ed elegante con Prezzo e metri quadri
+    """
+    W, H = 1080, 1080
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"flyer_minimal_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    border_color = (20, 148, 140, 255)  # Teal elegante come la reference
+    BORDER_THICKNESS = 36
+    INSET_GAP = 22
+
+    # 1. Foto a pieno formato
+    foto = get_clean_property_photo(media_info, (W, H))
+    canvas = foto.convert("RGBA")
+    draw = ImageDraw.Draw(canvas)
+
+    # 2. Cornice esterna piena
+    draw.rectangle([(0, 0), (W, BORDER_THICKNESS)], fill=border_color)               # Top
+    draw.rectangle([(0, H - BORDER_THICKNESS), (W, H)], fill=border_color)           # Bottom
+    draw.rectangle([(0, 0), (BORDER_THICKNESS, H)], fill=border_color)               # Left
+    draw.rectangle([(W - BORDER_THICKNESS, 0), (W, H)], fill=border_color)           # Right
+
+    # 3. Cornice interna sottile a filo (line-art geometrica)
+    ix1 = BORDER_THICKNESS + INSET_GAP
+    iy1 = BORDER_THICKNESS + INSET_GAP
+    ix2 = W - BORDER_THICKNESS - INSET_GAP
+    iy2 = H - BORDER_THICKNESS - INSET_GAP
+    draw.rectangle([(ix1, iy1), (ix2, iy2)], outline=border_color, width=3)
+
+    # 4. Badge Esteso Panoramico in basso a destra (Logo Bello Esteso!)
+    seal_w, seal_h = 320, 85
+    seal_x = ix2 - seal_w - 15
+    seal_y = iy2 - seal_h - 15
+
+    draw.rounded_rectangle([seal_x, seal_y, seal_x + seal_w, seal_y + seal_h], radius=16, fill=(255, 255, 255, 250), outline=border_color, width=2)
+    logo = get_logo_trasparente_ufficiale(max_w=seal_w - 30, max_h=seal_h - 20)
+    if logo:
+        lw, lh = logo.size
+        canvas.paste(logo, (seal_x + (seal_w - lw) // 2, seal_y + (seal_h - lh) // 2), logo)
+    else:
+        f_s_main = get_font(20, bold=True, font_type="sans")
+        draw.text((seal_x + seal_w // 2, seal_y + seal_h // 2), "IMMOBILIARE GIANCANI", font=f_s_main, fill=(15, 23, 42, 255), anchor="mm")
+
+    # 5. Badge Elegante in alto a sinistra con Prezzo e Superficie
+    tag_x = ix1 + 20
+    tag_y = iy1 + 20
+    tag_w = 340
+    tag_h = 95
+    draw.rounded_rectangle([tag_x, tag_y, tag_x + tag_w, tag_y + tag_h], radius=12, fill=(15, 23, 42, 220), outline=border_color, width=2)
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_tag_prz = get_font(34, bold=True, font_type="sans")
+    draw.text((tag_x + 18, tag_y + 14), prezzo_txt, font=f_tag_prz, fill=(255, 255, 255, 255))
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "120"))
+    f_tag_mq = get_font(18, bold=True, font_type="sans")
+    draw.text((tag_x + 20, tag_y + 58), f"📐 {mq_txt}", font=f_tag_mq, fill=(56, 189, 248, 255))
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+def crea_story_cornice_minimal_9_16(media_info, palette=None, output_path=None):
+    """Versione 9:16 (1080x1920) dello Stile Cornice Minimal con Sigillo"""
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_minimal_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    border_color = (20, 148, 140, 255)
+    BORDER_THICKNESS = 42
+    INSET_GAP = 26
+
+    foto = get_clean_property_photo(media_info, (W, H))
+    canvas = foto.convert("RGBA")
+    draw = ImageDraw.Draw(canvas)
+
+    # Cornice esterna
+    draw.rectangle([(0, 0), (W, BORDER_THICKNESS)], fill=border_color)
+    draw.rectangle([(0, H - BORDER_THICKNESS), (W, H)], fill=border_color)
+    draw.rectangle([(0, 0), (BORDER_THICKNESS, H)], fill=border_color)
+    draw.rectangle([(W - BORDER_THICKNESS, 0), (W, H)], fill=border_color)
+
+    # Cornice interna
+    ix1 = BORDER_THICKNESS + INSET_GAP
+    iy1 = BORDER_THICKNESS + INSET_GAP
+    ix2 = W - BORDER_THICKNESS - INSET_GAP
+    iy2 = H - BORDER_THICKNESS - INSET_GAP
+    draw.rectangle([(ix1, iy1), (ix2, iy2)], outline=border_color, width=3)
+
+    # Sigillo circolare
+    seal_radius = 110
+    seal_cx = ix2 - seal_radius - 20
+    seal_cy = iy2 - seal_radius - 20
+    draw.ellipse([seal_cx - seal_radius - 2, seal_cy - seal_radius - 2,
+                  seal_cx + seal_radius + 2, seal_cy + seal_radius + 2], fill=(0, 0, 0, 60))
+    draw.ellipse([seal_cx - seal_radius, seal_cy - seal_radius,
+                  seal_cx + seal_radius, seal_cy + seal_radius], fill=(255, 255, 255, 255), outline=border_color, width=3)
+    draw.ellipse([seal_cx - seal_radius + 10, seal_cy - seal_radius + 10,
+                  seal_cx + seal_radius - 10, seal_cy + seal_radius - 10], outline=(203, 213, 225, 255), width=1)
+
+    logo = get_logo_trasparente_ufficiale(max_w=165, max_h=65)
+    if logo:
+        lw, lh = logo.size
+        canvas.paste(logo, (seal_cx - lw // 2, seal_cy - lh // 2 - 15), logo)
+
+    f_s_sub = get_font(15, bold=True, font_type="sans")
+    draw.text((seal_cx, seal_cy + 34), "ESCLUSIVA", font=f_s_sub, fill=border_color, anchor="mm")
+    f_s_loc = get_font(13, bold=False, font_type="sans")
+    draw.text((seal_cx, seal_cy + 55), "FAVARA (AG)", font=f_s_loc, fill=(100, 116, 139, 255), anchor="mm")
+
+    # Card descrittiva in basso a sinistra (con testo Colonna F)
+    card_w = ix2 - ix1 - (seal_radius * 2 + 50)
+    card_h = 320
+    card_x = ix1 + 20
+    card_y = iy2 - card_h - 10
+    draw.rounded_rectangle([card_x, card_y, card_x + card_w, card_y + card_h], radius=16, fill=(15, 23, 42, 230), outline=border_color, width=2)
+
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_prz = get_font(44, bold=True, font_type="sans")
+    draw.text((card_x + 24, card_y + 18), prezzo_txt, font=f_prz, fill=(255, 255, 255, 255))
+
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "120"))
+    f_mq = get_font(22, bold=True, font_type="sans")
+    draw.text((card_x + 26, card_y + 72), f"📐 Superficie: {mq_txt}", font=f_mq, fill=(56, 189, 248, 255))
+
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if testo_f:
+        draw_fitted_text(draw, testo_f, (card_x + 24, card_y + 115, card_w - 48, 180),
+                         max_font_size=21, min_font_size=15, fill=(241, 245, 249, 255), line_spacing=5)
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🌿 STILE 4: STUDIO ZERO24 MODERN CARD (Petrolio/Teal + 4 Icone Specs)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_story_zero24_card_9_16(media_info, palette=None, output_path=None):
+    """
+    Stile 4 ispirato all'immagine 4 (media_1791469687589.jpg):
+    - Formato Verticale 9:16 (1080x1920)
+    - Badge fluttuante bianco in alto a sinistra con logo e slogan
+    - Foto dell'immobile nella metà superiore
+    - Metà inferiore color Petrolio / Teal profondo (#005F6A)
+    - Titolo serif grande, sottotitolo, prezzo gigante
+    - Riga con 4 icone specs: metri quadri, camere, bagni, giardino
+    - Barra contatti bianca inferiore
+    """
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_zero24_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    teal_color = (0, 95, 106, 255)       # #005F6A Petrolio profondo elegante
+    contact_bar_bg = (248, 250, 252, 255) # Bianco crema pulito
+
+    canvas = Image.new("RGBA", (W, H), (255, 255, 255, 255))
+
+    # 1. Foto dell'immobile nella parte superiore (altezza 1100px)
+    PHOTO_H = 1120
+    foto = get_clean_property_photo(media_info, (W, PHOTO_H))
+    canvas.paste(foto, (0, 0))
+
+    # 2. Badge fluttuante bianco in alto a sinistra
+    draw = ImageDraw.Draw(canvas)
+    badge_x, badge_y = 40, 45
+    badge_w, badge_h = 360, 130
+    draw.rounded_rectangle([badge_x, badge_y, badge_x + badge_w, badge_y + badge_h], radius=16, fill=(255, 255, 255, 245), outline=(203, 213, 225, 200), width=1)
+
+    logo = get_logo_trasparente_ufficiale(max_w=280, max_h=65)
+    if logo:
+        canvas.paste(logo, (badge_x + 35, badge_y + 14), logo)
+    else:
+        f_b_tit = get_font(26, bold=True, font_type="sans")
+        draw.text((badge_x + 35, badge_y + 20), "IMMOBILIARE GIANCANI", font=f_b_tit, fill=(15, 23, 42, 255))
+
+    f_slogan = get_font(14, bold=True, font_type="sans")
+    draw.text((badge_x + badge_w // 2, badge_y + badge_h - 24), "LA TUA CASA, IL NOSTRO IMPEGNO.", font=f_slogan, fill=teal_color, anchor="mm")
+
+    # 3. Blocco Inferiore Petrolio/Teal (da PHOTO_H a H - 150)
+    CONTACT_H = 150
+    block_y = PHOTO_H
+    block_h = H - PHOTO_H - CONTACT_H
+    draw.rectangle([(0, block_y), (W, block_y + block_h)], fill=teal_color)
+
+    # 3a. Categoria centrata spaziata
+    tipologia = str(media_info.get("tipologia", "VILLA INDIPENDENTE")).upper()
+    f_cat = get_font(22, bold=True, font_type="sans")
+    draw.text((W // 2, block_y + 40), tipologia, font=f_cat, fill=(204, 251, 241, 255), anchor="mm")
+
+    # 3b. Titolo Grande Elegante Serif
+    titolo = str(media_info.get("titolo", "Favara")).strip().title()
+    f_tit = get_font(52, bold=True, font_type="serif")
+    draw.text((W // 2, block_y + 95), titolo[:32], font=f_tit, fill=(255, 255, 255, 255), anchor="mm")
+
+    # 3c. Sottotitolo
+    zona = str(media_info.get("zona", "ZONA PANORAMICA")).upper()
+    f_sub = get_font(24, bold=True, font_type="sans")
+    draw.text((W // 2, block_y + 148), zona[:35], font=f_sub, fill=(153, 246, 228, 255), anchor="mm")
+
+    # 3d. Prezzo Gigante
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_prz = get_font(62, bold=True, font_type="sans")
+    draw.text((W // 2, block_y + 225), prezzo_txt, font=f_prz, fill=(255, 255, 255, 255), anchor="mm")
+
+    # 3e. Riga di 4 Icone Specs Disegnate
+    icons_y = block_y + 310
+    col_w = W // 4
+
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "130"))
+    locali_txt = str(media_info.get("locali", "3")).strip() + " camere"
+    bagni_txt = str(media_info.get("bagni", "2")).strip() + " bagni"
+    extra_txt = "Giardino"
+
+    f_ic_lbl = get_font(21, bold=True, font_type="sans")
+
+    # Col 1: Metri Quadri (Ruler)
+    cx1 = col_w // 2
+    draw_vector_ruler_sqm(draw, cx1, icons_y, size=46, color=(255, 255, 255, 255), width=3)
+    draw.text((cx1, icons_y + 48), mq_txt.replace("metri quadri", "mq"), font=f_ic_lbl, fill=(255, 255, 255, 255), anchor="mm")
+
+    # Col 2: Camere (Letto)
+    cx2 = col_w + col_w // 2
+    draw_bed_icon(draw, cx2, icons_y, size=46, color=(255, 255, 255, 255), width=3)
+    draw.text((cx2, icons_y + 48), locali_txt, font=f_ic_lbl, fill=(255, 255, 255, 255), anchor="mm")
+
+    # Col 3: Bagni (Doccia)
+    cx3 = col_w * 2 + col_w // 2
+    draw_vector_shower(draw, cx3, icons_y, size=46, color=(255, 255, 255, 255), width=3)
+    draw.text((cx3, icons_y + 48), bagni_txt, font=f_ic_lbl, fill=(255, 255, 255, 255), anchor="mm")
+
+    # Col 4: Giardino / Terrazzo (Foglia / Casetta)
+    cx4 = col_w * 3 + col_w // 2
+    # Disegna foglia stilizzata
+    s_leaf = 20
+    draw.arc([cx4 - s_leaf, icons_y - s_leaf, cx4 + s_leaf, icons_y + s_leaf], start=0, end=90, fill=(255, 255, 255, 255), width=3)
+    draw.arc([cx4 - s_leaf, icons_y - s_leaf, cx4 + s_leaf, icons_y + s_leaf], start=180, end=270, fill=(255, 255, 255, 255), width=3)
+    draw.line([(cx4 - s_leaf, icons_y + s_leaf), (cx4 + s_leaf, icons_y - s_leaf)], fill=(255, 255, 255, 255), width=2)
+    draw.text((cx4, icons_y + 48), extra_txt, font=f_ic_lbl, fill=(255, 255, 255, 255), anchor="mm")
+
+    # Breve testo da Colonna F nello spazio rimanente
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if testo_f:
+        draw_fitted_text(draw, testo_f, (60, icons_y + 85, W - 120, 105),
+                         max_font_size=20, min_font_size=15, fill=(241, 245, 249, 240), align="center")
+
+    # 4. Barra Contatti Bianca Inferiore (H: 150px)
+    cbar_y = H - CONTACT_H
+    draw.rectangle([(0, cbar_y), (W, H)], fill=contact_bar_bg)
+    draw.line([(0, cbar_y), (W, cbar_y)], fill=(203, 213, 225, 255), width=2)
+
+    # 3 Colonne Contatti
+    cw3 = W // 3
+
+    # Colonna 1: Telefono
+    cx_c1 = cw3 // 2
+    draw_phone_icon(draw, cx_c1 - 70, cbar_y + 75, size=32, color=teal_color)
+    f_cb_lbl = get_font(15, bold=False, font_type="sans")
+    f_cb_val = get_font(21, bold=True, font_type="sans")
+    draw.text((cx_c1 - 40, cbar_y + 45), "PER INFO", font=f_cb_lbl, fill=(100, 116, 139, 255))
+    draw.text((cx_c1 - 40, cbar_y + 72), "320 166 7156", font=f_cb_val, fill=(15, 23, 42, 255))
+
+    # Colonna 2: Sede / Rif
+    cx_c2 = cw3 + cw3 // 2
+    draw_pin_icon(draw, cx_c2 - 70, cbar_y + 75, size=32, color=teal_color)
+    draw.text((cx_c2 - 40, cbar_y + 45), "SEDE FAVARA", font=f_cb_lbl, fill=(100, 116, 139, 255))
+    cod_rif = str(media_info.get("codiceRif", "RIF. GIANCANI")).replace("_", " ").upper()
+    draw.text((cx_c2 - 40, cbar_y + 72), cod_rif[:15], font=f_cb_val, fill=(15, 23, 42, 255))
+
+    # Colonna 3: Sito Web
+    cx_c3 = cw3 * 2 + cw3 // 2
+    # Disegna icona mappamondo
+    r_globe = 16
+    draw.ellipse([cx_c3 - 70 - r_globe, cbar_y + 75 - r_globe, cx_c3 - 70 + r_globe, cbar_y + 75 + r_globe], outline=teal_color, width=2)
+    draw.ellipse([cx_c3 - 70 - r_globe // 2, cbar_y + 75 - r_globe, cx_c3 - 70 + r_globe // 2, cbar_y + 75 + r_globe], outline=teal_color, width=2)
+    draw.line([(cx_c3 - 70 - r_globe, cbar_y + 75), (cx_c3 - 70 + r_globe, cbar_y + 75)], fill=teal_color, width=2)
+
+    draw.text((cx_c3 - 40, cbar_y + 45), "SCOPRI DI PIÙ SU", font=f_cb_lbl, fill=(100, 116, 139, 255))
+    draw.text((cx_c3 - 40, cbar_y + 72), "GIANCANI.IT", font=f_cb_val, fill=teal_color)
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+def crea_flyer_zero24_card_1_1(media_info, palette=None, output_path=None):
+    """Versione 1:1 (1080x1080) dello Stile Studio Zero24 Modern Card"""
+    W, H = 1080, 1080
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"flyer_zero24_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    teal_color = (0, 95, 106, 255)
+    contact_bar_bg = (248, 250, 252, 255)
+
+    canvas = Image.new("RGBA", (W, H), (255, 255, 255, 255))
+
+    # Foto superiore (altezza 560px)
+    PHOTO_H = 560
+    foto = get_clean_property_photo(media_info, (W, PHOTO_H))
+    canvas.paste(foto, (0, 0))
+
+    draw = ImageDraw.Draw(canvas)
+
+    # Badge in alto a sinistra
+    draw.rounded_rectangle([30, 30, 350, 125], radius=14, fill=(255, 255, 255, 245), outline=(203, 213, 225, 200), width=1)
+    logo = get_logo_trasparente_ufficiale(max_w=240, max_h=55)
+    if logo:
+        canvas.paste(logo, (45, 40), logo)
+    f_slogan = get_font(12, bold=True, font_type="sans")
+    draw.text((190, 105), "LA TUA CASA, IL NOSTRO IMPEGNO.", font=f_slogan, fill=teal_color, anchor="mm")
+
+    # Blocco Teal inferiore
+    CONTACT_H = 110
+    block_y = PHOTO_H
+    block_h = H - PHOTO_H - CONTACT_H
+    draw.rectangle([(0, block_y), (W, block_y + block_h)], fill=teal_color)
+
+    tipologia = str(media_info.get("tipologia", "VILLA BIFAMILIARE")).upper()
+    f_cat = get_font(18, bold=True, font_type="sans")
+    draw.text((W // 2, block_y + 26), tipologia, font=f_cat, fill=(204, 251, 241, 255), anchor="mm")
+
+    titolo = str(media_info.get("titolo", "Favara")).strip().title()
+    f_tit = get_font(38, bold=True, font_type="serif")
+    draw.text((W // 2, block_y + 65), titolo[:34], font=f_tit, fill=(255, 255, 255, 255), anchor="mm")
+
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_prz = get_font(48, bold=True, font_type="sans")
+    draw.text((W // 2, block_y + 130), prezzo_txt, font=f_prz, fill=(255, 255, 255, 255), anchor="mm")
+
+    # 4 Icone Specs
+    icons_y = block_y + 205
+    col_w = W // 4
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "130"))
+    locali_txt = str(media_info.get("locali", "3")).strip() + " camere"
+    bagni_txt = str(media_info.get("bagni", "2")).strip() + " bagni"
+
+    f_ic_lbl = get_font(18, bold=True, font_type="sans")
+
+    cx1 = col_w // 2
+    draw_vector_ruler_sqm(draw, cx1, icons_y, size=38, color=(255, 255, 255, 255), width=2)
+    draw.text((cx1, icons_y + 40), mq_txt.replace("metri quadri", "mq"), font=f_ic_lbl, fill=(255, 255, 255, 255), anchor="mm")
+
+    cx2 = col_w + col_w // 2
+    draw_bed_icon(draw, cx2, icons_y, size=38, color=(255, 255, 255, 255), width=2)
+    draw.text((cx2, icons_y + 40), locali_txt, font=f_ic_lbl, fill=(255, 255, 255, 255), anchor="mm")
+
+    cx3 = col_w * 2 + col_w // 2
+    draw_vector_shower(draw, cx3, icons_y, size=38, color=(255, 255, 255, 255), width=2)
+    draw.text((cx3, icons_y + 40), bagni_txt, font=f_ic_lbl, fill=(255, 255, 255, 255), anchor="mm")
+
+    cx4 = col_w * 3 + col_w // 2
+    s_leaf = 16
+    draw.arc([cx4 - s_leaf, icons_y - s_leaf, cx4 + s_leaf, icons_y + s_leaf], start=0, end=90, fill=(255, 255, 255, 255), width=2)
+    draw.arc([cx4 - s_leaf, icons_y - s_leaf, cx4 + s_leaf, icons_y + s_leaf], start=180, end=270, fill=(255, 255, 255, 255), width=2)
+    draw.line([(cx4 - s_leaf, icons_y + s_leaf), (cx4 + s_leaf, icons_y - s_leaf)], fill=(255, 255, 255, 255), width=2)
+    draw.text((cx4, icons_y + 40), "Giardino", font=f_ic_lbl, fill=(255, 255, 255, 255), anchor="mm")
+
+    # Testo narrativo Colonna F
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if testo_f:
+        draw_fitted_text(draw, testo_f, (50, icons_y + 75, W - 100, 85),
+                         max_font_size=18, min_font_size=14, fill=(241, 245, 249, 240), align="center")
+
+    # Barra contatti
+    cbar_y = H - CONTACT_H
+    draw.rectangle([(0, cbar_y), (W, H)], fill=contact_bar_bg)
+    draw.line([(0, cbar_y), (W, cbar_y)], fill=(203, 213, 225, 255), width=2)
+
+    cw3 = W // 3
+    f_cb_lbl = get_font(13, bold=False, font_type="sans")
+    f_cb_val = get_font(18, bold=True, font_type="sans")
+
+    # Col 1
+    cx_c1 = cw3 // 2
+    draw_phone_icon(draw, cx_c1 - 55, cbar_y + 55, size=26, color=teal_color)
+    draw.text((cx_c1 - 30, cbar_y + 32), "PER INFO", font=f_cb_lbl, fill=(100, 116, 139, 255))
+    draw.text((cx_c1 - 30, cbar_y + 55), "320 166 7156", font=f_cb_val, fill=(15, 23, 42, 255))
+
+    # Col 2
+    cx_c2 = cw3 + cw3 // 2
+    draw_pin_icon(draw, cx_c2 - 55, cbar_y + 55, size=26, color=teal_color)
+    draw.text((cx_c2 - 30, cbar_y + 32), "SEDE FAVARA", font=f_cb_lbl, fill=(100, 116, 139, 255))
+    cod_rif = str(media_info.get("codiceRif", "GIANCANI")).replace("_", " ").upper()
+    draw.text((cx_c2 - 30, cbar_y + 55), cod_rif[:12], font=f_cb_val, fill=(15, 23, 42, 255))
+
+    # Col 3
+    cx_c3 = cw3 * 2 + cw3 // 2
+    draw.text((cx_c3 - 30, cbar_y + 32), "SCOPRI DI PIÙ SU", font=f_cb_lbl, fill=(100, 116, 139, 255))
+    draw.text((cx_c3 - 30, cbar_y + 55), "GIANCANI.IT", font=f_cb_val, fill=teal_color)
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📰 STILE 5: TECNOCASA GAZZETTA 4 FOTO (Grid 2x2 + Colonna F + OCCASIONE)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def crea_story_tecnocasa_gazzetta_9_16(media_info, palette=None, output_path=None):
+    """
+    Stile 5 ispirato all'immagine 5 (uploaded_media_1_1791469719854.jpg):
+    - Formato Verticale 9:16 (1080x1920)
+    - Testata superiore bianca con logo Immobiliare Giancani grande
+    - Banner orizzontale verde scuro: 'VENDESI [TITOLO IMMOBILE]'
+    - Griglia a 4 Foto (2x2) separate da profili bianchi
+    - Box descrittivo su sfondo bianco con testo da Colonna F
+    - Prezzo gigante in verde + Badge 3D arancione 'OCCASIONE'
+    - Footer contatti verde scuro completo
+    """
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_tecnocasa_grid_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    green_dark = (15, 81, 50, 255)     # #0F5132 Verde classico gazzetta immobiliare
+    orange_badge = (245, 130, 32, 255)  # Arancio vibrante callout
+
+    canvas = Image.new("RGBA", (W, H), (255, 255, 255, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    # 1. Testata Superiore Bianca (H: 150px)
+    HEADER_H = 150
+    draw.rectangle([(0, 0), (W, HEADER_H)], fill=(255, 255, 255, 255))
+    logo = get_logo_trasparente_ufficiale(max_w=380, max_h=95)
+    if logo:
+        lw, lh = logo.size
+        canvas.paste(logo, ((W - lw) // 2, (HEADER_H - lh) // 2), logo)
+    else:
+        f_top = get_font(38, bold=True, font_type="sans")
+        draw.text((W // 2, HEADER_H // 2), "IMMOBILIARE GIANCANI", font=f_top, fill=green_dark, anchor="mm")
+
+    # 2. Banner Verde Titolo Vendesi (H: 75px)
+    BANNER_H = 75
+    banner_y = HEADER_H
+    draw.rectangle([(0, banner_y), (W, banner_y + BANNER_H)], fill=green_dark)
+
+    titolo = str(media_info.get("titolo", "VILLA PANORAMICA")).upper().strip()
+    zona = str(media_info.get("zona", "FAVARA")).upper().strip()
+    titolo_banner = f"VENDESI {titolo} - {zona}"
+    if len(titolo_banner) > 42:
+        titolo_banner = f"VENDESI {titolo}"[:40]
+    f_ban = get_font(32, bold=True, font_type="sans")
+    draw.text((W // 2, banner_y + BANNER_H // 2), titolo_banner, font=f_ban, fill=(255, 255, 255, 255), anchor="mm")
+
+    # 3. Griglia a 4 Foto (2x2)
+    # Area totale griglia: W x 820px
+    grid_y = banner_y + BANNER_H
+    grid_h = 820
+    gutter = 6
+    cell_w = (W - gutter) // 2
+    cell_h = (grid_h - gutter) // 2
+
+    quattro_foto = _estrai_foto_multiple(media_info, target_count=4)
+
+    coords = [
+        (0, grid_y, cell_w, cell_h),                                # Alto-SX
+        (cell_w + gutter, grid_y, W - cell_w - gutter, cell_h),       # Alto-DX
+        (0, grid_y + cell_h + gutter, cell_w, grid_h - cell_h - gutter), # Basso-SX
+        (cell_w + gutter, grid_y + cell_h + gutter, W - cell_w - gutter, grid_h - cell_h - gutter) # Basso-DX
+    ]
+
+    for idx, (cx, cy, cw, ch) in enumerate(coords):
+        im = quattro_foto[idx]
+        # Adatta con crop centratura
+        iw, ih = im.size
+        scale = max(cw / iw, ch / ih)
+        nw, nh = int(iw * scale), int(ih * scale)
+        im_sc = im.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - cw) // 2
+        oy = (nh - ch) // 2
+        im_crop = im_sc.crop((ox, oy, ox + cw, oy + ch))
+        canvas.paste(im_crop, (cx, cy))
+
+    # 4. Box Descrittivo su Sfondo Bianco
+    desc_y = grid_y + grid_h + 20
+    desc_h = 440
+
+    # Sommario / Sintesi in grassetto
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "120"))
+    locali_txt = str(media_info.get("locali", "4")).strip() + " vani"
+    lead_txt = f"{titolo.title()} a {zona.title()} con superficie di {mq_txt} e {locali_txt}."
+    f_lead = get_font(26, bold=True, font_type="sans")
+    draw.text((40, desc_y), lead_txt[:55], font=f_lead, fill=(15, 23, 42, 255))
+
+    # Testo esteso rigorosamente da Colonna F
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if not testo_f:
+        testo_f = "Splendida proprietà rifinita in ogni dettaglio, ideale come residenza principale o investimento di pregio nel territorio. — Immobiliare Giancani"
+
+    draw_fitted_text(draw, testo_f, (40, desc_y + 40, W - 80, 240),
+                     max_font_size=24, min_font_size=17, fill=(30, 41, 59, 255), line_spacing=6)
+
+    # 5. Riga Prezzo Gigante & Badge 'OCCASIONE'
+    prz_row_y = desc_y + 300
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_prz_giga = get_font(68, bold=True, font_type="sans")
+    draw.text((40, prz_row_y), prezzo_txt, font=f_prz_giga, fill=green_dark)
+
+    # Badge 'OCCASIONE'
+    badge_txt = "OCCASIONE"
+    f_badge_occ = get_font(46, bold=True, font_type="sans")
+    bb = draw.textbbox((0, 0), badge_txt, font=f_badge_occ)
+    bw, bh = bb[2] - bb[0] + 44, bb[3] - bb[1] + 24
+    bx = W - bw - 40
+    by = prz_row_y + 10
+
+    # Bordo esterno giallo/arancio sagomato
+    draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=12, fill=(255, 255, 255, 255), outline=orange_badge, width=4)
+    # Testo arancione interno
+    draw.text((bx + 22, by + 10), badge_txt, font=f_badge_occ, fill=orange_badge)
+
+    # 6. Footer Contatti Verde Scuro (H: 210px in fondo)
+    FOOTER_H = 210
+    foot_y = H - FOOTER_H
+    draw.rectangle([(0, foot_y), (W, H)], fill=green_dark)
+
+    f_ft_hdr = get_font(24, bold=True, font_type="sans")
+    draw.text((W // 2, foot_y + 28), "CONTATTI", font=f_ft_hdr, fill=(255, 255, 255, 255), anchor="mm")
+
+    f_ft_tel = get_font(30, bold=True, font_type="sans")
+    draw.text((W // 2, foot_y + 75), "TELEFONO / WHATSAPP: 320 166 7156", font=f_ft_tel, fill=(254, 240, 138, 255), anchor="mm")
+
+    f_ft_sub = get_font(21, bold=False, font_type="sans")
+    draw.text((W // 2, foot_y + 125), "Studio Immobiliare Giancani • Corso Vittorio Veneto 151 • Favara (AG)", font=f_ft_sub, fill=(241, 245, 249, 240), anchor="mm")
+
+    f_ft_mail = get_font(19, bold=False, font_type="sans")
+    draw.text((W // 2, foot_y + 165), "Email: immobiliaregiancani@gmail.com • www.immobiliaregiancani.it", font=f_ft_mail, fill=(203, 213, 225, 220), anchor="mm")
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+def crea_flyer_tecnocasa_gazzetta_1_1(media_info, palette=None, output_path=None):
+    """Versione 1:1 (1080x1080) dello Stile Tecnocasa Gazzetta 4 Foto"""
+    W, H = 1080, 1080
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"flyer_tecnocasa_grid_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    green_dark = (15, 81, 50, 255)
+    orange_badge = (245, 130, 32, 255)
+
+    canvas = Image.new("RGBA", (W, H), (255, 255, 255, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    # Testata (H: 80px)
+    draw.rectangle([(0, 0), (W, 80)], fill=(255, 255, 255, 255))
+    logo = get_logo_trasparente_ufficiale(max_w=280, max_h=55)
+    if logo:
+        lw, lh = logo.size
+        canvas.paste(logo, ((W - lw) // 2, (80 - lh) // 2), logo)
+
+    # Banner Vendesi (H: 50px)
+    draw.rectangle([(0, 80), (W, 130)], fill=green_dark)
+    titolo = str(media_info.get("titolo", "VILLA PANORAMICA")).upper().strip()
+    f_ban = get_font(24, bold=True, font_type="sans")
+    draw.text((W // 2, 105), f"VENDESI {titolo[:38]}", font=f_ban, fill=(255, 255, 255, 255), anchor="mm")
+
+    # Griglia 4 foto (H: 480px)
+    grid_y = 130
+    grid_h = 480
+    gutter = 4
+    cell_w = (W - gutter) // 2
+    cell_h = (grid_h - gutter) // 2
+
+    quattro_foto = _estrai_foto_multiple(media_info, target_count=4)
+    coords = [
+        (0, grid_y, cell_w, cell_h),
+        (cell_w + gutter, grid_y, W - cell_w - gutter, cell_h),
+        (0, grid_y + cell_h + gutter, cell_w, grid_h - cell_h - gutter),
+        (cell_w + gutter, grid_y + cell_h + gutter, W - cell_w - gutter, grid_h - cell_h - gutter)
+    ]
+    for idx, (cx, cy, cw, ch) in enumerate(coords):
+        im = quattro_foto[idx]
+        iw, ih = im.size
+        scale = max(cw / iw, ch / ih)
+        nw, nh = int(iw * scale), int(ih * scale)
+        im_sc = im.resize((nw, nh), Image.LANCZOS)
+        ox = (nw - cw) // 2
+        oy = (nh - ch) // 2
+        im_crop = im_sc.crop((ox, oy, ox + cw, oy + ch))
+        canvas.paste(im_crop, (cx, cy))
+
+    # Box Descrittivo
+    desc_y = grid_y + grid_h + 15
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "120"))
+    locali_txt = str(media_info.get("locali", "4")).strip() + " vani"
+    lead_txt = f"{titolo.title()} — {mq_txt} • {locali_txt}"
+    f_lead = get_font(22, bold=True, font_type="sans")
+    draw.text((30, desc_y), lead_txt, font=f_lead, fill=(15, 23, 42, 255))
+
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if not testo_f:
+        testo_f = "Splendida residenza proposta in vendita esclusiva da Immobiliare Giancani."
+    draw_fitted_text(draw, testo_f, (30, desc_y + 30, W - 60, 180),
+                     max_font_size=19, min_font_size=14, fill=(30, 41, 59, 255), line_spacing=5)
+
+    # Prezzo & OCCASIONE
+    prz_row_y = desc_y + 225
+    prezzo_txt = _format_prezzo(media_info.get("prezzo"))
+    f_prz_giga = get_font(48, bold=True, font_type="sans")
+    draw.text((30, prz_row_y), prezzo_txt, font=f_prz_giga, fill=green_dark)
+
+    badge_txt = "OCCASIONE"
+    f_badge_occ = get_font(32, bold=True, font_type="sans")
+    bb = draw.textbbox((0, 0), badge_txt, font=f_badge_occ)
+    bw, bh = bb[2] - bb[0] + 32, bb[3] - bb[1] + 16
+    bx = W - bw - 30
+    by = prz_row_y + 4
+    draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=10, fill=(255, 255, 255, 255), outline=orange_badge, width=3)
+    draw.text((bx + 16, by + 8), badge_txt, font=f_badge_occ, fill=orange_badge)
+
+    # Footer (H: 110px)
+    FOOTER_H = 110
+    foot_y = H - FOOTER_H
+    draw.rectangle([(0, foot_y), (W, H)], fill=green_dark)
+
+    f_ft_tel = get_font(23, bold=True, font_type="sans")
+    draw.text((W // 2, foot_y + 30), "CONTATTI • TELEFONO / WHATSAPP: 320 166 7156", font=f_ft_tel, fill=(254, 240, 138, 255), anchor="mm")
+
+    f_ft_sub = get_font(17, bold=False, font_type="sans")
+    draw.text((W // 2, foot_y + 68), "Studio Immobiliare Giancani • Corso Vittorio Veneto 151 • Favara (AG)", font=f_ft_sub, fill=(241, 245, 249, 240), anchor="mm")
+
+    canvas.convert("RGB").save(output_path, quality=95)
+    return output_path
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔴 CARD STORIA LIVE SCREENSHOT (ORIGINALE RICHIESTA UTENTE + COLORE FONDO DINAMICO)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+FRASI_HOOK_DIRETTA = [
+    "🔴 Siamo in diretta adesso! Aprite le porte a una straordinaria opportunità che vi conquisterà al primo sguardo.",
+    "✨ Diretta live aperta! Mettetevi comodi: stiamo per svelarvi ogni angolo di questa dimora esclusiva.",
+    "🏡 Benvenuti in tour live! Se cercate comfort, luce e spazi veri, questa casa è fatta apposta per voi.",
+    "🌟 In onda in questo istante! Entrate con noi per scoprire una casa pronta a farvi battere il cuore.",
+    "📍 Diretta streaming accesa! Oggi vi portiamo dentro una soluzione immobiliare davvero introvabile.",
+    "🔑 Chiavi in mano e porte aperte! Guardate dal vivo la meraviglia di questo immobile prima di tutti gli altri.",
+    "🎉 Siamo live dal territorio! Ecco l'ambiente perfetto per iniziare a scrivere la vostra nuova storia familiare.",
+    "☀️ Che luce meravigliosa! Unitevi alla diretta per ammirare da vicino le finiture e la distribuzione degli spazi.",
+    "🔥 Occasione imperdibile in onda ora! Un immobile di grande pregio con un potenziale unico tutto da scoprire.",
+    "🚪 Entriamo insieme in diretta! Guardate la cura di ogni dettaglio e immaginate già il vostro futuro qui.",
+    "💎 Una gemma immobiliare in diretta streaming! Seguiteci stanza per stanza per non perdere nessun particolare.",
+    "🎯 La ricerca della vostra casa ideale potrebbe finire proprio adesso: collegatevi subito alla nostra diretta live!",
+    "💫 Spazi generosi e atmosfera calda: siamo in diretta per mostrarvi come si vive davvero in questa casa.",
+    "🎙️ DarIA e DarIO in diretta per voi! Lasciatevi guidare nel tour virtuale esclusivo di questa splendida proprietà.",
+    "⭐ In diretta esclusiva con Immobiliare Giancani: scoprite adesso l'immobile che stavate aspettando da tempo!"
+]
+
+def crea_card_storia_live_screenshot_9_16(media_info, palette=None, output_path=None, usa_palette_bg=True):
+    """
+    Riproduce fedelmente la grafica dello screenshot della diretta live (1080x1920)
+    con il supporto del colore di fondo dinamico della palette del giorno.
+    """
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"card_live_screenshot_{uuid.uuid4().hex[:6]}.png")
+    if not palette:
+        palette = get_palette_del_giorno()
+
+    # 1. Fallback robusto anti-blocco sulla foto dell'immobile
+    cardX, cardY, cardW, cardH = 50, 230, 980, 870
+    foto_immobile = get_clean_property_photo(media_info, target_size=(cardW, cardH))
+
+    # 2. Sfondo Base Scuro Elegante con Blur della foto (proprio come in Index.html)
+    canvas = Image.new("RGBA", (W, H), (6, 10, 20, 255))
+    try:
+        bg_blur = foto_immobile.resize((W, H)).filter(ImageFilter.GaussianBlur(32))
+        canvas.paste(bg_blur.convert("RGBA"), (0, 0))
+    except Exception:
+        pass
+
+    # Overlay scuro per contrasto
+    overlay_bg = Image.new("RGBA", (W, H), (6, 10, 20, 185))
+    canvas = Image.alpha_composite(canvas, overlay_bg)
+    draw = ImageDraw.Draw(canvas)
+
+    # Cornice esterna dorata leggera
+    draw.rounded_rectangle([20, 20, W - 20, H - 20], radius=28, outline=(212, 168, 83, 110), width=3)
+
+    # 3. Foto centrale con angoli arrotondati e cornice dorata
+    mask_foto = Image.new("L", (cardW, cardH), 0)
+    d_mf = ImageDraw.Draw(mask_foto)
+    d_mf.rounded_rectangle([0, 0, cardW, cardH], radius=26, fill=255)
+    canvas.paste(foto_immobile.convert("RGBA"), (cardX, cardY), mask_foto)
+
+    # Cornice dorata attorno alla foto centrale
+    draw.rounded_rectangle([cardX, cardY, cardX + cardW, cardY + cardH], radius=26, outline=(212, 175, 55, 220), width=3)
+
+    # Watermark Logo Agenzia in alto a destra sulla foto (Badge Rettangolare Panoramico Esteso - Bello Esteso!)
+    wm_w, wm_h = 290, 75
+    wm_x = cardX + cardW - wm_w - 20
+    wm_y = cardY + 20
+    draw.rounded_rectangle([wm_x, wm_y, wm_x + wm_w, wm_y + wm_h], radius=16, fill=(255, 255, 255, 248), outline=(212, 168, 83, 245), width=2)
+    logo_wm = get_logo_trasparente_ufficiale(max_w=wm_w - 28, max_h=wm_h - 18)
+    if logo_wm:
+        lw_wm, lh_wm = logo_wm.size
+        canvas.paste(logo_wm, (wm_x + (wm_w - lw_wm) // 2, wm_y + (wm_h - lh_wm) // 2), logo_wm)
+    else:
+        f_wm_txt = get_font(20, bold=True, font_type="sans")
+        draw.text((wm_x + wm_w // 2, wm_y + wm_h // 2), "IMMOBILIARE GIANCANI", font=f_wm_txt, fill=(15, 23, 42, 255), anchor="mm")
+
+    # 4. Header: Logo Ufficiale in Pillola Bianca Splendente
+    pill_w, pill_h = 480, 105
+    pill_x = (W - pill_w) // 2
+    pill_y = 55
+    draw.rounded_rectangle([pill_x, pill_y, pill_x + pill_w, pill_y + pill_h], radius=22, fill=(255, 255, 255, 250), outline=(212, 168, 83, 160), width=1)
+    logo_top = get_logo_trasparente_ufficiale(max_w=400, max_h=80)
+    if logo_top:
+        lw_t, lh_t = logo_top.size
+        canvas.paste(logo_top, ((W - lw_t) // 2, pill_y + (pill_h - lh_t) // 2), logo_top)
+    else:
+        f_top_ig = get_font(34, bold=True, font_type="sans")
+        draw.text((W // 2, pill_y + pill_h // 2), "IMMOBILIARE GIANCANI", font=f_top_ig, fill=(212, 175, 55, 255), anchor="mm")
+
+    # Badge Rosso Live sotto al logo
+    live_y = 175
+    draw.rounded_rectangle([280, live_y, 800, live_y + 44], radius=22, fill=(220, 38, 38, 255))
+    draw.ellipse([305, live_y + 13, 323, live_y + 31], fill=(255, 255, 255, 255))
+    f_live = get_font(21, bold=True, font_type="sans")
+    draw.text((W // 2 + 10, live_y + 22), "IN DIRETTA ORA • TOUR VIRTUALE", font=f_live, fill=(255, 255, 255, 255), anchor="mm")
+
+    # 5. Scheda Informativa Inferiore con Colore di Fondo Dinamico
+    cardY0 = 1135
+    cardH0 = 735
+    cardX0 = 50
+    cardW0 = 980
+
+    # Determinazione Colore Fondo Scheda (Giallo solare, Bordeaux, Emerald o Navy classico)
+    if usa_palette_bg and palette:
+        p_dark = palette.get("primary_dark", (11, 19, 38, 255))
+        # Se è giallo brillante (chiaro), scuriamo elegantemente per mantenere il contrasto del testo
+        if p_dark[0] > 200 and p_dark[1] > 160 and p_dark[2] < 100:
+            # Giallo Solare -> fondo Slate scuro con riflesso oro ambrato caldo
+            card_fill = (22, 28, 42, 245)
+            border_gold = (245, 190, 11, 240)
+        else:
+            # Altri temi: usa tinta scura armoniosa del giorno
+            r_c = max(10, int(p_dark[0] * 0.25))
+            g_c = max(14, int(p_dark[1] * 0.25))
+            b_c = max(24, int(p_dark[2] * 0.25))
+            card_fill = (r_c, g_c, b_c, 245)
+            border_gold = palette.get("accent", (212, 175, 55, 220))
+    else:
+        card_fill = (11, 19, 38, 245)
+        border_gold = (212, 175, 55, 220)
+
+    draw.rounded_rectangle([cardX0, cardY0, cardX0 + cardW0, cardY0 + cardH0], radius=30, fill=card_fill, outline=border_gold, width=3)
+
+    # 5a. Badge Dorato: 'IMMOBILE IN VENDITA IN ESCLUSIVA'
+    badge_txt = "IMMOBILE IN VENDITA IN ESCLUSIVA"
+    f_bdg = get_font(20, bold=True, font_type="sans")
+    bw = draw.textlength(badge_txt, font=f_bdg) + 56
+    draw.rounded_rectangle([80, cardY0 + 26, int(80 + bw), cardY0 + 66], radius=12, fill=(180, 130, 20, 255))
+    draw_house_icon(draw, 102, cardY0 + 46, size=24, color=(255, 255, 255, 255), width=2)
+    draw.text((124, cardY0 + 46), badge_txt, font=f_bdg, fill=(255, 255, 255, 255), anchor="lm")
+
+    # 5b. Titolo dell'Immobile (con a-capo o auto-fit)
+    titolo = str(media_info.get("titolo", "APPARTAMENTO CORSO VITTORIO VENETO")).upper().strip()
+    f_tit = get_font(36, bold=True, font_type="sans")
+    if len(titolo) > 38:
+        tit_lines = [titolo[:36] + "..."]
+    else:
+        tit_lines = [titolo]
+    draw.text((80, cardY0 + 112), tit_lines[0], font=f_tit, fill=(255, 255, 255, 255))
+
+    # 5c. Ambiente / Stanza (in azzurro)
+    stanza = str(media_info.get("stanza", media_info.get("tipologia", "SALOTTO VUOTO"))).upper().strip()
+    st_label = f"Ambiente: {stanza}"
+    f_st = get_font(28, bold=True, font_type="sans")
+    draw_pin_icon(draw, 96, cardY0 + 172, size=26, color=(56, 189, 248, 255))
+    draw.text((120, cardY0 + 172), st_label[:40], font=f_st, fill=(56, 189, 248, 255), anchor="lm")
+
+    # 5d. Superficie in 'metri quadri' (in giallo)
+    mq_txt = formatta_metri_quadri(media_info.get("mq", "140"))
+    f_mq = get_font(29, bold=True, font_type="sans")
+    draw_vector_ruler_sqm(draw, 96, cardY0 + 225, size=26, color=(250, 204, 21, 255), width=2)
+    draw.text((120, cardY0 + 225), f"Superficie: {mq_txt}", font=f_mq, fill=(250, 204, 21, 255), anchor="lm")
+
+    # 5e. Prezzo (in verde)
+    prezzo_txt = str(media_info.get("prezzo", "Trattativa Riservata")).strip()
+    if prezzo_txt.isdigit():
+        prezzo_txt = f"€ {int(prezzo_txt):,}".replace(",", ".")
+    elif "€" not in prezzo_txt and any(c.isdigit() for c in prezzo_txt):
+        prezzo_txt = f"€ {prezzo_txt}"
+    f_pr = get_font(32, bold=True, font_type="sans")
+    draw.text((80, cardY0 + 280), "💰", font=get_font(26, bold=True), fill=(74, 222, 128, 255), anchor="lm")
+    draw.text((120, cardY0 + 280), f"Prezzo: {prezzo_txt}", font=f_pr, fill=(74, 222, 128, 255), anchor="lm")
+
+    # 5f. Descrizione dalla Colonna F
+    testo_f = str(media_info.get("testoF", "")).strip()
+    if not testo_f:
+        testo_f = "Immaginate la luce dorata che bagna gli ampi spazi di questo ambiente rifinito con cura, pronto a trasformarsi nel cuore pulsante della vostra nuova vita."
+    clean_testo_f = re.sub(r'\s*—?\s*Immobiliare Giancani\s*$', '', testo_f).strip()
+    testo_virgolettato = f'"{clean_testo_f}"'
+    draw_fitted_text(draw, testo_virgolettato, (80, cardY0 + 325, 860, 150),
+                     max_font_size=23, min_font_size=16, font_type="sans",
+                     fill=(203, 213, 225, 255), line_spacing=6)
+
+    # 5g. Banner CTA d'invito alla diretta con gradiente blu/ciano e bordo oro
+    cta_y = cardY0 + 510
+    cta_w = 900
+    cta_x = (W - cta_w) // 2
+    # Disegna gradiente blu
+    cta_img = Image.new("RGBA", (cta_w, 75), (2, 132, 199, 255))
+    d_cta = ImageDraw.Draw(cta_img)
+    for x in range(cta_w):
+        r_grad = int(30 + (2 - 30) * (x / cta_w))
+        g_grad = int(58 + (132 - 58) * (x / cta_w))
+        b_grad = int(138 + (199 - 138) * (x / cta_w))
+        d_cta.line([(x, 0), (x, 75)], fill=(r_grad, g_grad, b_grad, 255))
+    
+    # Maschera arrotondata per CTA
+    mask_cta = Image.new("L", (cta_w, 75), 0)
+    d_mcta = ImageDraw.Draw(mask_cta)
+    d_mcta.rounded_rectangle([0, 0, cta_w, 75], radius=18, fill=255)
+    canvas.paste(cta_img, (cta_x, cta_y), mask_cta)
+    draw.rounded_rectangle([cta_x, cta_y, cta_x + cta_w, cta_y + 75], radius=18, outline=(250, 204, 21, 255), width=2)
+
+    f_cta_txt = get_font(26, bold=True, font_type="sans")
+    draw.text((W // 2, cta_y + 37), "👉 ENTRA IN DIRETTA PER FARE DOMANDE!", font=f_cta_txt, fill=(255, 255, 255, 255), anchor="mm")
+
+    # 5h. Footer Personal Branding Dorato
+    f_foot = get_font(34, bold=True, font_type="sans")
+    draw.text((W // 2, cardY0 + 665), "— Immobiliare Giancani —", font=f_foot, fill=(212, 175, 55, 255), anchor="mm")
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=96)
+    print(f"[CARD_LIVE_SCREENSHOT_9_16] Generata con successo: {output_path}")
+    return output_path
+
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🌟 SEZIONE 7 GRAFICHE QUOTIDIANE DEFINITIVE (LUNEDÌ - DOMENICA)
+# Ispirate ai Bot GitHub di Tonyhood2345 (C&B Wave, Metroquadro, ProfessioneCasa, Mindset)
+# ═══════════════════════════════════════════════════════════════════════════════
+import textwrap
+import datetime
+
+def _extract_story_field_colonna_f(media_info):
+    """Estrae rigorosamente il testo narrativo della Colonna F senza duplicare il brand."""
+    if not media_info or not isinstance(media_info, dict):
+        return "Splendido immobile selezionato in esclusiva per te."
+    val = (
+        media_info.get("testoF")
+        or media_info.get("descrizione")
+        or media_info.get("colonna_f")
+        or media_info.get("testo")
+        or media_info.get("frase")
+        or media_info.get("titolo")
+        or "Splendido immobile selezionato in esclusiva."
+    )
+    # Rimuove eventuale firma già presente per evitare duplicazioni
+    clean = re.sub(r'\s*—?\s*Immobiliare Giancani\s*$', '', str(val).strip(), flags=re.IGNORECASE).strip()
+    return clean if clean else "Splendido immobile selezionato in esclusiva."
+
+def _extract_story_field_mq(media_info):
+    """Formatta la superficie sempre per esteso come 'metri quadri'."""
+    val = media_info.get("mq") or media_info.get("superficie") or "120"
+    s = str(val).strip()
+    s = re.sub(r'(?i)\b(mq|m²|mq\.|m\^2)\b', 'metri quadri', s).strip()
+    if "metri quadri" not in s.lower():
+        num = re.search(r'\d+', s)
+        return f"{num.group(0)} metri quadri" if num else f"{s} metri quadri"
+    return s
+
+def _extract_story_field_titolo(media_info):
+    tit = media_info.get("titolo") or media_info.get("indirizzo") or media_info.get("nome") or "Opportunità Immobiliare"
+    return str(tit).strip()
+
+def _extract_story_field_prezzo(media_info):
+    p = media_info.get("prezzo") or "Trattativa Riservata"
+    p_str = str(p).strip()
+    if p_str and p_str != "Trattativa Riservata" and not p_str.endswith("€") and not p_str.startswith("€"):
+        p_str = f"€ {p_str}"
+    return p_str
+
+def _extract_story_field_zona(media_info):
+    z = media_info.get("zona") or media_info.get("citta") or "Favara (AG)"
+    return str(z).strip()
+
+def _paste_logo_protetto(canvas, x, y, max_w=340, max_h=85, with_plate=True, plate_pad=12):
+    """Incolla il logo ufficiale Giancani su placca protettiva ad alto contrasto."""
+    logo = get_logo_trasparente_ufficiale(max_w=max_w, max_h=max_h)
+    if not logo:
+        # Fallback testo
+        draw = ImageDraw.Draw(canvas)
+        draw.text((x, y), "IMMOBILIARE GIANCANI", font=get_font(28, bold=True, font_type="sans"), fill=(185, 28, 28, 255))
+        return
+    bbox = logo.getbbox()
+    if bbox:
+        logo = logo.crop(bbox)
+    ratio = min(max_w / logo.width, max_h / logo.height)
+    lw, lh = max(10, int(logo.width * ratio)), max(10, int(logo.height * ratio))
+    logo_s = logo.resize((lw, lh), Image.Resampling.LANCZOS)
+    if with_plate:
+        plate = Image.new("RGBA", (canvas.width, canvas.height), (0, 0, 0, 0))
+        p_draw = ImageDraw.Draw(plate)
+        px1, py1 = x - plate_pad, y - plate_pad
+        px2, py2 = x + lw + plate_pad, y + lh + plate_pad
+        p_draw.rounded_rectangle([(px1, py1), (px2, py2)], radius=16, fill=(255, 255, 255, 252), outline=(210, 215, 225, 220), width=2)
+        canvas.paste(plate, (0, 0), plate)
+    canvas.paste(logo_s, (x, y), logo_s)
+
+# --- 1. LUNEDÌ: C&B CURVED WAVE (NAVY BLUE & ORO CALDO) ---
+def crea_story_daily_lunedi_cb_curved_wave(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_lunedi_cb_curved_{uuid.uuid4().hex[:6]}.png")
+    
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = Image.new("RGBA", (W, H), (248, 249, 251, 255))
+    header_h = 160
+
+    # Header bianco
+    h_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    hd = ImageDraw.Draw(h_layer)
+    hd.rectangle([(0, 0), (W, header_h)], fill=(255, 255, 255, 255))
+    wing_pts = [(int(W * 0.62), 0), (W, 0), (W, header_h), (int(W * 0.74), header_h)]
+    hd.polygon(wing_pts, fill=(15, 23, 42, 255))
+    canvas.paste(h_layer, (0, 0), h_layer)
+
+    # Maschera curva ad onda per la foto
+    body_h = H - header_h
+    mask = Image.new("L", (W, body_h), 255)
+    md = ImageDraw.Draw(mask)
+    cut_w = int(W * 0.38)
+    wave_pts = [(0, 0), (cut_w, 0)]
+    for y in range(0, body_h + 1, 10):
+        prog = y / float(body_h)
+        x_val = int(cut_w * (1 - 0.35 * prog) + 25 * math.sin(prog * math.pi * 2))
+        wave_pts.append((x_val, y))
+    wave_pts.extend([(0, body_h), (0, 0)])
+    md.polygon(wave_pts, fill=0)
+
+    photo_crop = photo.crop((0, header_h, W, H))
+    canvas.paste(photo_crop, (0, header_h), mask)
+
+    # Colonna Navy a sinistra con bordo oro
+    c_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    cd = ImageDraw.Draw(c_layer)
+    c_pts = [(0, header_h), (cut_w, header_h)]
+    for y in range(0, body_h + 1, 10):
+        prog = y / float(body_h)
+        x_val = int(cut_w * (1 - 0.35 * prog) + 25 * math.sin(prog * math.pi * 2))
+        c_pts.append((x_val, header_h + y))
+    c_pts.extend([(0, H), (0, header_h)])
+    cd.polygon(c_pts, fill=(15, 23, 42, 255))
+    for i in range(len(c_pts) - 3):
+        cd.line([c_pts[i+1], c_pts[i+2]], fill=(212, 168, 83, 255), width=4)
+    canvas.paste(c_layer, (0, 0), c_layer)
+
+    # Logo su header bianco
+    _paste_logo_protetto(canvas, 45, 45, max_w=320, max_h=75, with_plate=False)
+
+    draw = ImageDraw.Draw(canvas)
+
+    # Pillola fluttuante con checkmark dorato • VENDE •
+    pill_w, pill_h = 420, 68
+    px, py = W - pill_w - 40, header_h + 40
+    draw.rounded_rectangle([(px, py), (px + pill_w, py + pill_h)], radius=34, fill=(255, 255, 255, 250), outline=(212, 168, 83), width=3)
+    draw.ellipse([(px + 10, py + 10), (px + 58, py + 58)], fill=(15, 23, 42))
+    draw_vector_check(draw, px + 34, py + 34, size=22, color=(212, 168, 83, 255), width=3)
+    draw.text((px + 74, py + 18), "• VENDE •", font=get_font(28, bold=True, font_type="sans"), fill=(15, 23, 42))
+
+    # Icone vettoriali pure nella colonna sinistra
+    mq_txt = _extract_story_field_mq(media_info)
+    prezzo_txt = _extract_story_field_prezzo(media_info)
+    icons_data = [
+        (draw_vector_ruler_sqm, mq_txt),
+        (draw_vector_sofa, "5 Vani"),
+        (draw_vector_shower, "2 Bagni"),
+        (draw_vector_laundry, "Ascensore")
+    ]
+    start_iy = header_h + 120
+    for idx, (fn, lbl) in enumerate(icons_data):
+        cy = start_iy + idx * 110
+        cx = 95
+        draw.ellipse([(cx - 28, cy - 28), (cx + 28, cy + 28)], fill=(30, 41, 59), outline=(212, 168, 83), width=2)
+        fn(draw, cx, cy, size=24, color=(255, 255, 255))
+        draw.text((cx + 42, cy - 12), lbl, font=get_font(18, bold=True, font_type="sans"), fill=(255, 255, 255))
+
+    # Box Prezzo dorato
+    p_box_y = start_iy + 4 * 110 + 30
+    draw.rounded_rectangle([(25, p_box_y), (cut_w - 20, p_box_y + 90)], radius=14, fill=(212, 168, 83, 230))
+    draw.text((40, p_box_y + 12), "PREZZO:", font=get_font(15, bold=True, font_type="sans"), fill=(15, 23, 42))
+    draw.text((40, p_box_y + 36), prezzo_txt, font=get_font(30, bold=True, font_type="sans"), fill=(15, 23, 42))
+
+    # Card Bianca Descrittiva (Colonna F)
+    card_w = int(W * 0.70)
+    card_h = 360
+    cx = W - card_w - 40
+    cy = H - card_h - 50
+    draw.rounded_rectangle([(cx, cy), (cx + card_w, cy + card_h)], radius=22, fill=(255, 255, 255, 250), outline=(212, 168, 83, 160), width=2)
+    draw.polygon([(cx + 20, cy + 25), (cx + 35, cy + 37), (cx + 20, cy + 50)], fill=(15, 23, 42))
+    draw.text((cx + 45, cy + 24), _extract_story_field_titolo(media_info).upper()[:30], font=get_font(20, bold=True, font_type="sans"), fill=(15, 23, 42))
+
+    col_f_text = _extract_story_field_colonna_f(media_info)
+    lines = textwrap.wrap(f"“{col_f_text}”", width=34)
+    txt_y = cy + 70
+    for l in lines[:5]:
+        draw.text((cx + 25, txt_y), l, font=get_font(21, bold=False, font_type="sans"), fill=(30, 41, 59))
+        txt_y += 32
+
+    draw.line([(cx + 25, cy + card_h - 55), (cx + card_w - 25, cy + card_h - 55)], fill=(226, 232, 240), width=1)
+    draw.text((cx + 25, cy + card_h - 42), "📍 " + _extract_story_field_zona(media_info), font=get_font(18, bold=True, font_type="sans"), fill=(15, 23, 42))
+    draw.text((cx + card_w - 250, cy + card_h - 42), "— Immobiliare Giancani", font=get_font(18, bold=True, font_type="sans"), fill=(212, 168, 83))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+# --- 2. MARTEDÌ: METROQUADRO NOIR & ICONE (LUXURY BLACK & ROYAL GOLD) ---
+def crea_story_daily_martedi_metroquadro(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_martedi_metroquadro_{uuid.uuid4().hex[:6]}.png")
+    
+    canvas = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+
+    # Gradiente nero/bordeaux sfumato dal 35% in giù
+    grad = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(grad)
+    mid_y = int(H * 0.35)
+    for y in range(mid_y, H):
+        ratio = (y - mid_y) / float(H - mid_y)
+        alpha = int(255 * (ratio ** 1.35))
+        gd.line([(0, y), (W, y)], fill=(18, 16, 14, alpha))
+    canvas = Image.alpha_composite(canvas, grad)
+
+    draw = ImageDraw.Draw(canvas)
+
+    # Logo in alto protetto
+    _paste_logo_protetto(canvas, 50, 50, max_w=340, max_h=85, with_plate=True)
+
+    # Badge Oro "• VENDE •"
+    badge_w, badge_h = 320, 75
+    bx, by = W - badge_w - 50, 55
+    draw.rounded_rectangle([(bx, by), (bx + badge_w, by + badge_h)], radius=18, fill=(201, 163, 94, 245), outline=(255, 255, 255, 220), width=2)
+    draw.text((bx + 35, by + 18), "• VENDE •", font=get_font(32, bold=True, font_type="sans"), fill=(18, 16, 14))
+
+    # Testo Colonna F in evidenza
+    start_y = int(H * 0.48)
+    draw.text((60, start_y), "DESCRIZIONE IMMOBILE (COLONNA F)", font=get_font(20, bold=True, font_type="sans"), fill=(201, 163, 94))
+    draw.text((60, start_y + 35), _extract_story_field_titolo(media_info)[:35], font=get_font(38, bold=True, font_type="sans"), fill=(255, 255, 255))
+
+    col_f_text = _extract_story_field_colonna_f(media_info)
+    lines = textwrap.wrap(f"“{col_f_text}”", width=36)
+    cur_y = start_y + 95
+    for l in lines[:5]:
+        draw.text((60, cur_y), l, font=get_font(26, bold=False, font_type="sans"), fill=(240, 240, 245))
+        cur_y += 40
+
+    # 4 Icone line art vettoriali orizzontali
+    icon_y = cur_y + 80
+    mq_txt = _extract_story_field_mq(media_info)
+    icons = [
+        (draw_vector_ruler_sqm, mq_txt),
+        (draw_vector_sofa, "5 Vani"),
+        (draw_vector_shower, "2 Bagni"),
+        (draw_vector_laundry, "Lavanderia")
+    ]
+    col_w = W // len(icons)
+    for i, (fn_draw, label) in enumerate(icons):
+        cx = i * col_w + col_w // 2
+        draw.ellipse([(cx - 38, icon_y - 38), (cx + 38, icon_y + 38)], fill=(30, 26, 22, 220), outline=(201, 163, 94), width=2)
+        fn_draw(draw, cx, icon_y, size=34, color=(201, 163, 94))
+        tw = draw.textlength(label, font=get_font(17, bold=True, font_type="sans"))
+        draw.text((cx - tw // 2, icon_y + 48), label, font=get_font(17, bold=True, font_type="sans"), fill=(255, 255, 255))
+
+    # Prezzo e Card Branding Finale
+    card_y = H - 180
+    draw.rounded_rectangle([(50, card_y), (W - 50, card_y + 120)], radius=20, fill=(255, 255, 255, 250), outline=(201, 163, 94), width=3)
+    draw.text((80, card_y + 24), "PREZZO RICHIESTO:", font=get_font(18, bold=True, font_type="sans"), fill=(100, 100, 100))
+    draw.text((80, card_y + 54), _extract_story_field_prezzo(media_info), font=get_font(42, bold=True, font_type="sans"), fill=(18, 16, 14))
+    
+    draw.text((W - 460, card_y + 42), "— Immobiliare Giancani", font=get_font(26, bold=True, font_type="sans"), fill=(185, 28, 28))
+    draw.text((W - 460, card_y + 76), "Corso Vittorio Veneto 151, Favara", font=get_font(17, bold=False, font_type="sans"), fill=(60, 60, 60))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+# --- 3. MERCOLEDÌ: PROFESSIONECASA (SIDEBAR ROSSA & CHEVRON) ---
+def crea_story_daily_mercoledi_professionecasa(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_mercoledi_profcase_{uuid.uuid4().hex[:6]}.png")
+    
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = Image.new("RGBA", (W, H), (255, 255, 255, 255))
+    side_w = int(W * 0.20)
+    
+    draw = ImageDraw.Draw(canvas)
+    draw.rectangle([(0, 0), (side_w, H)], fill=(200, 16, 46, 255))
+
+    # Foto a tutta altezza a destra
+    body_w = W - side_w
+    photo_crop = photo.crop((W - body_w, 0, W, H))
+    canvas.paste(photo_crop, (side_w, 0))
+
+    # Icone vettoriali nella sidebar
+    mq_txt = _extract_story_field_mq(media_info)
+    side_icons = [
+        (draw_vector_ruler_sqm, "METRI QUADRI", mq_txt.split()[0]),
+        (draw_vector_sofa, "VANI", "5"),
+        (draw_vector_shower, "BAGNI", "2"),
+        (draw_vector_laundry, "SERVIZI", "SI")
+    ]
+    step_y = H // 5
+    for i, (fn_draw, lbl, val) in enumerate(side_icons, start=1):
+        cy = i * step_y
+        cx = side_w // 2
+        draw.ellipse([(cx - 36, cy - 36), (cx + 36, cy + 36)], fill=(160, 10, 35), outline=(255, 255, 255, 230), width=2)
+        fn_draw(draw, cx, cy - 8, size=30, color=(255, 255, 255))
+        draw.text((cx, cy + 42), val, font=get_font(18, bold=True, font_type="sans"), fill=(255, 255, 255), anchor="mt")
+        draw.text((cx, cy + 64), lbl, font=get_font(12, bold=False, font_type="sans"), fill=(255, 220, 220), anchor="mt")
+
+    # Header: Logo protetto e Badge VENDE
+    _paste_logo_protetto(canvas, side_w + 35, 45, max_w=340, max_h=80, with_plate=True)
+
+    badge_w = 280
+    draw.rounded_rectangle([(W - badge_w - 40, 45), (W - 40, 125)], radius=16, fill=(200, 16, 46, 250), outline=(255, 255, 255), width=2)
+    draw.text((W - badge_w - 40 + 35, 65), "• VENDE •", font=get_font(32, bold=True, font_type="sans"), fill=(255, 255, 255))
+
+    # Card bianca descrittiva in basso con chevron
+    card_w = int(body_w * 0.88)
+    card_h = 420
+    card_x = side_w + (body_w - card_w) // 2
+    card_y = H - card_h - 50
+
+    draw.rounded_rectangle([(card_x, card_y), (card_x + card_w, card_y + card_h)], radius=24, fill=(255, 255, 255, 250), outline=(200, 16, 46, 120), width=3)
+    draw.polygon([(card_x + 25, card_y + 30), (card_x + 45, card_y + 45), (card_x + 25, card_y + 60)], fill=(200, 16, 46))
+    draw.text((card_x + 55, card_y + 32), _extract_story_field_titolo(media_info).upper()[:30], font=get_font(22, bold=True, font_type="sans"), fill=(200, 16, 46))
+
+    col_f_text = _extract_story_field_colonna_f(media_info)
+    lines = textwrap.wrap(f"“{col_f_text}”", width=34)
+    c_y = card_y + 85
+    for l in lines[:5]:
+        draw.text((card_x + 35, c_y), l, font=get_font(22, bold=False, font_type="sans"), fill=(31, 41, 55))
+        c_y += 34
+
+    draw.line([(card_x + 35, card_y + card_h - 75), (card_x + card_w - 35, card_y + card_h - 75)], fill=(229, 231, 235), width=2)
+    draw.text((card_x + 35, card_y + card_h - 55), "PREZZO: " + _extract_story_field_prezzo(media_info), font=get_font(26, bold=True, font_type="sans"), fill=(200, 16, 46))
+    draw.text((card_x + card_w - 270, card_y + card_h - 55), "— Immobiliare Giancani", font=get_font(20, bold=True, font_type="sans"), fill=(31, 41, 55))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+# --- 4. GIOVEDÌ: ELITE FROSTED GLASS (ALTO CITAZIONE & BASSO BRANDING) ---
+def crea_story_daily_giovedi_frosted_glass(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_giovedi_frosted_{uuid.uuid4().hex[:6]}.png")
+    
+    canvas = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+
+    # 1. Card citazione in ALTO con bordo oro zecchino
+    card_left = 60
+    card_right = W - 60
+    q_top = 90
+
+    col_f_text = _extract_story_field_colonna_f(media_info)
+    lines = textwrap.wrap(f"“{col_f_text}”", width=32)
+    h_quote = len(lines[:5]) * 46 + 180
+    q_bottom = q_top + h_quote
+
+    draw.rounded_rectangle([(card_left, q_top), (card_right, q_bottom)], radius=32, fill=(10, 15, 24, 230), outline="#FFD700", width=3)
+    draw.text((W // 2, q_top + 35), "◆ IMMOBILIARE GIANCANI VENDE ◆", font=get_font(28, bold=True, font_type="sans"), fill="#FFD700", anchor="mt")
+
+    curr_y = q_top + 100
+    for l in lines[:5]:
+        draw.text((W // 2 + 1, curr_y + 1), l, font=get_font(25, bold=False, font_type="sans"), fill=(0, 0, 0, 180), anchor="mt")
+        draw.text((W // 2, curr_y), l, font=get_font(25, bold=False, font_type="sans"), fill="#FFFFFF", anchor="mt")
+        curr_y += 44
+
+    curr_y += 10
+    mq_txt = _extract_story_field_mq(media_info)
+    prezzo_txt = _extract_story_field_prezzo(media_info)
+    draw.text((W // 2, curr_y), f"{_extract_story_field_zona(media_info)} • {mq_txt} • {prezzo_txt}", font=get_font(22, bold=True, font_type="sans"), fill="#FFD700", anchor="mt")
+
+    # 2. Banner branding in BASSO
+    banner_h = 160
+    banner_y = H - banner_h - 90
+    draw.rounded_rectangle([(card_left, banner_y), (card_right, banner_y + banner_h)], radius=28, fill=(10, 15, 24, 230), outline="#FFD700", width=2)
+
+    canvas = Image.alpha_composite(canvas, overlay)
+
+    _paste_logo_protetto(canvas, card_left + 25, banner_y + 35, max_w=320, max_h=85, with_plate=True)
+
+    b_draw = ImageDraw.Draw(canvas)
+    text_x = card_left + 380
+    b_draw.text((text_x, banner_y + 40), "IMMOBILIARE GIANCANI", font=get_font(30, bold=True, font_type="sans"), fill="#FFFFFF")
+    b_draw.text((text_x, banner_y + 85), "ESCLUSIVA • SICUREZZA • VALORE", font=get_font(20, bold=False, font_type="sans"), fill="#FFD700")
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+# --- 5. VENERDÌ: ARCO ARCHITETTONICO (SMERALDO & MENTA) ---
+def crea_story_daily_venerdi_arco_architettonico(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_venerdi_arco_{uuid.uuid4().hex[:6]}.png")
+    
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = Image.new("RGBA", (W, H), (6, 78, 59, 255))
+    
+    arch_margin = 60
+    arch_top = 220
+    arch_bottom = H - 380
+    arch_w = W - 2 * arch_margin
+    arch_radius = arch_w // 2
+
+    mask = Image.new("L", (W, H), 0)
+    md = ImageDraw.Draw(mask)
+    md.pieslice([(arch_margin, arch_top), (W - arch_margin, arch_top + 2 * arch_radius)], 180, 0, fill=255)
+    md.rectangle([(arch_margin, arch_top + arch_radius), (W - arch_margin, arch_bottom)], fill=255)
+
+    canvas.paste(photo, (0, 0), mask)
+
+    draw = ImageDraw.Draw(canvas)
+    draw.arc([(arch_margin - 4, arch_top - 4), (W - arch_margin + 4, arch_top + 2 * arch_radius + 4)], 180, 0, fill=(52, 211, 153), width=4)
+    draw.line([(arch_margin - 4, arch_top + arch_radius), (arch_margin - 4, arch_bottom)], fill=(52, 211, 153), width=4)
+    draw.line([(W - arch_margin + 4, arch_top + arch_radius), (W - arch_margin + 4, arch_bottom)], fill=(52, 211, 153), width=4)
+    draw.line([(arch_margin - 4, arch_bottom), (W - arch_margin + 4, arch_bottom)], fill=(52, 211, 153), width=4)
+
+    _paste_logo_protetto(canvas, (W - 320) // 2, 60, max_w=320, max_h=80, with_plate=True)
+
+    # Medaglione VENDE sulla chiave dell'arco
+    med_w, med_h = 340, 70
+    mx = (W - med_w) // 2
+    my = arch_top + arch_radius - 35
+    draw.rounded_rectangle([(mx, my), (mx + med_w, my + med_h)], radius=35, fill=(6, 78, 59, 245), outline=(52, 211, 153), width=3)
+    draw.text((W // 2, my + 18), "• VENDE •", font=get_font(28, bold=True, font_type="sans"), fill=(255, 255, 255), anchor="mt")
+
+    # Card inferiore con Colonna F
+    card_y = H - 340
+    draw.rounded_rectangle([(arch_margin, card_y), (W - arch_margin, card_y + 280)], radius=24, fill=(255, 255, 255, 248), outline=(52, 211, 153), width=2)
+    
+    draw.text((arch_margin + 35, card_y + 24), _extract_story_field_titolo(media_info).upper()[:28], font=get_font(22, bold=True, font_type="sans"), fill=(6, 78, 59))
+    draw.text((W - arch_margin - 160, card_y + 24), _extract_story_field_prezzo(media_info), font=get_font(26, bold=True, font_type="sans"), fill=(6, 78, 59))
+
+    col_f_text = _extract_story_field_colonna_f(media_info)
+    lines = textwrap.wrap(f"“{col_f_text}”", width=36)
+    c_y = card_y + 70
+    for l in lines[:4]:
+        draw.text((arch_margin + 35, c_y), l, font=get_font(20, bold=False, font_type="sans"), fill=(30, 41, 59))
+        c_y += 30
+
+    mq_txt = _extract_story_field_mq(media_info)
+    draw.line([(arch_margin + 35, card_y + 215), (W - arch_margin - 35, card_y + 215)], fill=(229, 231, 235), width=1)
+    draw.text((arch_margin + 35, card_y + 230), f"📍 {_extract_story_field_zona(media_info)} • {mq_txt}", font=get_font(18, bold=True, font_type="sans"), fill=(6, 78, 59))
+    draw.text((W - arch_margin - 260, card_y + 230), "— Immobiliare Giancani", font=get_font(18, bold=True, font_type="sans"), fill=(5, 150, 105))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+# --- 6. SABATO: GABETTI DIAGONAL (BORDEAUX & CHAMPAGNE) ---
+def crea_story_daily_sabato_gabetti_diagonal(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_sabato_gabetti_{uuid.uuid4().hex[:6]}.png")
+    
+    canvas = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    od = ImageDraw.Draw(overlay)
+
+    poly_top = [(0, 0), (W, 0), (W, 280), (0, 390)]
+    od.polygon(poly_top, fill=(74, 4, 4, 245))
+    od.line([(0, 390), (W, 280)], fill=(253, 230, 138), width=5)
+
+    poly_bottom = [(0, H - 460), (W, H - 350), (W, H), (0, H)]
+    od.polygon(poly_bottom, fill=(74, 4, 4, 250))
+    od.line([(0, H - 460), (W, H - 350)], fill=(253, 230, 138), width=5)
+
+    canvas = Image.alpha_composite(canvas, overlay)
+
+    _paste_logo_protetto(canvas, 45, 60, max_w=320, max_h=80, with_plate=True)
+
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle([(W - 360, 65), (W - 45, 145)], radius=16, fill=(253, 230, 138), outline=(255, 255, 255), width=2)
+    draw.text((W - 360 + 35, 85), "• VENDE •", font=get_font(32, bold=True, font_type="sans"), fill=(74, 4, 4))
+
+    f_y = H - 410
+    draw.text((60, f_y), _extract_story_field_titolo(media_info).upper()[:28], font=get_font(28, bold=True, font_type="sans"), fill=(253, 230, 138))
+    draw.text((W - 240, f_y), _extract_story_field_prezzo(media_info), font=get_font(34, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    col_f_text = _extract_story_field_colonna_f(media_info)
+    lines = textwrap.wrap(f"“{col_f_text}”", width=38)
+    cur_y = f_y + 55
+    for l in lines[:4]:
+        draw.text((60, cur_y), l, font=get_font(22, bold=False, font_type="sans"), fill=(255, 255, 255))
+        cur_y += 34
+
+    mq_txt = _extract_story_field_mq(media_info)
+    draw.line([(60, H - 100), (W - 60, H - 100)], fill=(253, 230, 138, 120), width=1)
+    draw.text((60, H - 75), f"📐 {mq_txt} • 5 Vani", font=get_font(20, bold=True, font_type="sans"), fill=(253, 230, 138))
+    draw.text((W - 320, H - 75), "— Immobiliare Giancani", font=get_font(22, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+# --- 7. DOMENICA: MINIMAL PASSEPARTOUT A BLOCCHI (TERRACOTTA & AMBRA) ---
+def crea_story_daily_domenica_minimal_terracotta(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_domenica_terracotta_{uuid.uuid4().hex[:6]}.png")
+    
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = Image.new("RGBA", (W, H), (255, 251, 235, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    p_x1, p_y1 = 60, 240
+    p_x2, p_y2 = W - 60, H - 460
+    pw, ph = p_x2 - p_x1, p_y2 - p_y1
+
+    fw, fh = photo.size
+    scale = max(pw / fw, ph / fh)
+    nw, nh = int(fw * scale), int(fh * scale)
+    photo_res = photo.resize((nw, nh), Image.Resampling.LANCZOS)
+    photo_c = photo_res.crop(((nw - pw)//2, (nh - ph)//2, (nw - pw)//2 + pw, (nh - ph)//2 + ph))
+
+    p_mask = Image.new("L", (pw, ph), 0)
+    pm_draw = ImageDraw.Draw(p_mask)
+    pm_draw.rounded_rectangle([(0, 0), (pw, ph)], radius=24, fill=255)
+    canvas.paste(photo_c, (p_x1, p_y1), p_mask)
+
+    draw.rounded_rectangle([(p_x1 - 3, p_y1 - 3), (p_x2 + 3, p_y2 + 3)], radius=26, outline=(124, 45, 18), width=3)
+
+    _paste_logo_protetto(canvas, 60, 60, max_w=340, max_h=85, with_plate=False)
+
+    b_w = 340
+    draw.rounded_rectangle([(W - b_w - 60, 60), (W - 60, 140)], radius=20, fill=(124, 45, 18), outline=(245, 158, 11), width=2)
+    draw.text((W - b_w - 60 + 35, 80), "• VENDE •", font=get_font(32, bold=True, font_type="sans"), fill=(255, 251, 235))
+
+    b_y1 = H - 420
+    draw.rounded_rectangle([(60, b_y1), (W - 60, H - 70)], radius=24, fill=(124, 45, 18, 255), outline=(245, 158, 11), width=2)
+
+    draw.text((95, b_y1 + 25), _extract_story_field_titolo(media_info).upper()[:28], font=get_font(24, bold=True, font_type="sans"), fill=(245, 158, 11))
+    draw.text((W - 280, b_y1 + 25), _extract_story_field_prezzo(media_info), font=get_font(34, bold=True, font_type="sans"), fill=(255, 255, 255))
+
+    col_f_text = _extract_story_field_colonna_f(media_info)
+    lines = textwrap.wrap(f"“{col_f_text}”", width=36)
+    c_y = b_y1 + 75
+    for l in lines[:4]:
+        draw.text((95, c_y), l, font=get_font(22, bold=False, font_type="sans"), fill=(255, 251, 235))
+        c_y += 34
+
+    mq_txt = _extract_story_field_mq(media_info)
+    draw.line([(95, H - 145), (W - 95, H - 145)], fill=(245, 158, 11, 140), width=1)
+    draw.text((95, H - 120), f"📍 {_extract_story_field_zona(media_info)} • {mq_txt}", font=get_font(20, bold=True, font_type="sans"), fill=(245, 158, 11))
+    draw.text((W - 350, H - 120), "— Immobiliare Giancani", font=get_font(20, bold=True, font_type="sans"), fill=(255, 255, 255))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+
+
+
+
+# --- 8. TWILIGHT PENTHOUSE (BLU ZAFFIRO NOTTE & RAME ROSATO) ---
+def crea_story_daily_twilight_penthouse(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_twilight_penthouse_{uuid.uuid4().hex[:6]}.png")
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = photo.copy()
+    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_ov = ImageDraw.Draw(overlay)
+
+    # Vetrata fumé scuro superiore con sfumatura ramata
+    grad_top = Image.new("RGBA", (W, 260), (11, 19, 43, 235))
+    overlay.paste(grad_top, (0, 0))
+
+    # Box inferiore in vetro scuro con cornice rame (#E07A5F)
+    card_y = H - 450
+    draw_ov.rounded_rectangle([(40, card_y), (W - 40, H - 50)], radius=26, fill=(11, 19, 43, 240), outline=(224, 122, 95), width=3)
+
+    canvas = Image.alpha_composite(canvas, overlay)
+    draw = ImageDraw.Draw(canvas)
+
+    _paste_logo_protetto(canvas, 50, 50, max_w=320, max_h=80, with_plate=True)
+
+    # Badge Rame "• VENDE •"
+    b_w = 320
+    draw.rounded_rectangle([(W - b_w - 50, 50), (W - 50, 130)], radius=18, fill=(224, 122, 95, 245), outline=(255, 255, 255), width=2)
+    draw.text((W - b_w - 50 + 40, 70), "• VENDE •", font=get_font(32, bold=True, font_type="sans"), fill=(255, 255, 255))
+
+    titolo = _extract_story_field_titolo(media_info)
+    prezzo = _extract_story_field_prezzo(media_info)
+    col_f = _extract_story_field_colonna_f(media_info)
+    mq = _extract_story_field_mq(media_info)
+    zona = _extract_story_field_zona(media_info)
+
+    draw.text((75, card_y + 30), titolo.upper()[:32], font=get_font(26, bold=True, font_type="sans"), fill=(224, 122, 95))
+    draw.text((W - 250, card_y + 30), prezzo, font=get_font(34, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    lines = textwrap.wrap(f"“{col_f}”", width=36)
+    c_y = card_y + 85
+    for l in lines[:4]:
+        draw.text((75, c_y), l, font=get_font(22, bold=False, font_type="sans"), fill=(240, 245, 255))
+        c_y += 34
+
+    draw.line([(75, H - 125), (W - 75, H - 125)], fill=(224, 122, 95, 120), width=1)
+    draw.text((75, H - 100), f"📍 {zona} • {mq}", font=get_font(20, bold=True, font_type="sans"), fill=(224, 122, 95))
+    draw.text((W - 320, H - 100), "— Immobiliare Giancani", font=get_font(20, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+
+# --- 9. TECH CARD MODERN (GRIGIO ANTRACITE & CIANO ELETTRICO) ---
+def crea_story_daily_tech_card_modern(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_tech_card_{uuid.uuid4().hex[:6]}.png")
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = photo.copy()
+    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_ov = ImageDraw.Draw(overlay)
+
+    # Floating Card Superiore asimmetrica
+    draw_ov.rounded_rectangle([(40, 40), (W - 40, 160)], radius=20, fill=(15, 23, 42, 235), outline=(6, 182, 212), width=2)
+    
+    # Floating Card Inferiore High-Tech
+    card_y = H - 460
+    draw_ov.rounded_rectangle([(40, card_y), (W - 40, H - 50)], radius=24, fill=(15, 23, 42, 240), outline=(6, 182, 212), width=3)
+    
+    canvas = Image.alpha_composite(canvas, overlay)
+    draw = ImageDraw.Draw(canvas)
+
+    _paste_logo_protetto(canvas, 60, 58, max_w=300, max_h=75, with_plate=True)
+
+    # Badge Tech Ciano
+    draw.rounded_rectangle([(W - 340, 58), (W - 60, 140)], radius=14, fill=(6, 182, 212), outline=(255, 255, 255), width=2)
+    draw.text((W - 340 + 35, 76), "• VENDE •", font=get_font(32, bold=True, font_type="sans"), fill=(15, 23, 42))
+
+    titolo = _extract_story_field_titolo(media_info)
+    prezzo = _extract_story_field_prezzo(media_info)
+    col_f = _extract_story_field_colonna_f(media_info)
+    mq = _extract_story_field_mq(media_info)
+
+    draw.text((75, card_y + 30), "OPPORTUNITÀ IMMOBILIARE GIANCANI", font=get_font(18, bold=True, font_type="sans"), fill=(6, 182, 212))
+    draw.text((75, card_y + 60), titolo[:30], font=get_font(32, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    lines = textwrap.wrap(f"“{col_f}”", width=36)
+    c_y = card_y + 115
+    for l in lines[:4]:
+        draw.text((75, c_y), l, font=get_font(22, bold=False, font_type="sans"), fill=(226, 232, 240))
+        c_y += 34
+
+    draw.line([(75, H - 130), (W - 75, H - 130)], fill=(6, 182, 212, 100), width=1)
+    draw.text((75, H - 105), f"PREZZO: {prezzo} • {mq}", font=get_font(22, bold=True, font_type="sans"), fill=(6, 182, 212))
+    draw.text((W - 320, H - 105), "— Immobiliare Giancani", font=get_font(20, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+
+# --- 10. MEDITERRANEAN COASTAL (TURCHESE LAGUNA & SABBIA DORATA) ---
+def crea_story_daily_mediterranean_coastal(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_mediterranean_coastal_{uuid.uuid4().hex[:6]}.png")
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = Image.new("RGBA", (W, H), (8, 145, 178, 255)) # Turchese mare
+
+    # Foto incorniciata ad onde morbide
+    p_x1, p_y1 = 50, 190
+    p_x2, p_y2 = W - 50, H - 420
+    pw, ph = p_x2 - p_x1, p_y2 - p_y1
+
+    fw, fh = photo.size
+    scale = max(pw / fw, ph / fh)
+    nw, nh = int(fw * scale), int(fh * scale)
+    photo_res = photo.resize((nw, nh), Image.Resampling.LANCZOS)
+    photo_c = photo_res.crop(((nw - pw)//2, (nh - ph)//2, (nw - pw)//2 + pw, (nh - ph)//2 + ph))
+
+    p_mask = Image.new("L", (pw, ph), 0)
+    pm_draw = ImageDraw.Draw(p_mask)
+    pm_draw.rounded_rectangle([(0, 0), (pw, ph)], radius=32, fill=255)
+    canvas.paste(photo_c, (p_x1, p_y1), p_mask)
+
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle([(p_x1 - 3, p_y1 - 3), (p_x2 + 3, p_y2 + 3)], radius=34, outline=(245, 158, 11), width=4)
+
+    _paste_logo_protetto(canvas, (W - 320) // 2, 50, max_w=320, max_h=80, with_plate=True)
+
+    # Badge Pillola Sabbia Dorata
+    b_w = 340
+    draw.rounded_rectangle([(W - b_w) // 2, p_y1 - 30, (W + b_w) // 2, p_y1 + 35], radius=32, fill=(245, 158, 11), outline=(255, 255, 255), width=2)
+    draw.text((W // 2, p_y1 - 12), "• VENDE •", font=get_font(28, bold=True, font_type="sans"), fill=(15, 23, 42), anchor="mt")
+
+    titolo = _extract_story_field_titolo(media_info)
+    prezzo = _extract_story_field_prezzo(media_info)
+    col_f = _extract_story_field_colonna_f(media_info)
+    mq = _extract_story_field_mq(media_info)
+    zona = _extract_story_field_zona(media_info)
+
+    # Card inferiore Sabbia Calda / Bianco
+    card_y = H - 380
+    draw.rounded_rectangle([(50, card_y), (W - 50, H - 50)], radius=24, fill=(255, 255, 255, 250), outline=(245, 158, 11), width=2)
+    
+    draw.text((85, card_y + 25), titolo.upper()[:30], font=get_font(24, bold=True, font_type="sans"), fill=(8, 145, 178))
+    draw.text((W - 250, card_y + 25), prezzo, font=get_font(30, bold=True, font_type="sans"), fill=(8, 145, 178))
+
+    lines = textwrap.wrap(f"“{col_f}”", width=36)
+    c_y = card_y + 70
+    for l in lines[:4]:
+        draw.text((85, c_y), l, font=get_font(21, bold=False, font_type="sans"), fill=(30, 41, 59))
+        c_y += 32
+
+    draw.line([(85, H - 115), (W - 85, H - 115)], fill=(229, 231, 235), width=1)
+    draw.text((85, H - 95), f"📍 {zona} • {mq}", font=get_font(19, bold=True, font_type="sans"), fill=(8, 145, 178))
+    draw.text((W - 340, H - 95), "— Immobiliare Giancani", font=get_font(20, bold=True, font_type="sans"), fill=(245, 158, 11))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+
+# --- 11. VOGUE REAL ESTATE EDITORIAL (COPERTINA PATINATA & ORO) ---
+def crea_story_daily_vogue_editorial(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_vogue_editorial_{uuid.uuid4().hex[:6]}.png")
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = photo.copy()
+    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_ov = ImageDraw.Draw(overlay)
+
+    pad = 40
+    draw_ov.rectangle([(pad, pad), (W - pad, H - pad)], outline=(212, 175, 55, 220), width=3)
+    draw_ov.rectangle([(pad + 8, pad + 8), (W - pad - 8, H - pad - 8)], outline=(255, 255, 255, 120), width=1)
+
+    for y in range(H - 520, H - pad):
+        factor = (y - (H - 520)) / 520.0
+        draw_ov.line([(pad, y), (W - pad, y)], fill=(10, 10, 12, int(240 * factor)))
+
+    canvas = Image.alpha_composite(canvas, overlay)
+    draw = ImageDraw.Draw(canvas)
+
+    _paste_logo_protetto(canvas, 65, 65, max_w=320, max_h=80, with_plate=True)
+
+    # Badge Vogue "• ESCLUSIVA VENDE •"
+    draw.rounded_rectangle([(W - 390, 65), (W - 65, 135)], radius=12, fill=(212, 175, 55), outline=(255, 255, 255), width=2)
+    draw.text((W - 390 + 30, 82), "• ESCLUSIVA VENDE •", font=get_font(24, bold=True, font_type="sans"), fill=(10, 10, 12))
+
+    titolo = _extract_story_field_titolo(media_info)
+    prezzo = _extract_story_field_prezzo(media_info)
+    col_f = _extract_story_field_colonna_f(media_info)
+    mq = _extract_story_field_mq(media_info)
+    zona = _extract_story_field_zona(media_info)
+
+    t_y = H - 460
+    draw.text((70, t_y), "IMMOBILIARE GIANCANI PRESENTA", font=get_font(18, bold=True, font_type="sans"), fill=(212, 175, 55))
+    draw.text((70, t_y + 35), titolo.upper()[:30], font=get_font(34, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    lines = textwrap.wrap(f"“{col_f}”", width=36)
+    c_y = t_y + 90
+    for l in lines[:4]:
+        draw.text((70, c_y), l, font=get_font(22, bold=False, font_type="sans"), fill=(245, 245, 250))
+        c_y += 34
+
+    draw.line([(70, H - 110), (W - 70, H - 110)], fill=(212, 175, 55, 160), width=2)
+    draw.text((70, H - 85), f"{prezzo} • {mq} • {zona}", font=get_font(22, bold=True, font_type="sans"), fill=(212, 175, 55))
+    draw.text((W - 340, H - 85), "— Immobiliare Giancani", font=get_font(22, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+
+# --- 12. DIAMOND PRESTIGE (ROMBO GEOMETRICO & PLATINO) ---
+def crea_story_daily_diamond_prestige(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_diamond_prestige_{uuid.uuid4().hex[:6]}.png")
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = Image.new("RGBA", (W, H), (24, 24, 27, 255)) # Carbone scuro
+    
+    cx, cy = W // 2, int(H * 0.44)
+    rx, ry = 460, 420
+    
+    mask = Image.new("L", (W, H), 0)
+    md = ImageDraw.Draw(mask)
+    diamond_pts = [(cx, cy - ry), (cx + rx, cy), (cx, cy + ry), (cx - rx, cy)]
+    md.polygon(diamond_pts, fill=255)
+
+    canvas.paste(photo, (0, 0), mask)
+
+    draw = ImageDraw.Draw(canvas)
+    draw.polygon(diamond_pts, outline=(228, 228, 231), width=5)
+    draw.polygon([(cx, cy - ry - 8), (cx + rx + 8, cy), (cx, cy + ry + 8), (cx - rx - 8, cy)], outline=(56, 189, 248), width=2)
+
+    _paste_logo_protetto(canvas, (W - 320) // 2, 55, max_w=320, max_h=80, with_plate=True)
+
+    # Badge Diamante VENDE
+    b_w = 320
+    draw.rounded_rectangle([(W - b_w) // 2, cy - ry - 35, (W + b_w) // 2, cy - ry + 35], radius=20, fill=(24, 24, 27), outline=(56, 189, 248), width=3)
+    draw.text((W // 2, cy - ry - 16), "• VENDE •", font=get_font(28, bold=True, font_type="sans"), fill=(56, 189, 248), anchor="mt")
+
+    titolo = _extract_story_field_titolo(media_info)
+    prezzo = _extract_story_field_prezzo(media_info)
+    col_f = _extract_story_field_colonna_f(media_info)
+    mq = _extract_story_field_mq(media_info)
+
+    card_y = H - 390
+    draw.rounded_rectangle([(50, card_y), (W - 50, H - 50)], radius=24, fill=(39, 39, 42, 245), outline=(228, 228, 231), width=2)
+
+    draw.text((80, card_y + 25), titolo.upper()[:30], font=get_font(26, bold=True, font_type="sans"), fill=(56, 189, 248))
+    draw.text((W - 240, card_y + 25), prezzo, font=get_font(32, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    lines = textwrap.wrap(f"“{col_f}”", width=36)
+    c_y = card_y + 75
+    for l in lines[:4]:
+        draw.text((80, c_y), l, font=get_font(21, bold=False, font_type="sans"), fill=(244, 244, 245))
+        c_y += 32
+
+    draw.line([(80, H - 115), (W - 80, H - 115)], fill=(113, 113, 122), width=1)
+    draw.text((80, H - 95), f"📐 {mq}", font=get_font(20, bold=True, font_type="sans"), fill=(56, 189, 248))
+    draw.text((W - 320, H - 95), "— Immobiliare Giancani", font=get_font(20, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+
+# --- 13. COUNTRY CHIC SAGE (VERDE SALVIA & LINO TERRACOTTA) ---
+def crea_story_daily_country_chic_sage(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_country_chic_sage_{uuid.uuid4().hex[:6]}.png")
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = Image.new("RGBA", (W, H), (63, 98, 18, 255)) # Verde Salvia d'olivo
+
+    p_x1, p_y1 = 60, 210
+    p_x2, p_y2 = W - 60, H - 420
+    pw, ph = p_x2 - p_x1, p_y2 - p_y1
+
+    fw, fh = photo.size
+    scale = max(pw / fw, ph / fh)
+    nw, nh = int(fw * scale), int(fh * scale)
+    photo_res = photo.resize((nw, nh), Image.Resampling.LANCZOS)
+    photo_c = photo_res.crop(((nw - pw)//2, (nh - ph)//2, (nw - pw)//2 + pw, (nh - ph)//2 + ph))
+
+    p_mask = Image.new("L", (pw, ph), 0)
+    pm_draw = ImageDraw.Draw(p_mask)
+    pm_draw.rounded_rectangle([(0, 0), (pw, ph)], radius=28, fill=255)
+    canvas.paste(photo_c, (p_x1, p_y1), p_mask)
+
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle([(p_x1 - 3, p_y1 - 3), (p_x2 + 3, p_y2 + 3)], radius=30, outline=(254, 243, 199), width=3)
+
+    _paste_logo_protetto(canvas, 60, 55, max_w=320, max_h=80, with_plate=True)
+
+    # Badge Salvia & Terracotta
+    b_w = 320
+    draw.rounded_rectangle([(W - b_w - 60, 55), (W - 60, 135)], radius=18, fill=(254, 243, 199), outline=(63, 98, 18), width=2)
+    draw.text((W - b_w - 60 + 35, 75), "• VENDE •", font=get_font(32, bold=True, font_type="sans"), fill=(63, 98, 18))
+
+    titolo = _extract_story_field_titolo(media_info)
+    prezzo = _extract_story_field_prezzo(media_info)
+    col_f = _extract_story_field_colonna_f(media_info)
+    mq = _extract_story_field_mq(media_info)
+    zona = _extract_story_field_zona(media_info)
+
+    card_y = H - 380
+    draw.rounded_rectangle([(60, card_y), (W - 60, H - 50)], radius=24, fill=(254, 243, 199, 252), outline=(163, 230, 53), width=2)
+
+    draw.text((95, card_y + 25), titolo.upper()[:30], font=get_font(24, bold=True, font_type="sans"), fill=(63, 98, 18))
+    draw.text((W - 260, card_y + 25), prezzo, font=get_font(30, bold=True, font_type="sans"), fill=(63, 98, 18))
+
+    lines = textwrap.wrap(f"“{col_f}”", width=36)
+    c_y = card_y + 70
+    for l in lines[:4]:
+        draw.text((95, c_y), l, font=get_font(21, bold=False, font_type="sans"), fill=(40, 50, 30))
+        c_y += 32
+
+    draw.line([(95, H - 115), (W - 95, H - 115)], fill=(217, 249, 157), width=2)
+    draw.text((95, H - 95), f"🌿 {zona} • {mq}", font=get_font(20, bold=True, font_type="sans"), fill=(63, 98, 18))
+    draw.text((W - 350, H - 95), "— Immobiliare Giancani", font=get_font(20, bold=True, font_type="sans"), fill=(185, 28, 28))
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+
+# --- 14. CINEMATIC HERO WIDESCREEN (GOLD ANAMORPHIC) ---
+def crea_story_daily_cinematic_hero(media_info, palette=None, output_path=None):
+    W, H = 1080, 1920
+    if not output_path:
+        output_path = os.path.join(SCRATCH_DIR, f"story_cinematic_hero_{uuid.uuid4().hex[:6]}.png")
+    photo = get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    canvas = photo.copy()
+    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_ov = ImageDraw.Draw(overlay)
+
+    # Maschera cinematografica con bande scure in alto e in basso
+    draw_ov.rectangle([(0, 0), (W, 220)], fill=(0, 0, 0, 215))
+    draw_ov.rectangle([(0, H - 460), (W, H)], fill=(0, 0, 0, 230))
+    
+    # Linee dorate di taglio anamorfico
+    draw_ov.line([(0, 220), (W, 220)], fill=(212, 175, 55), width=3)
+    draw_ov.line([(0, H - 460), (W, H - 460)], fill=(212, 175, 55), width=3)
+
+    canvas = Image.alpha_composite(canvas, overlay)
+    draw = ImageDraw.Draw(canvas)
+
+    _paste_logo_protetto(canvas, 50, 55, max_w=320, max_h=80, with_plate=True)
+
+    # Hero Badge Centrale "• IMMOBILIARE GIANCANI VENDE •"
+    b_w = 460
+    draw.rounded_rectangle([(W - b_w - 50, 55), (W - 50, 135)], radius=18, fill=(212, 175, 55), outline=(255, 255, 255), width=2)
+    draw.text((W - b_w - 50 + 25, 75), "• GIANCANI VENDE •", font=get_font(28, bold=True, font_type="sans"), fill=(15, 23, 42))
+
+    titolo = _extract_story_field_titolo(media_info)
+    prezzo = _extract_story_field_prezzo(media_info)
+    col_f = _extract_story_field_colonna_f(media_info)
+    mq = _extract_story_field_mq(media_info)
+    zona = _extract_story_field_zona(media_info)
+
+    f_y = H - 420
+    draw.text((60, f_y), titolo.upper()[:32], font=get_font(30, bold=True, font_type="sans"), fill=(212, 175, 55))
+    draw.text((W - 240, f_y), prezzo, font=get_font(34, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    lines = textwrap.wrap(f"“{col_f}”", width=38)
+    cur_y = f_y + 55
+    for l in lines[:4]:
+        draw.text((60, cur_y), l, font=get_font(22, bold=False, font_type="sans"), fill=(255, 255, 255))
+        cur_y += 34
+
+    draw.line([(60, H - 110), (W - 60, H - 110)], fill=(212, 175, 55, 120), width=1)
+    draw.text((60, H - 85), f"📍 {zona} • {mq}", font=get_font(20, bold=True, font_type="sans"), fill=(212, 175, 55))
+    draw.text((W - 320, H - 85), "— Immobiliare Giancani", font=get_font(22, bold=True, font_type="sans"), fill="#FFFFFF")
+
+    canvas = canvas.convert("RGB")
+    canvas.save(output_path, "PNG", quality=95)
+    return output_path
+
+
 def crea_story_9_16(media_info, style="auto", palette=None, output_path=None, day_of_week=None):
+    """
+    Dispatcher Principale Storie 9:16 (1080x1920) con Rotazione tra 14 Stili Master.
+    - 1. C&B Curved Wave (Navy Blue & Oro Caldo)
+    - 2. Metroquadro Noir & Icone Vettoriali (Luxury Black & Royal Gold)
+    - 3. ProfessioneCasa Left Sidebar (Rosso Corsa Prestige)
+    - 4. Elite Frosted Glass Card in Alto (Charcoal Fumé & Oro Zecchino)
+    - 5. Arco Architettonico Galleria (Verde Smeraldo Bosco & Menta)
+    - 6. Gabetti Dynamic Diagonal (Bordeaux Riserva & Oro Champagne)
+    - 7. Minimal Passepartout a Blocchi (Terracotta Sunset & Ambra)
+    - 8. Twilight Penthouse (Blu Zaffiro Notte & Rame Rosato)
+    - 9. Tech Card Modern (Grigio Antracite & Ciano Elettrico)
+    - 10. Mediterranean Coastal (Turchese Laguna & Sabbia Dorata)
+    - 11. Vogue Real Estate (Copertina Patinata & Oro Antico)
+    - 12. Diamond Prestige (Rombo Platino & Carbone)
+    - 13. Country Chic Sage (Verde Salvia d'Olivo & Lino Crema)
+    - 14. Cinematic Hero Widescreen (Gold Anamorphic & Nero Cinema)
+    — Immobiliare Giancani
+    """
+    import datetime
+    if day_of_week is None:
+        day_of_week = datetime.datetime.now().weekday()
+    else:
+        try:
+            day_of_week = int(day_of_week)
+        except Exception:
+            day_of_week = datetime.datetime.now().weekday()
+
+    slot_30m = int(time.time() / 1800)
+    if media_info and isinstance(media_info, dict):
+        s_idx = media_info.get("story_index") or media_info.get("slot_index")
+        if s_idx is not None:
+            try:
+                slot_30m = int(s_idx)
+            except Exception:
+                pass
+
     if palette is None:
-        palette = get_palette_del_giorno(day_of_week)
+        palette = get_palette_del_giorno(day_of_week, slot_idx=slot_30m)
+
+    stili_14 = [
+        "daily_lunedi",               # 1
+        "daily_martedi",              # 2
+        "daily_mercoledi",            # 3
+        "daily_giovedi",              # 4
+        "daily_venerdi",              # 5
+        "daily_sabato",               # 6
+        "daily_domenica",             # 7
+        "twilight_penthouse",         # 8
+        "tech_card_modern",           # 9
+        "mediterranean_coastal",      # 10
+        "vogue_editorial",            # 11
+        "diamond_prestige",           # 12
+        "country_chic_sage",          # 13
+        "cinematic_hero"              # 14
+    ]
+
+    style_clean = str(style).lower().strip() if style else "auto"
+
+    if style_clean in ("auto", "daily", "giorno", "settimanale", "rotazione"):
+        # Rotazione tra i 14 stili basata sul giorno e sullo slot orario da 30 minuti
+        chosen_idx = (day_of_week * 2 + (slot_30m % 2)) % 14
+        style_clean = stili_14[chosen_idx]
+
+    # Dispatcher 14 Stili Master
+    # 1. C&B Curved Wave
+    if style_clean in ("daily_lunedi", "lunedi", "cb_curved_wave", "cb", "curved_wave", "onda_curva"):
+        return crea_story_daily_lunedi_cb_curved_wave(media_info, palette=palette, output_path=output_path)
+    # 2. Metroquadro Noir
+    elif style_clean in ("daily_martedi", "martedi", "metroquadro_gradient", "metroquadro", "gradient_specs", "sfumato"):
+        return crea_story_daily_martedi_metroquadro(media_info, palette=palette, output_path=output_path)
+    # 3. ProfessioneCasa
+    elif style_clean in ("daily_mercoledi", "mercoledi", "professionecasa_sidebar", "professionecasa", "red_sidebar"):
+        return crea_story_daily_mercoledi_professionecasa(media_info, palette=palette, output_path=output_path)
+    # 4. Frosted Glass
+    elif style_clean in ("daily_giovedi", "giovedi", "frosted_glass", "mindset", "luxury_glass", "glass"):
+        return crea_story_daily_giovedi_frosted_glass(media_info, palette=palette, output_path=output_path)
+    # 5. Arco Architettonico
+    elif style_clean in ("daily_venerdi", "venerdi", "arco_architettonico", "arco", "galleria", "smeraldo"):
+        return crea_story_daily_venerdi_arco_architettonico(media_info, palette=palette, output_path=output_path)
+    # 6. Gabetti Diagonal
+    elif style_clean in ("daily_sabato", "sabato", "gabetti_diagonal", "gabetti", "diagonal_ribbon", "nastro_diagonale"):
+        return crea_story_daily_sabato_gabetti_diagonal(media_info, palette=palette, output_path=output_path)
+    # 7. Minimal Terracotta
+    elif style_clean in ("daily_domenica", "domenica", "minimal_terracotta", "terracotta", "passepartout"):
+        return crea_story_daily_domenica_minimal_terracotta(media_info, palette=palette, output_path=output_path)
+    # 8. Twilight Penthouse
+    elif style_clean in ("twilight_penthouse", "twilight", "penthouse", "rame"):
+        return crea_story_daily_twilight_penthouse(media_info, palette=palette, output_path=output_path)
+    # 9. Tech Card Modern
+    elif style_clean in ("tech_card_modern", "tech_card", "tech", "ciano"):
+        return crea_story_daily_tech_card_modern(media_info, palette=palette, output_path=output_path)
+    # 10. Mediterranean Coastal
+    elif style_clean in ("mediterranean_coastal", "mediterranean", "coastal", "mare", "turchese"):
+        return crea_story_daily_mediterranean_coastal(media_info, palette=palette, output_path=output_path)
+    # 11. Vogue Editorial
+    elif style_clean in ("vogue_editorial", "vogue", "copertina", "oro_antico"):
+        return crea_story_daily_vogue_editorial(media_info, palette=palette, output_path=output_path)
+    # 12. Diamond Prestige
+    elif style_clean in ("diamond_prestige", "diamond", "rombo", "platino"):
+        return crea_story_daily_diamond_prestige(media_info, palette=palette, output_path=output_path)
+    # 13. Country Chic Sage
+    elif style_clean in ("country_chic_sage", "country_chic", "sage", "salvia"):
+        return crea_story_daily_country_chic_sage(media_info, palette=palette, output_path=output_path)
+    # 14. Cinematic Hero
+    elif style_clean in ("cinematic_hero", "cinematic", "anamorphic", "cinema"):
+        return crea_story_daily_cinematic_hero(media_info, palette=palette, output_path=output_path)
+    
+    # Fallback su stili secondari storici
+    elif style_clean in ("card_live", "storia_live", "live_screenshot", "live_card_screenshot"):
+        return crea_card_storia_live_screenshot_9_16(media_info, palette=palette, output_path=output_path, usa_palette_bg=True)
+    elif style_clean in ("cam_hero_badge", "cam", "hero_badge"):
+        return crea_story_cam_hero_badge_9_16(media_info, palette=palette, output_path=output_path)
+    elif style_clean in ("tempocasa_multiphoto", "tempocasa"):
+        return crea_story_tempocasa_multiphoto_9_16(media_info, palette=palette, output_path=output_path)
+    elif style_clean in ("capellupo_sidebar", "capellupo"):
+        return crea_story_capellupo_sidebar_9_16(media_info, palette=palette, output_path=output_path)
+    elif style_clean in ("marketing_banner", "marketing"):
+        return crea_story_marketing_banner_9_16(media_info, palette=palette, output_path=output_path)
+    elif style_clean in ("split_screen", "split"):
+        return crea_story_splitscreen_9_16(media_info, palette=palette, output_path=output_path)
+    else:
+        # Default di garanzia
+        return crea_story_daily_lunedi_cb_curved_wave(media_info, palette=palette, output_path=output_path)
+
+
+def crea_flyer_1_1(media_info, style="auto", palette=None, output_path=None, day_of_week=None):
+    slot_30m = int(time.time() / 1800)
+    if media_info and isinstance(media_info, dict):
+        s_idx = media_info.get("story_index") or media_info.get("slot_index")
+        if s_idx is not None:
+            try:
+                slot_30m = int(s_idx)
+            except Exception:
+                pass
+
+    if palette is None:
+        palette = get_palette_del_giorno(day_of_week, slot_idx=slot_30m)
 
     stili_disponibili = [
         "cb_curved_wave",
@@ -4116,74 +6593,16 @@ def crea_story_9_16(media_info, style="auto", palette=None, output_path=None, da
         "tempocasa_multiphoto",
         "gabetti_diagonal",
         "capellupo_sidebar",
-        "marketing_banner",
-        "split_screen",
-        "luxury_glass",
-        "editorial",
-        "room_label",
-        "ideacasa_layout",
-        "casait_card",
-        "tecnocasa_multi",
+        "malfatti_sidebar",
+        "scheda_curva",
+        "cornice_minimal",
+        "zero24_card",
+        "tecnocasa_gazzetta",
+        "card_live",
+        "storia_live",
     ]
 
     if not style or style == "auto":
-        slot_30m = int(time.time() / 1800)
-        style = stili_disponibili[slot_30m % len(stili_disponibili)]
-
-    style = style.lower().strip()
-
-    if style in ("cb_curved_wave", "cb", "curved_wave", "onda_curva"):
-        return crea_story_cb_curved_wave_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("professionecasa_sidebar", "professionecasa", "red_sidebar"):
-        return crea_story_professionecasa_sidebar_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("metroquadro_gradient", "metroquadro", "gradient_specs", "sfumato"):
-        return crea_story_metroquadro_gradient_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("cam_hero_badge", "cam", "hero_badge", "floating_badge"):
-        return crea_story_cam_hero_badge_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("tempocasa_multiphoto", "tempocasa", "multiphoto_specs", "in_vendita"):
-        return crea_story_tempocasa_multiphoto_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("gabetti_diagonal", "gabetti", "diagonal_ribbon", "nastro_diagonale"):
-        return crea_story_gabetti_diagonal_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("capellupo_sidebar", "capellupo", "sidebar_card", "scheda_laterale"):
-        return crea_story_capellupo_sidebar_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("marketing_banner", "marketing", "banner"):
-        return crea_story_marketing_banner_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("split_screen", "split"):
-        return crea_story_splitscreen_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("luxury_glass", "luxury", "glass"):
-        return crea_story_luxury_glass_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("editorial", "minimal"):
-        return crea_story_editorial_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("room_label", "room", "ambiente"):
-        return crea_story_room_label_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("ideacasa_layout", "ideacasa", "idea_casa"):
-        return crea_story_ideacasa_layout_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("casait_card", "casait", "card"):
-        return crea_story_casait_card_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("tecnocasa_multi", "tecnocasa", "multi"):
-        return crea_story_tecnocasa_multi_9_16(media_info, palette=palette, output_path=output_path)
-    elif style in ("annuncio_diretta", "diretta", "live_card"):
-        return crea_card_annuncio_diretta_9_16(media_info, palette=palette, output_path=output_path)
-    else:
-        return crea_story_cb_curved_wave_9_16(media_info, palette=palette, output_path=output_path)
-
-
-def crea_flyer_1_1(media_info, style="auto", palette=None, output_path=None, day_of_week=None):
-    if palette is None:
-        palette = get_palette_del_giorno(day_of_week)
-
-    stili_disponibili = [
-        "cb_curved_wave",
-        "metroquadro_gradient",
-        "professionecasa_sidebar",
-        "cam_hero_badge",
-        "tempocasa_multiphoto",
-        "gabetti_diagonal",
-        "capellupo_sidebar"
-    ]
-
-    if not style or style == "auto":
-        slot_30m = int(time.time() / 1800)
         style = stili_disponibili[slot_30m % len(stili_disponibili)]
 
     style = style.lower().strip()
@@ -4202,6 +6621,18 @@ def crea_flyer_1_1(media_info, style="auto", palette=None, output_path=None, day
         return crea_flyer_capellupo_sidebar_1_1(media_info, palette=palette, output_path=output_path)
     elif style in ("gabetti_diagonal", "gabetti", "diagonal_ribbon"):
         return crea_flyer_gabetti_diagonal_1_1(media_info, palette=palette, output_path=output_path)
+    elif style in ("malfatti_sidebar", "malfatti", "sidebar_invendita", "in_vendita_sidebar"):
+        return crea_flyer_malfatti_sidebar_1_1(media_info, palette=palette, output_path=output_path)
+    elif style in ("scheda_curva", "curva", "istituzionale", "scheda_curva_prestigio", "asta"):
+        return crea_flyer_scheda_curva_1_1(media_info, palette=palette, output_path=output_path)
+    elif style in ("cornice_minimal", "cornice", "sigillo", "minimal_frame", "fine_art"):
+        return crea_flyer_cornice_minimal_1_1(media_info, palette=palette, output_path=output_path)
+    elif style in ("zero24_card", "zero24", "studiozero24", "teal_card", "modern_card"):
+        return crea_flyer_zero24_card_1_1(media_info, palette=palette, output_path=output_path)
+    elif style in ("tecnocasa_gazzetta",
+        "card_live",
+        "storia_live", "tecnocasa_grid", "grid_4foto", "occasione"):
+        return crea_flyer_tecnocasa_gazzetta_1_1(media_info, palette=palette, output_path=output_path)
     else:
         return crea_flyer_cb_curved_wave_1_1(media_info, palette=palette, output_path=output_path)
 

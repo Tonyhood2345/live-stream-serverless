@@ -284,7 +284,8 @@ def scarica_video_completo(video_id, watch_url):
         'nocheckcertificate': True,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios']
+                'player_client': ['android', 'ios'],
+                'player_skip': ['web', 'mweb']
             }
         }
     }

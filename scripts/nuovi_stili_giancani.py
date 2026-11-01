@@ -283,12 +283,10 @@ def crea_story_al_tuo_fianco_passo_dopo_passo_9_16(media_info, palette=None, out
     Stile 'Al Tuo Fianco, Passo Dopo Passo':
     - Logo ufficiale Giancani in alto
     - Maxi Titolo bold nel colore del giorno: 'AL TUO FIANCO, PASSO DOPO PASSO'
-    - Elenco 3 Step con icone line-art pulite:
-      1. Consulenza dedicata
-      2. Assistenza nella compravendita (fino al rogito)
-      3. Promozione dell'immobile
-    - Hero Photo con plastico di casa, chiavi o rogito
+    - Colonna sinistra con i 3 step di accompagnamento con icone e divisori
+    - Colonna destra con foto immobile / plastico casa ad alta definizione
     - Card CTA arrotondata 'CONTATTACI' con telefono, email e sede
+    - Angolo decorativo in basso a destra
     """
     W, H = 1080, 1920
     if not output_path:
@@ -307,13 +305,13 @@ def crea_story_al_tuo_fianco_passo_dopo_passo_9_16(media_info, palette=None, out
         canvas.paste(logo, ((W - lw) // 2, 50), logo)
         
     # 2. Maxi Titolo "AL TUO FIANCO, PASSO DOPO PASSO"
-    font_maxi = mgs.get_font(68, bold=True, font_type="sans")
+    font_maxi = mgs.get_font(64, bold=True, font_type="sans")
     draw.text((70, 200), "AL TUO FIANCO,", font=font_maxi, fill=theme_color)
-    draw.text((70, 280), "PASSO DOPO PASSO", font=font_maxi, fill=theme_color)
+    draw.text((70, 275), "PASSO DOPO PASSO", font=font_maxi, fill=theme_color)
     
-    # 3. I 3 Step con Icone a sinistra
+    # 3. I 3 Step con Icone a sinistra (allineati a sinistra)
     step_y = 390
-    step_gap = 145
+    step_gap = 180
     
     steps = [
         ("Consulenza\ndedicata", "💬"),
@@ -321,27 +319,27 @@ def crea_story_al_tuo_fianco_passo_dopo_passo_9_16(media_info, palette=None, out
         ("Promozione\ndell'immobile", "📢")
     ]
     
-    font_step_text = mgs.get_font(36, bold=True, font_type="sans")
-    font_step_ico = mgs.get_font(42, bold=False, font_type="sans")
+    font_step_text = mgs.get_font(34, bold=True, font_type="sans")
+    font_step_ico = mgs.get_font(40, bold=False, font_type="sans")
     
     for i, (st_text, st_ico) in enumerate(steps):
         curr_y = step_y + i * step_gap
         
         # Cerchio icona con bordo in colore tema
-        cx, cy = 120, curr_y + 30
-        draw.ellipse([(cx - 45, cy - 45), (cx + 45, cy + 45)], outline=theme_color, width=3, fill=(245, 248, 250))
+        cx, cy = 115, curr_y + 40
+        draw.ellipse([(cx - 40, cy - 40), (cx + 40, cy + 40)], outline=theme_color, width=3, fill=(245, 248, 250))
         draw.text((cx, cy), st_ico, font=font_step_ico, fill=theme_color, anchor="mm")
         
         # Testo del punto
-        draw.text((195, curr_y + 30), st_text, font=font_step_text, fill=(30, 41, 59), anchor="lm")
+        draw.text((175, curr_y + 40), st_text, font=font_step_text, fill=(30, 41, 59), anchor="lm")
         
-        # Linea divisoria orizzontale leggera
+        # Linea divisoria orizzontale leggera sotto lo step
         if i < 2:
-            draw.line([(70, curr_y + 90), (520, curr_y + 90)], fill=(226, 232, 240), width=2)
+            draw.line([(70, curr_y + 115), (480, curr_y + 115)], fill=(226, 232, 240), width=2)
 
-    # 4. Hero Photo Immobile / Mano che regge la casa (posizionata a destra/centro)
+    # 4. Hero Photo Immobile (posizionata nella parte destra/centrale con sagomatura elegante)
     photo = mgs.get_clean_property_photo(media_info, (W, H)).convert("RGBA")
-    pw, ph = 940, 680
+    pw, ph = 540, 720
     fw, fh = photo.size
     scale = max(pw / fw, ph / fh)
     nw, nh = int(fw * scale), int(fh * scale)
@@ -350,19 +348,32 @@ def crea_story_al_tuo_fianco_passo_dopo_passo_9_16(media_info, palette=None, out
     
     # Maschera con angoli arrotondati
     p_mask = Image.new("L", (pw, ph), 0)
-    ImageDraw.Draw(p_mask).rounded_rectangle([(0, 0), (pw, ph)], radius=32, fill=255)
+    ImageDraw.Draw(p_mask).rounded_rectangle([(0, 0), (pw, ph)], radius=36, fill=255)
     
-    photo_x = 70
-    photo_y = 860
-    _draw_shadow(canvas, (photo_x, photo_y, photo_x + pw, photo_y + ph), radius=32, shadow_color=(0, 0, 0, 60), blur=18, offset=(0, 8))
+    photo_x = 480
+    photo_y = 390
+    _draw_shadow(canvas, (photo_x, photo_y, photo_x + pw, photo_y + ph), radius=36, shadow_color=(0, 0, 0, 70), blur=20, offset=(0, 10))
     canvas.paste(photo_crop, (photo_x, photo_y), p_mask)
+    
+    # Bordo attorno alla foto
+    draw.rounded_rectangle([(photo_x, photo_y), (photo_x + pw, photo_y + ph)], radius=36, outline=theme_color, width=3)
 
-    # 5. Card CTA Inferiore "CONTATTACI" (in colore del giorno)
+    # 5. Dati Immobile in pillola sotto la foto (Prezzo e Metri Quadri)
+    prezzo_txt = str(media_info.get("prezzo", "Trattativa Riservata"))
+    mq_txt = str(media_info.get("mq", "")).replace("mq", "metri quadri").replace("m²", "metri quadri")
+    
+    pill_info_y = 1170
+    draw.rounded_rectangle([(70, pill_info_y), (W - 70, pill_info_y + 110)], radius=24, fill=(245, 248, 250), outline=(226, 232, 240), width=2)
+    draw.text((110, pill_info_y + 55), f"🏷️ {prezzo_txt}", font=mgs.get_font(36, bold=True), fill=theme_color, anchor="lm")
+    if mq_txt:
+        draw.text((W - 110, pill_info_y + 55), f"📐 {mq_txt}", font=mgs.get_font(32, bold=False), fill=(71, 85, 105), anchor="rm")
+
+    # 6. Card CTA Inferiore "CONTATTACI" (in colore del giorno)
     card_w = 940
     card_h = 240
     cx1 = 70
     cx2 = cx1 + card_w
-    cy1 = 1590
+    cy1 = 1380
     cy2 = cy1 + card_h
     
     _draw_shadow(canvas, (cx1, cy1, cx2, cy2), radius=36, shadow_color=(0, 0, 0, 70), blur=16, offset=(0, 8))
@@ -373,11 +384,15 @@ def crea_story_al_tuo_fianco_passo_dopo_passo_9_16(media_info, palette=None, out
     font_cta_info = mgs.get_font(30, bold=False, font_type="sans")
     
     draw.text((W // 2, cy1 + 55), "CONTATTACI", font=font_cta_head, fill=(255, 255, 255), anchor="mm")
-    draw.text((W // 2, cy1 + 125), "📞 320 166 7156  •  immobiliaregiancani.it", font=font_cta_phone, fill=(255, 255, 255), anchor="mm")
-    draw.text((W // 2, cy1 + 185), "📍 Corso Vittorio Veneto 151, Favara (AG)", font=font_cta_info, fill=(255, 255, 255), anchor="mm")
+    draw.text((W // 2, cy1 + 125), "📞 320 1667156  •  immobiliaregiancani.it", font=font_cta_phone, fill=(255, 255, 255), anchor="mm")
+    draw.text((W // 2, cy1 + 185), "📍 Favara • Corso Vittorio Veneto 151", font=font_cta_info, fill=(255, 255, 255), anchor="mm")
 
     # Baffo decorativo angolo in basso a destra (come nella reference)
-    draw.pieslice([(W - 120, H - 120), (W + 80, H + 80)], start=180, end=270, fill=theme_color)
+    draw.pieslice([(W - 140, H - 140), (W + 100, H + 100)], start=180, end=270, fill=theme_color)
+    draw.pieslice([(W - 80, H - 80), (W + 120, H + 120)], start=180, end=270, fill=colors["accent"])
+
+    # Personal branding in basso a sinistra
+    draw.text((70, H - 70), "— Immobiliare Giancani", font=mgs.get_font(30, bold=True), fill=theme_color, anchor="lm")
 
     canvas.save(output_path, "PNG", quality=95)
     return output_path
@@ -390,7 +405,8 @@ def crea_story_al_tuo_fianco_passo_dopo_passo_9_16(media_info, palette=None, out
 def crea_story_servizi_360_9_16(media_info, palette=None, output_path=None):
     """
     Stile 'I Nostri Servizi a 360°':
-    - Logo Giancani e titolo 'I NOSTRI SERVIZI'
+    - Sfondo superiore con foto agenzia/interior sfocata e logo Giancani
+    - Titolo 'I NOSTRI SERVIZI'
     - Ribbon/Banner 'AFFIDATI ALLA NOSTRA AGENZIA, TI OFFRIAMO UN SERVIZIO A 360°'
     - Griglia 6 Card bianche sagomate con icone e descrizioni:
       1. Valutazione Gratuita
@@ -399,7 +415,9 @@ def crea_story_servizi_360_9_16(media_info, palette=None, output_path=None):
       4. Conoscenza Dettagliata della Zona
       5. Canali Cartacei e Digitali
       6. Servizio Fotografico & Tour 360°
+    - Calligrafico 'Siamo qui per te!' con freccia
     - Banner WhatsApp / Chiama Ora con recapiti completi
+    - Footer Giancani con forme geometriche coordinate
     """
     W, H = 1080, 1920
     if not output_path:
@@ -409,31 +427,52 @@ def crea_story_servizi_360_9_16(media_info, palette=None, output_path=None):
     theme_color = colors["primary"]
     
     canvas = Image.new("RGBA", (W, H), (248, 250, 252, 255))
+    
+    # 1. Header con foto sfumata / profondità di campo
+    photo = mgs.get_clean_property_photo(media_info, (W, H)).convert("RGBA")
+    header_h = 360
+    ph_crop = photo.resize((W, int(photo.size[1] * (W / photo.size[0]))), Image.Resampling.LANCZOS)
+    ph_crop = ph_crop.crop((0, 0, W, header_h))
+    ph_blurred = ph_crop.filter(ImageFilter.GaussianBlur(8))
+    
+    # Maschera gradiente che sfuma gradualmente nel bianco
+    grad_mask = Image.new("L", (W, header_h), 0)
+    for gy in range(header_h):
+        alpha = int(255 * (1.0 - (gy / header_h) ** 1.5))
+        for gx in range(W):
+            grad_mask.putpixel((gx, gy), alpha)
+            
+    canvas.paste(ph_blurred, (0, 0), grad_mask)
+    
     draw = ImageDraw.Draw(canvas)
     
-    # 1. Header Logo
-    logo = mgs.get_logo_trasparente_ufficiale(max_w=440, max_h=110)
+    # Logo ufficiale in alto con leggero backing protettivo
+    logo = mgs.get_logo_trasparente_ufficiale(max_w=460, max_h=120)
     if logo:
         lw, lh = logo.size
-        canvas.paste(logo, ((W - lw) // 2, 45), logo)
+        draw.rounded_rectangle([((W - lw) // 2 - 20, 35), ((W + lw) // 2 + 20, 35 + lh + 10)], radius=16, fill=(255, 255, 255, 230))
+        canvas.paste(logo, ((W - lw) // 2, 40), logo)
 
     # 2. Titolo "I NOSTRI SERVIZI"
-    font_title = mgs.get_font(68, bold=True, font_type="sans")
-    font_sub = mgs.get_font(30, bold=False, font_type="sans")
+    font_title = mgs.get_font(64, bold=True, font_type="sans")
+    font_sub = mgs.get_font(28, bold=False, font_type="sans")
     
-    draw.text((70, 175), "I NOSTRI SERVIZI", font=font_title, fill=theme_color)
-    draw.text((70, 250), "Affidati alla nostra esperienza, ci prendiamo cura", font=font_sub, fill=(70, 80, 95))
-    draw.text((70, 290), "di ogni dettaglio per te con la massima sicurezza.", font=font_sub, fill=(70, 80, 95))
+    draw.text((70, 185), "I NOSTRI SERVIZI", font=font_title, fill=theme_color)
+    draw.text((70, 258), "Affidati alla nostra esperienza, ci prendiamo cura", font=font_sub, fill=(50, 60, 75))
+    draw.text((70, 298), "di ogni dettaglio per te con la massima trasparenza.", font=font_sub, fill=(50, 60, 75))
 
     # 3. Ribbon Orizzontale a 360° (con angoli arrotondati e bordo)
-    rx1, ry1 = 70, 345
-    rx2, ry2 = W - 70, 445
+    rx1, ry1 = 70, 355
+    rx2, ry2 = W - 70, 455
     _draw_shadow(canvas, (rx1, ry1, rx2, ry2), radius=50, shadow_color=(0, 0, 0, 50), blur=12, offset=(0, 6))
     draw.rounded_rectangle([(rx1, ry1), (rx2, ry2)], radius=50, fill=theme_color)
     
-    font_ribbon = mgs.get_font(30, bold=True, font_type="sans")
-    draw.text((W // 2, ry1 + 32), "AFFIDATI ALLA NOSTRA AGENZIA,", font=font_ribbon, fill=(255, 255, 255), anchor="mm")
-    draw.text((W // 2, ry1 + 68), "TI OFFRIAMO UN SERVIZIO A 360°", font=mgs.get_font(34, bold=True), fill=(255, 255, 255), anchor="mm")
+    # Icona casetta a sinistra del ribbon
+    draw.text((rx1 + 45, ry1 + 50), "🏠", font=mgs.get_font(42), fill=(255, 255, 255), anchor="mm")
+    
+    font_ribbon = mgs.get_font(26, bold=True, font_type="sans")
+    draw.text((W // 2 + 20, ry1 + 32), "AFFIDATI ALLA NOSTRA AGENZIA,", font=font_ribbon, fill=(255, 255, 255), anchor="mm")
+    draw.text((W // 2 + 20, ry1 + 68), "TI OFFRIAMO UN SERVIZIO A 360°", font=mgs.get_font(32, bold=True), fill=(255, 255, 255), anchor="mm")
 
     # 4. Griglia 6 Card Servizi (2 colonne x 3 righe)
     card_w = 445
@@ -446,10 +485,10 @@ def crea_story_servizi_360_9_16(media_info, palette=None, output_path=None):
     servizi_list = [
         ("VALUTAZIONE\nGRATUITA", "Valutiamo il tuo immobile in modo preciso e gratuito.", "⚖️"),
         ("ASSISTENZA\nFINO AL ROGITO", "Ti seguiamo passo dopo passo fino al rogito notarile.", "📋"),
-        ("GESTIONE DELLE\nVISITE", "Organizziamo e gestiamo le visite in modo professionale.", "🏠"),
+        ("GESTIONE DELLE\nVISITE", "Organizziamo e gestiamo le visite con clienti qualificati.", "🏠"),
         ("CONOSCENZA\nDELLA ZONA", "Conosciamo a fondo Favara e Agrigento da generazioni.", "📍"),
-        ("RIVISTE E\nCANALI SOCIAL", "Pubblicità costante e mirata sui massimi canali online.", "📢"),
-        ("SERVIZIO FOTO &\nVIRTUAL TOUR", "Valorizziamo la tua casa con foto e tour professionali.", "📸")
+        ("RIVISTE E\nCANALI SOCIAL", "Pubblicità mirata e sponsorizzata sui principali social.", "📢"),
+        ("SERVIZIO FOTO &\nVIRTUAL TOUR", "Valorizziamo la tua casa con foto e video ad alta resa.", "📸")
     ]
     
     font_c_title = mgs.get_font(24, bold=True, font_type="sans")
@@ -480,30 +519,31 @@ def crea_story_servizi_360_9_16(media_info, palette=None, output_path=None):
         # Linea divisoria interna
         draw.line([(cx1 + 25, cy1 + 95), (cx2 - 25, cy1 + 95)], fill=(241, 245, 249), width=2)
         
-        # Descrizione
-        # Word wrap su 2 righe
+        # Descrizione su 2 righe
         words = c_desc.split()
         line1 = " ".join(words[:5])
         line2 = " ".join(words[5:])
         draw.text((cx1 + 25, cy1 + 130), line1, font=font_c_desc, fill=(71, 85, 105))
         draw.text((cx1 + 25, cy1 + 165), line2, font=font_c_desc, fill=(71, 85, 105))
 
-    # 5. Bottone WhatsApp / Consulenza
-    btn_w = 780
-    btn_h = 90
-    bx1 = (W - btn_w) // 2
+    # 5. Bottone WhatsApp / Consulenza con "Siamo qui per te!" a sinistra
+    draw.text((160, 1345), "Siamo qui\nper te! ➔", font=mgs.get_font(28, bold=True, font_type="serif"), fill=theme_color, anchor="mm")
+    
+    btn_w = 660
+    btn_h = 95
+    bx1 = 340
     bx2 = bx1 + btn_w
-    by1 = 1320
+    by1 = 1300
     by2 = by1 + btn_h
     
-    _draw_shadow(canvas, (bx1, by1, bx2, by2), radius=45, shadow_color=(0, 0, 0, 60), blur=14, offset=(0, 6))
-    draw.rounded_rectangle([(bx1, by1), (bx2, by2)], radius=45, fill=theme_color)
+    _draw_shadow(canvas, (bx1, by1, bx2, by2), radius=48, shadow_color=(0, 0, 0, 60), blur=14, offset=(0, 6))
+    draw.rounded_rectangle([(bx1, by1), (bx2, by2)], radius=48, fill=theme_color)
     
-    font_btn = mgs.get_font(28, bold=True, font_type="sans")
-    draw.text((W // 2, by1 + btn_h // 2), "💬 CONTATTACI PER UNA CONSULENZA GRATUITA!", font=font_btn, fill=(255, 255, 255), anchor="mm")
+    font_btn = mgs.get_font(25, bold=True, font_type="sans")
+    draw.text(((bx1 + bx2) // 2, by1 + btn_h // 2), "💬 CONTATTACI PER UNA CONSULENZA GRATUITA!", font=font_btn, fill=(255, 255, 255), anchor="mm")
 
-    # 6. Footer Ufficiale con Recapiti Completi
-    fx1, fy1 = 70, 1450
+    # 6. Footer Ufficiale con Recapiti Completi e Forme Geometriche
+    fx1, fy1 = 70, 1435
     fx2, fy2 = W - 70, 1680
     draw.rounded_rectangle([(fx1, fy1), (fx2, fy2)], radius=28, fill=(30, 41, 59))
     
@@ -512,6 +552,9 @@ def crea_story_servizi_360_9_16(media_info, palette=None, output_path=None):
     draw.text((W // 2, fy1 + 95), "📍 Corso Vittorio Veneto 151, Favara (AG)", font=mgs.get_font(28), fill=(226, 232, 240), anchor="mm")
     draw.text((W // 2, fy1 + 145), "📞 320 166 7156  •  www.immobiliaregiancani.it", font=mgs.get_font(30, bold=True), fill=colors["accent"], anchor="mm")
     draw.text((W // 2, fy1 + 195), "— Immobiliare Giancani", font=mgs.get_font(26, bold=True), fill=(255, 255, 255), anchor="mm")
+
+    # Angoli decorativi coordinati
+    draw.pieslice([(W - 120, H - 120), (W + 60, H + 60)], start=180, end=270, fill=theme_color)
 
     canvas.save(output_path, "PNG", quality=95)
     return output_path
@@ -551,73 +594,73 @@ def crea_story_effetto_calamita_9_16(media_info, palette=None, output_path=None)
     draw.text((cal_x + 130, cal_y + 80), "EFFETTO", font=mgs.get_font(28, bold=True), fill=theme_color, anchor="mm")
     draw.text((cal_x + 130, cal_y + 115), "CALAMITA", font=mgs.get_font(38, bold=True), fill=theme_color, anchor="mm")
 
-    # 3. Griglia 4 Foto Immobiliari (2 colonne x 2 righe)
-    grid_top_y = 210
+    # 3. Griglia 4 Foto Immobiliari Sfalsate (Stile Reference 1)
     card_w = 450
-    card_h = 580
-    gap_x = 60
-    gap_y = 50
-    start_x = 60
+    card_h = 520
     
-    # Dati per le 4 card
-    items = [
-        ("Commerciale", "Via Veneto", "Favara", "IN VENDITA"),
-        ("Casa Indipendente", "Centro Storico", "Favara", "VENDUTO"),
-        ("Villa Panoramica", "C.da San Calogero", "Favara", "IN VENDITA"),
-        ("Appartamento", "Corso Vittorio Veneto", "Favara", "VENDUTO")
+    # 4 posizioni sfalsate:
+    # Card 1 (sinistra alta): x=55, y=210
+    # Card 2 (destra media):  x=575, y=320
+    # Card 3 (sinistra bassa): x=55, y=780
+    # Card 4 (destra bassa):  x=575, y=890
+    card_positions = [
+        (55, 210, "COMMERCIALE", "Via Veneto", "Favara", "VENDUTO"),
+        (575, 320, "CASA CIELO TERRA", "Centro Storico", "Favara", "VENDUTO"),
+        (55, 780, "VILLA CON TERRENO", "C.da San Calogero", "Favara", "IN VENDITA"),
+        (575, 890, "APPARTAMENTO", "Corso V. Veneto", "Favara", "VENDUTO")
     ]
     
     # Prepara foto
     main_photo = mgs.get_clean_property_photo(media_info, (W, H)).convert("RGBA")
     
-    font_badge = mgs.get_font(26, bold=True, font_type="sans")
+    font_badge = mgs.get_font(24, bold=True, font_type="sans")
     font_sub_badge = mgs.get_font(18, bold=False, font_type="sans")
-    font_status = mgs.get_font(28, bold=True, font_type="sans")
-    font_contact = mgs.get_font(18, bold=True, font_type="sans")
+    font_status = mgs.get_font(26, bold=True, font_type="sans")
+    font_contact = mgs.get_font(16, bold=True, font_type="sans")
 
-    for idx, (cat, via, citta, status) in enumerate(items):
-        col = idx % 2
-        row = idx // 2
-        
-        cx1 = start_x + col * (card_w + gap_x)
+    for (cx1, cy1, cat, via, citta, status) in card_positions:
         cx2 = cx1 + card_w
-        cy1 = grid_top_y + row * (card_h + gap_y)
         cy2 = cy1 + card_h
         
         # Ombra card
-        _draw_shadow(canvas, (cx1, cy1, cx2, cy2), radius=16, shadow_color=(0, 0, 0, 40), blur=12, offset=(0, 6))
+        _draw_shadow(canvas, (cx1, cy1, cx2, cy2), radius=16, shadow_color=(0, 0, 0, 45), blur=12, offset=(0, 6))
         
         # Sfondo card bianca
         draw.rounded_rectangle([(cx1, cy1), (cx2, cy2)], radius=16, fill=(255, 255, 255), outline=(226, 232, 240), width=1)
         
         # Foto interna (occupa la parte centrale della card)
-        photo_box_h = 360
+        photo_box_h = 320
         ph_crop = main_photo.resize((card_w, photo_box_h), Image.Resampling.LANCZOS)
-        canvas.paste(ph_crop, (cx1, cy1 + 100))
+        canvas.paste(ph_crop, (cx1, cy1 + 95))
         
-        # Badge curvo categoria in alto a sinistra
-        bw, bh = 220, 90
-        draw.rounded_rectangle([(cx1 + 15, cy1 + 10), (cx1 + 15 + bw, cy1 + 10 + bh)], radius=18, fill=theme_color)
-        draw.text((cx1 + 25 + bw // 2, cy1 + 38), cat.upper(), font=font_badge, fill=(255, 255, 255), anchor="mm")
-        draw.text((cx1 + 25 + bw // 2, cy1 + 72), f"{via} - {citta}", font=font_sub_badge, fill=(240, 245, 250), anchor="mm")
+        # Badge curvo categoria in alto a sinistra (con sagomatura ad arco)
+        bw, bh = 240, 85
+        draw.rounded_rectangle([(cx1 + 10, cy1 + 8), (cx1 + 10 + bw, cy1 + 8 + bh)], radius=18, fill=theme_color)
+        draw.text((cx1 + 10 + bw // 2, cy1 + 32), cat, font=font_badge, fill=(255, 255, 255), anchor="mm")
+        draw.text((cx1 + 10 + bw // 2, cy1 + 65), f"{via} • {citta}", font=font_sub_badge, fill=(240, 245, 250), anchor="mm")
         
-        # Nastro Status a bandiera ("IN VENDITA" o "VENDUTO")
+        # Nastro Status a bandiera con freccia ("VENDUTO" o "IN VENDITA")
         rib_color = (220, 38, 38) if status == "VENDUTO" else theme_color
-        rw, rh = 210, 50
-        draw.rounded_rectangle([(cx1 + 15, cy1 + photo_box_h + 30), (cx1 + 15 + rw, cy1 + photo_box_h + 30 + rh)], radius=8, fill=rib_color)
-        draw.text((cx1 + 15 + rw // 2, cy1 + photo_box_h + 30 + rh // 2), status, font=font_status, fill=(255, 255, 255), anchor="mm")
+        rw, rh = 210, 48
+        rib_y = cy1 + photo_box_h + 15
+        draw.rounded_rectangle([(cx1 + 10, rib_y), (cx1 + 10 + rw, rib_y + rh)], radius=8, fill=rib_color)
+        draw.text((cx1 + 10 + rw // 2, rib_y + rh // 2), status, font=font_status, fill=(255, 255, 255), anchor="mm")
         
         # Mini barra contatti sotto la foto
-        draw.text((cx1 + 25, cy2 - 35), "IMMOBILIARE GIANCANI", font=font_contact, fill=theme_color)
-        draw.text((cx2 - 25, cy2 - 35), "📞 320 166 7156", font=font_contact, fill=(30, 41, 59), anchor="ra")
+        draw.text((cx1 + 15, cy2 - 25), "IMMOBILIARE GIANCANI", font=font_contact, fill=theme_color)
+        draw.text((cx2 - 15, cy2 - 25), "📞 320 166 7156", font=font_contact, fill=(30, 41, 59), anchor="ra")
 
-    # 4. Sticker calligrafico in basso a sinistra
-    font_sticker = mgs.get_font(48, bold=False, font_type="script")
-    draw.text((220, H - 280), "Selezionati Giancani", font=font_sticker, fill=(220, 38, 38), anchor="mm")
+    # 4. Timbro Calligrafico "SOLD" in basso a sinistra (come nella reference)
+    stamp_x, stamp_y = 220, 1500
+    font_sold = mgs.get_font(68, bold=True, font_type="sans")
+    font_month = mgs.get_font(52, bold=False, font_type="script")
+    draw.text((stamp_x, stamp_y), "SOLD", font=font_sold, fill=(225, 29, 72), anchor="mm")
+    draw.text((stamp_x + 10, stamp_y + 60), "Selezionati Giancani", font=font_month, fill=(234, 88, 12), anchor="mm")
     
     # 5. Footer con brand ufficiale
-    draw.text((W // 2, H - 120), "COMPRA E VENDI CASA IN SICUREZZA", font=mgs.get_font(34, bold=True), fill=theme_color, anchor="mm")
-    draw.text((W // 2, H - 70), "— Immobiliare Giancani  •  Favara (AG)", font=mgs.get_font(28, bold=True), fill=(71, 85, 105), anchor="mm")
+    draw.text((W // 2, H - 160), "COMPRA E VENDI CASA IN TOTALE SICUREZZA", font=mgs.get_font(34, bold=True), fill=theme_color, anchor="mm")
+    draw.text((W // 2, H - 105), "📍 Favara • Corso Vittorio Veneto 151  •  📞 320 166 7156", font=mgs.get_font(28), fill=(71, 85, 105), anchor="mm")
+    draw.text((W // 2, H - 55), "— Immobiliare Giancani", font=mgs.get_font(30, bold=True), fill=theme_color, anchor="mm")
 
     canvas.save(output_path, "PNG", quality=95)
     return output_path

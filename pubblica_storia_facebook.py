@@ -2280,6 +2280,124 @@ def pubblica_storia_tiktok(video_path, item_data):
         }
 
 
+
+
+def pubblica_su_threads(media_info, video_path=None):
+    """
+    Pubblica il post/contenuto su Threads (@giancani_immobiliare, ID 27921035330824293)
+    tramite Meta Threads API ufficiale (graph.threads.net).
+    Conforme a tutte le regole tassative:
+    - Narrazione e testi da Colonna F
+    - Superfici in 'metri quadri'
+    - Chiusura obbligatoria: '— Immobiliare Giancani'
+    - Immagine reale o link YouTube/Short integrato
+    """
+    print(f"\n🧵 Pubblicazione su Threads (@giancani_immobiliare)...")
+    threads_user_id = os.environ.get("THREADS_USER_ID", "27921035330824293")
+    threads_token = os.environ.get("THREADS_ACCESS_TOKEN") or os.environ.get("THREADS_TOKEN", "THAAWYZCaJOYY1BYmExZAGdZAWXpJaEdlYzhFaUJWNHF4NEJtNi1wT2hEazZArNnl4RWU3SjhnTDVlaGxoYXlDTWk4dERBSm9oR0l6RXBaMGZAuenNYYl9rZAWJpeDgtdVVFUENTZAVNZAZAUhEeGN1dkw1LVFSOVI2TzI0bWVRN0dpaVhwRnZAKOFd2QnNWWHdxeUM4TWsZD")
+
+    try:
+        titolo = media_info.get("titolo", "Opportunità Immobiliare").strip()
+        mq = str(media_info.get("mq", "")).replace("mq", "metri quadri").replace("m²", "metri quadri").strip()
+        prezzo = str(media_info.get("prezzo", "")).strip()
+        testo_f = media_info.get("testoF", "").replace("|||", "\n").strip()
+        foto_url = media_info.get("fotoUrl", "").strip()
+        yt_link = media_info.get("youtubeUrl", "") or media_info.get("shortUrl", "")
+
+        parti_testo = [f"🏠 {titolo.upper()}"]
+        info_sub = []
+        if mq:
+            info_sub.append(f"📐 {mq}")
+        if prezzo and "trattativa" not in prezzo.lower():
+            info_sub.append(f"💰 {prezzo}")
+        if info_sub:
+            parti_testo.append(" | ".join(info_sub))
+
+        if testo_f:
+            parti_testo.append(f"\n«{testo_f}»")
+
+        if yt_link:
+            parti_testo.append(f"\n🎬 Video YouTube: {yt_link}")
+
+        parti_testo.append("\n━━━━━━━━━━━━━━━━━━━")
+        parti_testo.append("📍 Immobiliare Giancani — Corso Vittorio Veneto 151, Favara (AG)")
+        parti_testo.append("📲 Info & Visite: 320 166 7156 | www.immobiliaregiancani.it")
+        parti_testo.append("— Immobiliare Giancani")
+
+        full_text = "\n".join(parti_testo)
+        if len(full_text) > 490:
+            full_text = full_text[:450] + "...\n\n— Immobiliare Giancani"
+
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        payload = {
+            "text": full_text,
+            "access_token": threads_token
+        }
+
+        # Se abbiamo una foto reale pubblica, usiamo media_type IMAGE
+        if foto_url and foto_url.startswith("http") and not foto_url.endswith(".mp4") and "youtube" not in foto_url:
+            payload["media_type"] = "IMAGE"
+            payload["image_url"] = foto_url
+        else:
+            payload["media_type"] = "TEXT"
+
+        container_url = f"https://graph.threads.net/v1.0/{threads_user_id}/threads"
+        req_data = urllib.parse.urlencode(payload).encode("utf-8")
+        req = urllib.request.Request(container_url, data=req_data, method="POST")
+
+        with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
+            c_res = json.loads(resp.read().decode("utf-8"))
+            creation_id = c_res.get("id")
+
+        if payload["media_type"] == "IMAGE":
+            time.sleep(4)
+        else:
+            time.sleep(2)
+
+        pub_url = f"https://graph.threads.net/v1.0/{threads_user_id}/threads_publish"
+        pub_data = urllib.parse.urlencode({
+            "creation_id": creation_id,
+            "access_token": threads_token
+        }).encode("utf-8")
+        pub_req = urllib.request.Request(pub_url, data=pub_data, method="POST")
+
+        with urllib.request.urlopen(pub_req, timeout=30, context=ctx) as resp:
+            p_res = json.loads(resp.read().decode("utf-8"))
+            post_id = p_res.get("id")
+
+        permalink = "https://www.threads.net/@giancani_immobiliare"
+        try:
+            info_url = f"https://graph.threads.net/v1.0/{post_id}?fields=permalink&access_token={threads_token}"
+            info_req = urllib.request.Request(info_url)
+            with urllib.request.urlopen(info_req, timeout=15, context=ctx) as resp:
+                info_res = json.loads(resp.read().decode("utf-8"))
+                if info_res.get("permalink"):
+                    permalink = info_res.get("permalink")
+        except Exception:
+            pass
+
+        print(f"  ✅ [Threads] Post pubblicato con successo! URL: {permalink}")
+        return {
+            "nome": "Threads (@giancani_immobiliare)",
+            "success": True,
+            "post_id": post_id,
+            "permalink": permalink,
+            "url": permalink
+        }
+
+    except Exception as eTh:
+        print(f"  ❌ Errore Threads: {eTh}")
+        return {
+            "nome": "Threads (@giancani_immobiliare)",
+            "success": False,
+            "url": "https://www.threads.net/@giancani_immobiliare",
+            "error": str(eTh)
+        }
+
+
 def pubblica_nota_facebook_pagina(page_id, page_token, media_info, fascia_info=None):
     """
     Pubblica una 'Nota di Pagina' (Post ricco sul feed di Facebook) strutturata con:

@@ -67,8 +67,11 @@ os.makedirs(CLIPS_DIR, exist_ok=True)
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Aggiungi cartelle a sys.path per importare i moduli interni
-for p in [BASE_DIR, os.path.join(BASE_DIR, "scripts"), os.path.join(BASE_DIR, "live_stream_appscript"), PROJECT_DIR]:
-    if p not in sys.path and os.path.exists(p):
+# Aggiungi cartelle a sys.path per importare i moduli interni (BASE_DIR al primo posto)
+for p in [PROJECT_DIR, os.path.join(BASE_DIR, "live_stream_appscript"), os.path.join(BASE_DIR, "scripts"), BASE_DIR]:
+    if p and os.path.exists(p):
+        if p in sys.path:
+            sys.path.remove(p)
         sys.path.insert(0, p)
 
 # File di stato e registri persistenti

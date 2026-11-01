@@ -477,6 +477,14 @@ def esegui_ciclo_immagini(indice_stile):
         log(f"⚠️ Avviso TikTok Story: {eTk}")
         res_tk = {"success": False, "url": "https://www.tiktok.com/@immobiliare_giancani"}
 
+    # 5. Threads (@giancani_immobiliare)
+    try:
+        from pubblica_storia_facebook import pubblica_su_threads
+        res_th = pubblica_su_threads(media_info)
+    except Exception as eTh:
+        log(f"⚠️ Avviso Threads: {eTh}")
+        res_th = {"success": False, "url": "https://www.threads.net/@giancani_immobiliare"}
+
     # Evento per il report 4 ore
     evento = {
         "ora": datetime.now().strftime("%H:%M"),
@@ -487,10 +495,12 @@ def esegui_ciclo_immagini(indice_stile):
         "link_ig": res_ig.get("link") if res_ig.get("success") else "https://www.instagram.com/giancani_immobiliare",
         "link_yt": res_yt.get("url") if res_yt.get("success") else "https://www.youtube.com/@immobiliaregiancani761/shorts",
         "link_tk": res_tk.get("url") if res_tk.get("success") else "https://www.tiktok.com/@immobiliare_giancani",
+        "link_th": res_th.get("url") if res_th.get("success") else "https://www.threads.net/@giancani_immobiliare",
         "story_id_fb": res_fb.get("story_id"),
         "story_id_ig": res_ig.get("story_id"),
         "story_id_yt": res_yt.get("story_id"),
-        "story_id_tk": res_tk.get("story_id")
+        "story_id_tk": res_tk.get("story_id"),
+        "post_id_th": res_th.get("post_id")
     }
     aggiungi_a_buffer_report(evento)
     return evento
@@ -562,6 +572,16 @@ def esegui_ciclo_video_youtube():
         log(f"⚠️ Avviso TikTok Story: {eTk}")
         res_tk = {"success": False, "url": "https://www.tiktok.com/@immobiliare_giancani"}
 
+    # 5. Threads (@giancani_immobiliare)
+    short_url = f"https://youtu.be/{scelto['id']}"
+    try:
+        media_info_yt["shortUrl"] = res_yt.get("url") or short_url
+        from pubblica_storia_facebook import pubblica_su_threads
+        res_th = pubblica_su_threads(media_info_yt)
+    except Exception as eTh:
+        log(f"⚠️ Avviso Threads: {eTh}")
+        res_th = {"success": False, "url": "https://www.threads.net/@giancani_immobiliare"}
+
     # Opzionale: versione Antonio Giancani
     try:
         clip_antonio = genera_clip_30s(video_locale, scelto, per_antonio=True)
@@ -570,7 +590,6 @@ def esegui_ciclo_video_youtube():
         log(f"   ⚠️ Avviso pubblicazione Antonio: {eAnt}")
 
     # Evento per il report 4 ore
-    short_url = f"https://youtu.be/{scelto['id']}"
     evento = {
         "ora": datetime.now().strftime("%H:%M"),
         "tipo": "VIDEO YOUTUBE (Clip 30s Archivio)",
@@ -580,10 +599,12 @@ def esegui_ciclo_video_youtube():
         "link_ig": res_ig.get("link") if res_ig.get("success") else "https://www.instagram.com/giancani_immobiliare",
         "link_yt": res_yt.get("url") if res_yt.get("success") else short_url,
         "link_tk": res_tk.get("url") if res_tk.get("success") else "https://www.tiktok.com/@immobiliare_giancani",
+        "link_th": res_th.get("url") if res_th.get("success") else "https://www.threads.net/@giancani_immobiliare",
         "story_id_fb": res_fb.get("story_id"),
         "story_id_ig": res_ig.get("story_id"),
         "story_id_yt": res_yt.get("story_id"),
-        "story_id_tk": res_tk.get("story_id")
+        "story_id_tk": res_tk.get("story_id"),
+        "post_id_th": res_th.get("post_id")
     }
     aggiungi_a_buffer_report(evento)
     return evento
@@ -617,11 +638,14 @@ def verifica_e_invia_report_4ore(stato, forza=False):
 
     log(f"📨 [REPORT 4 ORE TELEGRAM] Elaborazione riassunto per {len(buffer)} pubblicazioni effettuate...")
 
+    # Seleziona gli ultimi 16 eventi (finestra 4 ore) per evitare superamento limiti Telegram
+    eventi_da_inviare = buffer[-16:] if len(buffer) > 16 else buffer
+
     righe_report = []
     righe_report.append("📋 <b>RIEPILOGO PUBBLICAZIONI SOCIAL — ULTIME 4 ORE</b>")
     righe_report.append(f"⏱️ Totale Storie Pubblicate: <b>{len(buffer)}</b> (Alternanza 15 min Immagini & Video)\n")
 
-    for i, ev in enumerate(buffer, start=1):
+    for i, ev in enumerate(eventi_da_inviare, start=1):
         riga = f"<b>{i}. [{ev.get('ora')}] {ev.get('tipo')}</b>\n"
         riga += f"   📌 <i>{ev.get('titolo')}</i>\n"
         if ev.get("link_fb"):
@@ -632,28 +656,46 @@ def verifica_e_invia_report_4ore(stato, forza=False):
             riga += f"   🎬 YouTube Story: <a href=\"{ev.get('link_yt')}\">{ev.get('link_yt')}</a>\n"
         if ev.get("link_tk"):
             riga += f"   🎵 TikTok Story: <a href=\"{ev.get('link_tk')}\">@immobiliare_giancani</a>\n"
+        if ev.get("link_th"):
+            riga += f"   🧵 Threads: <a href=\"{ev.get('link_th')}\">@giancani_immobiliare</a>\n"
         righe_report.append(riga)
 
     righe_report.append("— <b>Immobiliare Giancani</b>")
     testo_finale = "\n".join(righe_report)
 
+    # Invio protetto da split (max 3800 char per messaggio)
     try:
         url_tg = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        d_tg = urllib.parse.urlencode({
-            'chat_id': TELEGRAM_CHAT_ID,
-            'text': testo_finale,
-            'parse_mode': 'HTML',
-            'disable_web_page_preview': True
-        }).encode('utf-8')
-        req = urllib.request.Request(url_tg, data=d_tg, method='POST')
-        with urllib.request.urlopen(req, timeout=30) as r:
-            res_tg = json.loads(r.read().decode('utf-8'))
-            if res_tg.get('ok'):
-                log("✅ Report 4 ore inviato con successo su Telegram (Chat ID 1723292483).")
-                azzera_buffer_report()
-                stato["ultimo_report_4ore_ts"] = ora_attuale
-                salva_stato(stato)
-                return True
+        # Spezza se necessario
+        parti = []
+        if len(testo_finale) > 3800:
+            p1 = testo_finale[:3800]
+            last_nl = p1.rfind("\n\n")
+            if last_nl != -1:
+                parti.append(testo_finale[:last_nl])
+                parti.append(testo_finale[last_nl:].strip())
+            else:
+                parti.append(p1)
+                parti.append(testo_finale[3800:])
+        else:
+            parti.append(testo_finale)
+
+        for p_idx, p_text in enumerate(parti):
+            d_tg = urllib.parse.urlencode({
+                'chat_id': TELEGRAM_CHAT_ID,
+                'text': p_text,
+                'parse_mode': 'HTML',
+                'disable_web_page_preview': True
+            }).encode('utf-8')
+            req = urllib.request.Request(url_tg, data=d_tg, method='POST')
+            with urllib.request.urlopen(req, timeout=30) as r:
+                res_tg = json.loads(r.read().decode('utf-8'))
+
+        log("✅ Report 4 ore inviato con successo su Telegram (Chat ID 1723292483).")
+        azzera_buffer_report()
+        stato["ultimo_report_4ore_ts"] = ora_attuale
+        salva_stato(stato)
+        return True
     except Exception as eTg:
         log(f"❌ Errore invio report Telegram 4 ore: {eTg}")
 

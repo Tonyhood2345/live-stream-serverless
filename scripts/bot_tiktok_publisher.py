@@ -301,9 +301,12 @@ def carica_su_tiktok_playwright(video_path, caption):
         page = context.new_page()
 
         try:
-            logger.info("Navigazione su TikTok Creator Center Upload...")
-            page.goto("https://www.tiktok.com/creator-center/upload?lang=it-IT", wait_until="networkidle", timeout=60000)
-            time.sleep(5)
+            logger.info("Navigazione su TikTok Creator Center / Studio Upload...")
+            try:
+                page.goto("https://www.tiktok.com/tiktokstudio/upload?lang=it-IT", wait_until="domcontentloaded", timeout=45000)
+            except Exception:
+                page.goto("https://www.tiktok.com/creator-center/upload?lang=it-IT", wait_until="domcontentloaded", timeout=45000)
+            time.sleep(6)
 
             if "login" in page.url.lower():
                 logger.warning("Sessione web scaduta o redirect su login TikTok.")

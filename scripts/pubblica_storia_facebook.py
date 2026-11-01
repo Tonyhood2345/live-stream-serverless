@@ -1850,7 +1850,11 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
         "minimal_clean",
         "cb_curved_wave",
         "twilight_penthouse",
-        "mediterranean_coastal"
+        "mediterranean_coastal",
+        "una_casa_tante_esigenze",
+        "al_tuo_fianco_passo_dopo_passo",
+        "servizi_360",
+        "effetto_calamita"
     ]
     if not style or style in ("auto", "daily", "giorno", "settimanale", "rotazione"):
         chosen_style = ROTATING_STYLES_LIST[story_seq % len(ROTATING_STYLES_LIST)]

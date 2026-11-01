@@ -262,13 +262,13 @@ def scarica_video_completo(video_id, watch_url):
 
     log(f"⬇️ [2/4] Download video YouTube ({video_id}) in corso...")
     ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        'format': 'best[ext=mp4]/best',
         'outtmpl': out_tmpl,
         'quiet': True,
         'nocheckcertificate': True,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios', 'mweb', 'web']
+                'player_client': ['android', 'ios']
             }
         }
     }

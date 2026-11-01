@@ -44,7 +44,7 @@ os.makedirs(CLIPS_DIR, exist_ok=True)
 # Parametri Master Canale & WebApp
 CHANNEL_ID = "UC7jCI1x_cwh_sOrNPJpaKyQ"
 CHANNEL_URL = f"https://www.youtube.com/channel/{CHANNEL_ID}/videos"
-WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec"
+WEBAPP_URL = os.environ.get("APPS_SCRIPT_URL") or "https://script.google.com/macros/s/AKfycbxvG1ptwSr4C40stTdPDIcf34QQ12C61Dola074MS4753j9WuJ4P6gWT-k1EBYNSiOfEg/exec"
 
 # Pagine Facebook Target
 PAGES = [
@@ -159,96 +159,112 @@ CATALOGO_CACHE_FILE = os.path.join(BASE_DIR, "catalogo_youtube_cache.json")
 
 
 def estrai_e_popola_sheet():
-    """1. Estrae l'indice di tutti i video dell'ultimo anno e aggiorna Google Sheet (Post_YouTube)"""
-    # Se presente cache recente (< 24 ore), usala
+    """1. Estrae l'elenco dei video direttamente dal foglio Google Sheet 'Post_YouTube' stabilito"""
+    log("📥 [1/4] Caricamento catalogo video dal foglio Google Sheet 'Post_YouTube'...")
+    catalog = []
+
+    # 1. Tentativo di lettura diretta dal Google Sheet 'Post_YouTube' tramite WebApp
+    try:
+        req_url = f"{WEBAPP_URL}?action=get_sheet&sheet=Post_YouTube"
+        req = urllib.request.Request(req_url, headers={"User-Agent": "Mozilla/5.0"}, method="GET")
+        with urllib.request.urlopen(req, timeout=20, context=ctx) as r:
+            sheet_json = json.loads(r.read().decode('utf-8'))
+            rows = sheet_json.get('rows', [])
+            if len(rows) > 1:
+                # La prima riga è l'header (URL_MEDIA, PREZZO, MQ, TITOLO_STANZA, TIPO_MEDIA, TESTO_PARLATO_DARIA, URL_ANTEPRIMA, TESTO_TICKER)
+                for row in rows[1:]:
+                    raw_url = str(row[0] or '').strip() if len(row) > 0 else ''
+                    prezzo = str(row[1] or 'Trattativa Riservata').strip() if len(row) > 1 else 'Trattativa Riservata'
+                    raw_mq = str(row[2] or 'metri quadri').strip() if len(row) > 2 else 'metri quadri'
+                    titolo = str(row[3] or 'Immobile Giancani').strip() if len(row) > 3 else 'Immobile Giancani'
+                    testo_f = str(row[5] or '').strip() if len(row) > 5 else ''
+                    thumb = str(row[6] or '').strip() if len(row) > 6 else ''
+
+                    # Estrai Video ID
+                    m = re.search(r'(?:youtu\.be\/|embed\/|watch\?v=|\/)([a-zA-Z0-9_-]{11})', raw_url) or re.search(r'\/vi\/([a-zA-Z0-9_-]{11})\/', thumb)
+                    v_id = m.group(1) if m else ''
+                    if not v_id and len(raw_url) == 11:
+                        v_id = raw_url
+
+                    if v_id:
+                        # Regole di progetto: Metri quadri per esteso e Personal Branding
+                        mq_clean = raw_mq.replace("mq", "metri quadri").replace("m²", "metri quadri").replace("MQ", "metri quadri")
+                        desc_clean = testo_f.replace("mq", "metri quadri").replace("m²", "metri quadri").replace("MQ", "metri quadri")
+                        if not desc_clean:
+                            desc_clean = f"Presentazione esclusiva: {titolo} a Favara ed Agrigento. Per maggiori informazioni contattaci subito!"
+                        if not desc_clean.endswith("— Immobiliare Giancani"):
+                            desc_clean += "\n\n— Immobiliare Giancani"
+
+                        if not thumb:
+                            thumb = f"https://i.ytimg.com/vi/{v_id}/hqdefault.jpg"
+
+                        catalog.append({
+                            "id": v_id,
+                            "title": titolo,
+                            "desc": desc_clean,
+                            "prezzo": prezzo,
+                            "mq": mq_clean,
+                            "thumb": thumb,
+                            "url": f"https://www.youtube.com/watch?v={v_id}"
+                        })
+
+                if catalog:
+                    log(f"✅ [LISTA GOOGLE SHEET] Caricati {len(catalog)} video immobiliari dal foglio 'Post_YouTube'!")
+                    # Salva cache locale per resilienza
+                    try:
+                        with open(CATALOGO_CACHE_FILE, 'w', encoding='utf-8') as f_c:
+                            json.dump(catalog, f_c, indent=2, ensure_ascii=False)
+                    except Exception as e_w:
+                        log(f"Avviso salvataggio cache: {e_w}")
+                    return catalog
+    except Exception as e_sheet:
+        log(f"⚠️ Avviso connessione foglio Sheet: {e_sheet}. Controllo cache locale...")
+
+    # 2. Fallback: Se la chiamata allo Sheet fallisce, usa la cache locale
     if os.path.exists(CATALOGO_CACHE_FILE):
         try:
-            mtime = os.path.getmtime(CATALOGO_CACHE_FILE)
-            if (time.time() - mtime) < 86400: # 24 ore
-                with open(CATALOGO_CACHE_FILE, 'r', encoding='utf-8') as f:
-                    cat = json.load(f)
-                    if len(cat) > 10:
-                        log(f"📦 Utilizzo catalogo video locale in cache ({len(cat)} video registrati).")
-                        return cat
+            with open(CATALOGO_CACHE_FILE, 'r', encoding='utf-8') as f:
+                cat = json.load(f)
+                if len(cat) > 10:
+                    log(f"📦 Utilizzo catalogo video locale in cache ({len(cat)} video registrati).")
+                    return cat
         except Exception as e_cache:
             log(f"Avviso lettura cache: {e_cache}")
 
-    log("📥 [1/4] Estrazione catalogo video canale YouTube (a ritroso 1 anno)...")
-
+    # 3. Fallback estremo: Estrazione dal canale YouTube con player client mobile
+    log("⚠️ Fallback: Estrazione catalogo dal canale YouTube...")
     ydl_opts = {
         'extract_flat': True,
         'quiet': True,
-        'nocheckcertificate': True
+        'nocheckcertificate': True,
+        'extractor_args': {'youtube': {'player_client': ['android', 'ios']}}
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        res = ydl.extract_info(CHANNEL_URL, download=False)
-        entries = res.get('entries', [])
-
-    log(f"   -> Trovati {len(entries)} video sul canale YouTube.")
-
-    videos_for_sheet = []
-    catalog = []
-
-    for e in entries:
-        vid_id = e.get('id')
-        title = e.get('title') or "Immobile di Prestigio"
-        desc = e.get('description') or f"Presentazione esclusiva: {title}. Per maggiori informazioni contattaci subito!"
-
-        # Prezzo euristico
-        prezzo = "Trattativa Riservata"
-        if "€" in desc:
-            m = re.search(r'(\d{2,3}[\.\s]?\d{3})\s*€', desc)
-            if m:
-                prezzo = f"{m.group(1).replace(' ', '.')} €"
-
-        # Regola di progetto: Superfici rigorosamente in "metri quadri"
-        desc_pulita = desc.replace("mq", "metri quadri").replace("m²", "metri quadri").replace("MQ", "metri quadri")
-
-        # Regola di progetto: Personal branding finale "— Immobiliare Giancani"
-        if not desc_pulita.endswith("— Immobiliare Giancani"):
-            desc_pulita += "\n\n— Immobiliare Giancani"
-
-        thumb = f"https://i.ytimg.com/vi/{vid_id}/hqdefault.jpg"
-
-        videos_for_sheet.append({
-            "videoId": vid_id,
-            "titolo": title,
-            "descrizione": desc_pulita,
-            "thumbnail": thumb,
-            "prezzo": prezzo,
-            "isShort": False
-        })
-
-        catalog.append({
-            "id": vid_id,
-            "title": title,
-            "desc": desc_pulita,
-            "prezzo": prezzo,
-            "thumb": thumb,
-            "url": f"https://www.youtube.com/watch?v={vid_id}"
-        })
-
-    # Salva cache locale
     try:
-        with open(CATALOGO_CACHE_FILE, 'w', encoding='utf-8') as f_c:
-            json.dump(catalog, f_c, indent=2, ensure_ascii=False)
-    except Exception as e_w:
-        log(f"Avviso salvataggio cache: {e_w}")
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            res = ydl.extract_info(CHANNEL_URL, download=False)
+            entries = res.get('entries', [])
 
-    # Popolamento Google Sheet via WebApp Apps Script
-    try:
-        payload = {
-            "action": "salva_video_youtube_batch",
-            "videos": videos_for_sheet
-        }
-        data = json.dumps(payload).encode('utf-8')
-        req = urllib.request.Request(WEBAPP_URL, data=data, headers={"Content-Type": "application/json"}, method="POST")
-        with urllib.request.urlopen(req, timeout=30, context=ctx) as r:
-            resp = json.loads(r.read().decode('utf-8'))
-            log(f"✅ Google Sheet aggiornato: {resp.get('message', 'OK')}")
-    except Exception as ex:
-        log(f"⚠️ Avviso aggiornamento Google Sheet: {ex}")
+        for e in entries:
+            vid_id = e.get('id')
+            title = e.get('title') or "Immobile di Prestigio"
+            desc = e.get('description') or f"Presentazione esclusiva: {title}. Per maggiori informazioni contattaci subito!"
+            desc_pulita = desc.replace("mq", "metri quadri").replace("m²", "metri quadri").replace("MQ", "metri quadri")
+            if not desc_pulita.endswith("— Immobiliare Giancani"):
+                desc_pulita += "\n\n— Immobiliare Giancani"
+            thumb = f"https://i.ytimg.com/vi/{vid_id}/hqdefault.jpg"
+
+            catalog.append({
+                "id": vid_id,
+                "title": title,
+                "desc": desc_pulita,
+                "prezzo": "Trattativa Riservata",
+                "mq": "metri quadri",
+                "thumb": thumb,
+                "url": f"https://www.youtube.com/watch?v={vid_id}"
+            })
+    except Exception as e_yt:
+        log(f"Errore fallback YouTube: {e_yt}")
 
     return catalog
 

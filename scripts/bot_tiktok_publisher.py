@@ -333,10 +333,24 @@ def carica_su_tiktok_playwright(video_path, caption):
             logger.info("Video caricato. Attesa elaborazione preview TikTok (15s)...")
             time.sleep(15)
 
+            # Chiudi eventuali popup modali o overlay di TikTok Studio (TUXModal)
+            try:
+                for m_sel in ['button:has-text("Ho capito")', 'button:has-text("Got it")', 'button:has-text("OK")', 'button:has-text("Accetta")', 'button:has-text("Chiudi")', 'button[aria-label="Close"]', '.TUXModal button']:
+                    m_btn = page.locator(m_sel).first
+                    if m_btn.count() and m_btn.is_visible():
+                        m_btn.click(force=True)
+                        logger.info(f"Modal overlay TikTok chiuso con selettore: {m_sel}")
+                        time.sleep(1)
+            except Exception:
+                pass
+
             logger.info("Inserimento didascalia con Colonna F e branding...")
             caption_box = page.locator('div[contenteditable="true"]').first
             if caption_box.count():
-                caption_box.click()
+                try:
+                    caption_box.click(force=True)
+                except Exception:
+                    pass
                 page.keyboard.press("Control+A")
                 page.keyboard.press("Backspace")
                 time.sleep(1)
@@ -370,7 +384,7 @@ def carica_su_tiktok_playwright(video_path, caption):
                     el = page.locator(sel).first
                     if el.count() and el.is_visible():
                         el.scroll_into_view_if_needed()
-                        el.click()
+                        el.click(force=True)
                         story_checked = True
                         logger.info(f"✅ Selezionata con successo la modalità TikTok Story tramite selettore: '{sel}'")
                         time.sleep(1)
@@ -400,7 +414,7 @@ def carica_su_tiktok_playwright(video_path, caption):
             if publish_btn and publish_btn.count():
                 publish_btn.scroll_into_view_if_needed()
                 time.sleep(1)
-                publish_btn.click()
+                publish_btn.click(force=True)
                 logger.info("Pulsante 'Pubblica' (Storia) premuto con successo!")
             else:
                 page.screenshot(path=screenshot_path)

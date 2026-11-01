@@ -6567,6 +6567,30 @@ def crea_story_9_16(media_info, style="auto", palette=None, output_path=None, da
         return crea_story_marketing_banner_9_16(media_info, palette=palette, output_path=output_path)
     elif style_clean in ("split_screen", "split"):
         return crea_story_splitscreen_9_16(media_info, palette=palette, output_path=output_path)
+    elif style_clean in ("una_casa_tante_esigenze", "esigenze", "tante_esigenze", "una_casa"):
+        try:
+            from scripts.nuovi_stili_giancani import crea_story_una_casa_tante_esigenze_9_16
+            return crea_story_una_casa_tante_esigenze_9_16(media_info, palette=palette, output_path=output_path)
+        except Exception as e_es:
+            print(f"Errore render una_casa_tante_esigenze: {e_es}")
+    elif style_clean in ("al_tuo_fianco_passo_dopo_passo", "fianco", "passo_dopo_passo", "al_tuo_fianco"):
+        try:
+            from scripts.nuovi_stili_giancani import crea_story_al_tuo_fianco_passo_dopo_passo_9_16
+            return crea_story_al_tuo_fianco_passo_dopo_passo_9_16(media_info, palette=palette, output_path=output_path)
+        except Exception as e_fi:
+            print(f"Errore render al_tuo_fianco_passo_dopo_passo: {e_fi}")
+    elif style_clean in ("servizi_360", "i_nostri_servizi", "servizi", "servizio_360"):
+        try:
+            from scripts.nuovi_stili_giancani import crea_story_servizi_360_9_16
+            return crea_story_servizi_360_9_16(media_info, palette=palette, output_path=output_path)
+        except Exception as e_sv:
+            print(f"Errore render servizi_360: {e_sv}")
+    elif style_clean in ("effetto_calamita", "calamita", "portfolio_calamita", "portfolio_venduto"):
+        try:
+            from scripts.nuovi_stili_giancani import crea_story_effetto_calamita_9_16
+            return crea_story_effetto_calamita_9_16(media_info, palette=palette, output_path=output_path)
+        except Exception as e_cl:
+            print(f"Errore render effetto_calamita: {e_cl}")
     else:
         # Default di garanzia
         return crea_story_daily_lunedi_cb_curved_wave(media_info, palette=palette, output_path=output_path)

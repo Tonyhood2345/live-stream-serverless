@@ -84,4 +84,4 @@ jobs:
           git config --global user.name "Giancani Orchestrator Bot"
           git config --global user.email "bot@immobiliaregiancani.it"
           git add stato_orchestratore_15min.json storico_immagini_pubblicate.json registro_video_pubblicati.json registro_video_pubblicati_orari.json buffer_report_4ore.json catalogo_youtube_cache.json assets/catalogo_immobili_cache.json output_storie/*.png live_stream_appscript/*.json 2>/dev/null || true
-          git diff --staged --quiet || (git commit -m "chore: Aggiornato stato orchestratore 15min e report buffer [skip ci]" && git pull --rebase origin main && git push origin main)
+          git diff --staged --quiet || (git commit -m "chore: Aggiornato stato orchestratore 15min e report buffer [skip ci]" && git pull --rebase -X theirs origin main && git push origin main) || true

@@ -9,7 +9,7 @@ on:
       video_url:
         description: 'URL Web App Player 360 Studio'
         required: false
-        default: 'https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?view=screen'
+        default: 'https://tonyhood2345.github.io/live-stream-serverless/orizzontale.html'
       yt_key:
         description: 'YouTube Stream Key'
         required: false
@@ -44,7 +44,8 @@ jobs:
       - name: Setup Headless Environment, Audio Engine and Chrome
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core
+          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core espeak-ng speech-dispatcher libespeak-ng1
+          python3 -m pip install --no-cache-dir edge-tts requests || true
           
           # Verifica o installazione Google Chrome
           if ! command -v google-chrome &> /dev/null; then
@@ -57,7 +58,7 @@ jobs:
           google-chrome --version
           ffmpeg -version | head -1
 
-      - name: Configurazione Audio PulseAudio e Display Virtuale Xvfb
+      - name: Configurazione Audio PulseAudio, TTS Engine e Display Virtuale Xvfb
         run: |
           mkdir -p /tmp/pulse-config
           cat << 'EOF' > /tmp/pulse.pa
@@ -85,6 +86,14 @@ jobs:
           openbox &
           sleep 2
 
+          # Avvia Microservizio Locale Edge TTS per DarIA e DarIO (Porta 5050)
+          if [ -f scripts/tts_server.py ]; then
+            echo "🎙️ Avvio microservizio Edge TTS locale su porta 5050..."
+            python3 scripts/tts_server.py &
+            sleep 3
+            curl -s http://127.0.0.1:5050/health && echo " -> TTS Server OK!" || echo " -> Avviso TTS Server"
+          fi
+
       - name: Configurazione Anti-Banner Google Apps Script
         run: |
           mkdir -p /tmp/hide_banner_ext
@@ -105,18 +114,25 @@ jobs:
           EOF
 
           cat << 'EOF' > /tmp/hide_banner_ext/style.css
-          #warning, .warning-bar, #warning-bar-table, .docs-butter-bar-container,
+          #warning, .warning-bar, #warning-bar-table tr:first-child,
+          #warning-bar-table > tbody > tr:first-child, .docs-butter-bar-container,
           div[aria-label*="Apps Script"], .app-bar, #guest-banner {
             display: none !important;
             height: 0px !important;
+            max-height: 0px !important;
             visibility: hidden !important;
           }
+          #warning-bar-table, #warning-bar-table > tbody,
+          #warning-bar-table > tbody > tr:last-child,
+          #warning-bar-table > tbody > tr:last-child > td,
           #sandboxFrame {
             height: 100% !important;
             width: 100% !important;
             min-height: 100vh !important;
             min-width: 100vw !important;
             border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
           html, body {
             overflow: hidden !important;
@@ -131,7 +147,12 @@ jobs:
               var w = document.getElementById('warning');
               if (w) w.style.setProperty('display', 'none', 'important');
               var tbl = document.getElementById('warning-bar-table');
-              if (tbl) tbl.style.setProperty('display', 'none', 'important');
+              if (tbl) {
+                var rows = tbl.querySelectorAll('tr');
+                if (rows.length > 1) {
+                  rows[0].style.setProperty('display', 'none', 'important');
+                }
+              }
               var iframe = document.getElementById('sandboxFrame');
               if (iframe) {
                 iframe.style.setProperty('height', '100vh', 'important');
@@ -156,7 +177,7 @@ jobs:
 
           VIDEO_URL="${{ github.event.inputs.video_url }}"
           if [ -z "$VIDEO_URL" ]; then
-            VIDEO_URL="https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?view=screen"
+            VIDEO_URL="https://tonyhood2345.github.io/live-stream-serverless/orizzontale.html"
           fi
 
           echo "🚀 Avvio Chrome per Diretta 24H YouTube su: $VIDEO_URL (Scala: $SCALE)"
@@ -184,8 +205,8 @@ jobs:
             --user-data-dir=/tmp/chrome_clean_profile \
             "$VIDEO_URL" &
 
-          echo "Attesa di 15 secondi per il caricamento completo del player..."
-          sleep 15
+          echo "Attesa di 10 secondi per il caricamento completo del player..."
+          sleep 10
 
       - name: Innesco Relais Staffetta 24H (Auto-rinnovo automatico prima del timeout)
         run: |

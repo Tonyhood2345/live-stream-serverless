@@ -13,7 +13,7 @@ on:
       video_url:
         description: 'URL del video o della Web App'
         required: false
-        default: 'https://tonyhood2345.github.io/live-stream-serverless/?formato=orizzontale'
+        default: 'https://tonyhood2345.github.io/live-stream-serverless/orizzontale.html'
       fb_key:
         description: 'Facebook RTMP URL completo o Stream Key'
         required: false
@@ -71,26 +71,37 @@ jobs:
         run: |
           ROME_HOUR=$(TZ='Europe/Rome' date +%H)
           ROME_MIN=$(TZ='Europe/Rome' date +%M)
-          echo "⏰ [Controllo Orario] Ora a Roma: $ROME_HOUR:$ROME_MIN"
+          echo "⏰ [Controllo Orario] Ora a Roma: $ROME_HOUR:$ROME_MIN (Evento: ${{ github.event_name }})"
 
-          # YouTube trasmette 24 ORE SU 24 in modo PERPETUO
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # Consente l'avvio schedulato solo nella finestra delle ore 18:45-19:30 ora di Roma (evita doppio avvio tra ora solare e legale)
+            if [ "$ROME_HOUR" = "18" ] || [ "$ROME_HOUR" = "19" ]; then
+              echo "✅ Finestra Diretta Serale Ore 19:00 confermata ($ROME_HOUR:$ROME_MIN Europe/Rome)!"
+              echo "should_run=true" >> $GITHUB_OUTPUT
+            else
+              echo "⏭️ Trigger cron fuori finestra 19:00 ($ROME_HOUR:$ROME_MIN Europe/Rome - altro fuso DST). Salto esecuzione."
+              echo "should_run=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "🚀 Avvio manuale (workflow_dispatch): esecuzione immediata!"
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+
           echo "yt_enabled=true" >> $GITHUB_OUTPUT
-          echo "▶️ YouTube Live: ATTIVO 24H PERPETUO (Canale Immobiliare Giancani)"
-
-          # Tutti i canali (YouTube, Facebook, TikTok, Instagram) sono SEMPRE ATTIVI nel multistream
           echo "social_enabled=true" >> $GITHUB_OUTPUT
-          echo "🌐 Multistream Live Totale: ATTIVO su YouTube, Facebook, TikTok e Instagram! — Immobiliare Giancani"
-          echo "should_run=true" >> $GITHUB_OUTPUT
 
       - name: Setup Headless Environment and Audio Engine
         if: steps.timeguard.outputs.should_run == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core espeak-ng speech-dispatcher libespeak-ng1
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+          if ! command -v google-chrome &> /dev/null; then
+            sudo install -d -m 0755 /etc/apt/keyrings
+            curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg
+            echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+            sudo apt-get update
+            sudo apt-get install -y google-chrome-stable
+          fi
           google-chrome --version
           ffmpeg -version | head -1
 
@@ -236,7 +247,7 @@ jobs:
           if [ -z "$SCALE_FACTOR" ]; then SCALE_FACTOR="1.0"; fi
           VIDEO_URL="${{ github.event.inputs.video_url }}"
           if [ -z "$VIDEO_URL" ]; then
-            VIDEO_URL="https://tonyhood2345.github.io/live-stream-serverless/?formato=orizzontale"
+            VIDEO_URL="https://tonyhood2345.github.io/live-stream-serverless/orizzontale.html"
           fi
           echo "Avvio Chrome con Scala $SCALE_FACTOR e Anti-Banner su: $VIDEO_URL"
           google-chrome \
@@ -268,12 +279,10 @@ jobs:
             --user-data-dir=/tmp/chrome_clean_profile \
             "$VIDEO_URL" &
 
-          echo "Attesa di 15 secondi per il caricamento della pagina..."
-          sleep 15
+          echo "Attesa di 10 secondi per il caricamento della pagina..."
+          sleep 10
           echo "Verifica sink inputs PulseAudio (Chrome Audio Output):"
           pactl list sink-inputs || true
-          echo "Rimozione banner Google Apps Script via Chrome CDP..."
-          python3 scripts/rimuovi_banner_apps_script.py || true
 
           # 5. Configurazione Destinazioni RTMP
           TEE_DESTS=()
@@ -306,8 +315,10 @@ jobs:
             done
           fi
 
-          # --- DESTINAZIONE 2: FACEBOOK LIVE (OBBLIGATORIO) ---
+          # --- DESTINAZIONE 2: FACEBOOK LIVE (OBBLIGATORIO - ORE 19:00) ---
           echo "📘 [Facebook Live] Creazione obbligatoria sessione Live via Meta Graph API..."
+          export FB_PAGE_TOKEN="EAAZAH7q8wRZAEBS3ZAfEIpFIcXPJ87gDZAY8QjpGvBSjgC44c22JVeZAiDxMOM85JRMKM2T1hLgekBCkT0z5geNsb3KxAhMr7W7xlOGVKJsdKV9rZCEKLupIy1uNaDkVZAXmFtn0stiB212odWJ2ZCZBtlWkZAzy5wmPfKyZC3g27g6RXs0FK2GiYc5MeqaZCZBuoYjIyreTZAxwOqtfESifVw"
+          export FB_PAGE_ID="234931856561526"
           python3 scripts/crea_diretta_facebook_dinamica.py || true
 
           FB_KEY=""
@@ -319,6 +330,11 @@ jobs:
             FB_KEY="${{ github.event.inputs.fb_key }}"
           fi
 
+          if [ -z "$FB_KEY" ]; then
+            echo "⚠️ [Facebook Live] Tentativo endpoint secondario permanente..."
+            FB_KEY="rtmps://live-api-s.facebook.com:443/rtmp/FB-234931856561526-live-now"
+          fi
+
           if [ -n "$FB_KEY" ]; then
             FB_URL=""
             if [[ "$FB_KEY" == rtmp* ]]; then
@@ -326,22 +342,18 @@ jobs:
             else
               FB_URL="rtmps://live-api-s.facebook.com:443/rtmp/$FB_KEY"
             fi
-            echo "📘 [Facebook Live] Destinazione OBBLIGATORIA ATTIVA: $FB_URL"
+            echo "📘 [Facebook Live] Destinazione OBBLIGATORIA ATTIVA (Ore 19:00): $FB_URL"
             TEE_DESTS+=("[f=flv:onfail=ignore]${FB_URL}")
 
             # Avvia demone storie in diretta ogni 30 min (Facebook)
             echo "📱 Avvio demone Storie Social in diretta ogni 30 minuti..."
             python3 scripts/pubblica_storia_facebook.py --mode live --loop --interval 1800 &
-          else
-            echo "⚠️ [Facebook Live] Stream RTMP non disponibile: verificare credenziali Meta."
           fi
+
           # --- DESTINAZIONE 3: TIKTOK LIVE ---
           TK_KEY="${{ github.event.inputs.tk_key }}"
           if [ -f /tmp/tiktok_rtmp.txt ]; then
             TK_KEY=$(cat /tmp/tiktok_rtmp.txt | tr -d '\r\n')
-          fi
-          if [ -z "$TK_KEY" ]; then
-            TK_KEY="rtmp://push-rtmp-f5-tt04.tiktokcdn-eu.com/game/stream-1272994221341541709?amun=true&c=IT&dsnp=1&expire=1789827708&l_region=EU-TTP2&offsetTime=1789222908399&sign=50005d4f87770f1e8eb2c9af258f7273&th_region=no&volcSecret=50005d4f87770f1e8eb2c9af258f7273&volcTime=1789827708&pri=1789222920344"
           fi
           if [ -n "$TK_KEY" ]; then
             TK_URL=""
@@ -378,7 +390,6 @@ jobs:
           IFS="|"
           TEE_STRING="${TEE_DESTS[*]}"
 
-          # Durata ottimizzata per la diretta serale delle 19:00: 1.1 ore (65 minuti) per zero spreco minuti
           DUR_HOURS="${{ github.event.inputs.duration_hours }}"
           if [ -z "$DUR_HOURS" ]; then DUR_HOURS="1.1"; fi
           DUR_SECS=$(awk "BEGIN {print int($DUR_HOURS * 3600)}")

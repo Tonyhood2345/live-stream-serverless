@@ -149,6 +149,26 @@ STILI_GRAFICI_TABELLA = [
         "id": "mediterranean_coastal",
         "nome": "Mediterranean Coastal",
         "caratteristica": "Stile mediterraneo con accenti sabbia, bianco caldo e azzurro costa siciliana."
+    },
+    {
+        "id": "una_casa_tante_esigenze",
+        "nome": "Una Casa, Tante Esigenze (Tecnocasa / Giancani Modern)",
+        "caratteristica": "Box sagomato con cornice sottile, 3 pillole esigenze [Acquisto, Vendita, Consulenza], card contatti fluttuante e onda calligrafica 'La tua casa, la nostra passione'."
+    },
+    {
+        "id": "al_tuo_fianco_passo_dopo_passo",
+        "nome": "Al Tuo Fianco, Passo Dopo Passo",
+        "caratteristica": "Maxi titolo bold, 3 step assistenza con icone line-art cerchiate, plastico casa hero e card CTA Contattaci con recapiti Favara."
+    },
+    {
+        "id": "servizi_360",
+        "nome": "I Nostri Servizi a 360°",
+        "caratteristica": "Banner a 360°, griglia 2x3 con 6 card servizi [Valutazione, Rogito, Visite, Zona, Social, Foto 360°] e pulsante WhatsApp/Consulenza."
+    },
+    {
+        "id": "effetto_calamita",
+        "nome": "Effetto Calamita / Portfolio Venduto",
+        "caratteristica": "Badge calamita attrattivo, composizione 4 foto immobiliari con ribbon status [In Vendita / Venduto] e sticker calligrafico Selezionati Giancani."
     }
 ]
 

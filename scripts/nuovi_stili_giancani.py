@@ -594,20 +594,16 @@ def crea_story_effetto_calamita_9_16(media_info, palette=None, output_path=None)
     draw.text((cal_x + 130, cal_y + 80), "EFFETTO", font=mgs.get_font(28, bold=True), fill=theme_color, anchor="mm")
     draw.text((cal_x + 130, cal_y + 115), "CALAMITA", font=mgs.get_font(38, bold=True), fill=theme_color, anchor="mm")
 
-    # 3. Griglia 4 Foto Immobiliari Sfalsate (Stile Reference 1)
+    # 3. Griglia 4 Foto Immobiliari Sfalsate (Tutte "IN VENDITA")
     card_w = 450
     card_h = 520
     
-    # 4 posizioni sfalsate:
-    # Card 1 (sinistra alta): x=55, y=210
-    # Card 2 (destra media):  x=575, y=320
-    # Card 3 (sinistra bassa): x=55, y=780
-    # Card 4 (destra bassa):  x=575, y=890
+    # 4 posizioni sfalsate - Tutte rigorosamente "IN VENDITA"
     card_positions = [
-        (55, 210, "COMMERCIALE", "Via Veneto", "Favara", "VENDUTO"),
-        (575, 320, "CASA CIELO TERRA", "Centro Storico", "Favara", "VENDUTO"),
+        (55, 210, "COMMERCIALE", "Via Veneto", "Favara", "IN VENDITA"),
+        (575, 320, "CASA CIELO TERRA", "Centro Storico", "Favara", "IN VENDITA"),
         (55, 780, "VILLA CON TERRENO", "C.da San Calogero", "Favara", "IN VENDITA"),
-        (575, 890, "APPARTAMENTO", "Corso V. Veneto", "Favara", "VENDUTO")
+        (575, 890, "APPARTAMENTO", "Corso V. Veneto", "Favara", "IN VENDITA")
     ]
     
     # Prepara foto
@@ -639,23 +635,23 @@ def crea_story_effetto_calamita_9_16(media_info, palette=None, output_path=None)
         draw.text((cx1 + 10 + bw // 2, cy1 + 32), cat, font=font_badge, fill=(255, 255, 255), anchor="mm")
         draw.text((cx1 + 10 + bw // 2, cy1 + 65), f"{via} • {citta}", font=font_sub_badge, fill=(240, 245, 250), anchor="mm")
         
-        # Nastro Status a bandiera con freccia ("VENDUTO" o "IN VENDITA")
-        rib_color = (220, 38, 38) if status == "VENDUTO" else theme_color
+        # Nastro Status a bandiera con freccia ("IN VENDITA")
+        # Colore verde smeraldo o tema del giorno per massimo richiamo positivo
         rw, rh = 210, 48
         rib_y = cy1 + photo_box_h + 15
-        draw.rounded_rectangle([(cx1 + 10, rib_y), (cx1 + 10 + rw, rib_y + rh)], radius=8, fill=rib_color)
-        draw.text((cx1 + 10 + rw // 2, rib_y + rh // 2), status, font=font_status, fill=(255, 255, 255), anchor="mm")
+        draw.rounded_rectangle([(cx1 + 10, rib_y), (cx1 + 10 + rw, rib_y + rh)], radius=8, fill=theme_color)
+        draw.text((cx1 + 10 + rw // 2, rib_y + rh // 2), "IN VENDITA", font=font_status, fill=(255, 255, 255), anchor="mm")
         
         # Mini barra contatti sotto la foto
         draw.text((cx1 + 15, cy2 - 25), "IMMOBILIARE GIANCANI", font=font_contact, fill=theme_color)
         draw.text((cx2 - 15, cy2 - 25), "📞 320 166 7156", font=font_contact, fill=(30, 41, 59), anchor="ra")
 
-    # 4. Timbro Calligrafico "SOLD" in basso a sinistra (come nella reference)
+    # 4. Timbro Calligrafico "IN VENDITA" in basso a sinistra
     stamp_x, stamp_y = 220, 1500
-    font_sold = mgs.get_font(68, bold=True, font_type="sans")
-    font_month = mgs.get_font(52, bold=False, font_type="script")
-    draw.text((stamp_x, stamp_y), "SOLD", font=font_sold, fill=(225, 29, 72), anchor="mm")
-    draw.text((stamp_x + 10, stamp_y + 60), "Selezionati Giancani", font=font_month, fill=(234, 88, 12), anchor="mm")
+    font_stamp = mgs.get_font(56, bold=True, font_type="sans")
+    font_month = mgs.get_font(48, bold=False, font_type="script")
+    draw.text((stamp_x, stamp_y), "IN VENDITA", font=font_stamp, fill=(225, 29, 72), anchor="mm")
+    draw.text((stamp_x + 10, stamp_y + 55), "Selezionati Giancani", font=font_month, fill=(234, 88, 12), anchor="mm")
     
     # 5. Footer con brand ufficiale
     draw.text((W // 2, H - 160), "COMPRA E VENDI CASA IN TOTALE SICUREZZA", font=mgs.get_font(34, bold=True), fill=theme_color, anchor="mm")

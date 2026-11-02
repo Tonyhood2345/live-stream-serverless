@@ -1,0 +1,83 @@
+name: 🎬 Genera Storia Video Drive (Logo + Frasi Prestigio Colonna F + Musica)
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_drive:
+        description: 'ID o URL Google Drive del video senza testo (se vuoto, usa clip recente)'
+        required: false
+        default: ''
+      frase_id:
+        description: 'ID Frase Prestigio (lascia vuoto per selezione casuale da Colonna F)'
+        required: false
+        default: ''
+      custom_phrase:
+        description: 'Frase personalizzata alternativa (se specificata, ha la precedenza)'
+        required: false
+        default: ''
+      musica_drive:
+        description: 'ID Google Drive o nome brano dalla cartella Basi Musicali'
+        required: false
+        default: ''
+      email_destinatario:
+        description: 'Email destinatario (default: giancaniimmobiliare@gmail.com)'
+        required: true
+        default: 'giancaniimmobiliare@gmail.com'
+
+  repository_dispatch:
+    types: [genera_storia_drive]
+
+concurrency:
+  group: genera-storia-drive
+  cancel-in-progress: false
+
+jobs:
+  crea-e-invia-storia:
+    runs-on: ubuntu-latest
+    name: 🚀 Rendering Storia 9:16 con Logo & Frase di Prestigio
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Installa FFmpeg e Font di Sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core fonts-liberation fonts-freefont-ttf
+
+      - name: 📦 Installa Dipendenze Python
+        run: |
+          pip install --no-cache-dir requests pillow imageio-ffmpeg urllib3
+
+      - name: 🎬 Esegui Generazione Storia Video
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SMTP_USER: ${{ secrets.SMTP_USER || 'giancaniimmobiliare@gmail.com' }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || secrets.GMAIL_APP_PASSWORD }}
+          VIDEO_INPUT: ${{ github.event.inputs.video_drive || github.event.client_payload.video_drive || '' }}
+          FRASE_INPUT: ${{ github.event.inputs.frase_id || github.event.client_payload.frase_id || '' }}
+          CUSTOM_PHRASE_INPUT: ${{ github.event.inputs.custom_phrase || github.event.client_payload.custom_phrase || '' }}
+          MUSICA_INPUT: ${{ github.event.inputs.musica_drive || github.event.client_payload.musica_drive || '' }}
+          EMAIL_INPUT: ${{ github.event.inputs.email_destinatario || github.event.client_payload.email_destinatario || 'giancaniimmobiliare@gmail.com' }}
+        run: |
+          python genera_storia_video_drive.py \
+            --video "$VIDEO_INPUT" \
+            --phrase-id "$FRASE_INPUT" \
+            --custom-phrase "$CUSTOM_PHRASE_INPUT" \
+            --music "$MUSICA_INPUT" \
+            --email "$EMAIL_INPUT"
+
+      - name: 💾 Archivia Video Storia Generato negli Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: video-storia-prestigio-giancani
+          path: video_storie_output/*.mp4
+          retention-days: 14

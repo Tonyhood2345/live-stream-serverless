@@ -354,24 +354,41 @@ def genera_overlay_card_sinistra(dati_immobile, output_path):
     draw = ImageDraw.Draw(overlay)
 
     # Tipografia raffinata
-    font_titolo = carica_font_sicuro("PlayfairDisplay-Bold.ttf", 38, fallback_bold=True)
-    font_label = carica_font_sicuro("Lora-Bold.ttf", 23, fallback_bold=True)
-    font_prezzo = carica_font_sicuro("Cinzel-Bold.ttf", 48, fallback_bold=True)
-    font_caratteristica = carica_font_sicuro("Lora-Bold.ttf", 25, fallback_bold=True)
-    font_call = carica_font_sicuro("Cinzel-Bold.ttf", 25, fallback_bold=True)
-    font_telefono = carica_font_sicuro("Cinzel-Bold.ttf", 36, fallback_bold=True)
+    font_titolo = carica_font_sicuro("PlayfairDisplay-Bold.ttf", 36, fallback_bold=True)
+    font_label = carica_font_sicuro("Lora-Bold.ttf", 22, fallback_bold=True)
+    font_prezzo = carica_font_sicuro("Cinzel-Bold.ttf", 46, fallback_bold=True)
+    font_caratteristica = carica_font_sicuro("Lora-Bold.ttf", 24, fallback_bold=True)
+    font_call = carica_font_sicuro("Cinzel-Bold.ttf", 24, fallback_bold=True)
+    font_telefono = carica_font_sicuro("Cinzel-Bold.ttf", 34, fallback_bold=True)
     font_brand = carica_font_sicuro("Lora-Bold.ttf", 20, fallback_bold=True)
+
+    # ── 0. LOGO UFFICIALE IMMOBILIARE GIANCANI (IN ALTO NELLA CARD) ──
+    logo_path = os.path.join(BASE_DIR, "assets", "logo_giancani_trasparente.png")
+    curr_y = box_y1 + 45
+    if os.path.exists(logo_path):
+        try:
+            logo_img = Image.open(logo_path).convert("RGBA")
+            lw = 360
+            lh = int(logo_img.height * (lw / logo_img.width))
+            logo_resized = logo_img.resize((lw, lh), Image.LANCZOS)
+            lx = cx - (lw // 2)
+            overlay.paste(logo_resized, (lx, curr_y), logo_resized)
+            curr_y += lh + 20
+            # Divisore dorato sotto il logo
+            draw.line([(cx - 85, curr_y), (cx + 85, curr_y)], fill=(212, 175, 55, 220), width=2)
+            curr_y += 30
+        except Exception as e:
+            print(f"Avviso logo: {e}")
 
     # ── 1. TITOLO IN ALTO (Corsivo / Elegante) ──
     titolo_testo = dati_immobile["titolo"]
-    righe_titolo = textwrap.wrap(titolo_testo, width=17)
-    curr_y = box_y1 + 55
+    righe_titolo = textwrap.wrap(titolo_testo, width=18)
     for riga in righe_titolo[:3]:
-        curr_y = disegna_testo_centrato(draw, riga, font_titolo, curr_y, cx, colore=(255, 255, 255, 255)) + 10
+        curr_y = disegna_testo_centrato(draw, riga, font_titolo, curr_y, cx, colore=(255, 255, 255, 255)) + 8
 
     # Divisore decorativo superiore
-    draw.line([(cx - 75, curr_y + 15), (cx + 75, curr_y + 15)], fill=(212, 175, 55, 220), width=2)
-    curr_y += 45
+    draw.line([(cx - 75, curr_y + 12), (cx + 75, curr_y + 12)], fill=(212, 175, 55, 220), width=2)
+    curr_y += 38
 
     # ── 2. RICHIESTA & PREZZO GRANDE ──
     curr_y = disegna_testo_centrato(draw, "RICHIESTA", font_label, curr_y, cx, colore=(212, 175, 55, 255)) + 8
@@ -431,10 +448,12 @@ def monta_video_reel(video_input, overlay_png, music_input, output_mp4):
     durata = ottieni_durata_video(video_input)
     print(f"🎬 Avvio montaggio video (Durata: {durata:.2f}s, Risoluzione: 1080x1920 @ 30fps)...")
 
+    # Animazione slide-in della card da sinistra con decelerazione sinusoidale (Ease-Out)
+    overlay_expr = "x='if(lte(t, 0.85), -530 + 530*sin(t*3.1415926/(2*0.85)), 0)':y=0"
     filtri = [
         # Video: scale + crop centrato a 1080x1920
         f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30[vbase];"
-        f"[vbase][1:v]overlay=0:0[vout]"
+        f"[vbase][1:v]overlay={overlay_expr}[vout]"
     ]
     
     cmd = [

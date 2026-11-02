@@ -204,13 +204,14 @@ function inviaEmailConVideoAllegato(destinatario, titoloImmobile, testoColonnaF,
 }
 
 
+
 // ── 7. MENU & FUNZIONI STORIE 9:16 DA VIDEO DRIVE (FRASI PRESTIGIO) ──────────
 
 function generaStoriaDaVideoDriveUI() {
   var ui = SpreadsheetApp.getUi();
   var risposta = ui.prompt(
     '🎬 Generazione Storia 9:16 (Video Drive)',
-    'Inserisci l'ID o URL Google Drive del video senza testo (oppure lascia vuoto per usare il video più recente caricato in Drive):',
+    'Inserisci l\'ID o URL Google Drive del video senza testo (oppure lascia vuoto per usare il video più recente caricato in Drive):',
     ui.ButtonSet.OK_CANCEL
   );
 
@@ -222,7 +223,7 @@ function generaStoriaDaVideoDriveUI() {
 
     var res = dispatchGitHubWorkflowStoria({
       video_drive: videoInput,
-      frase_id: '', // Casuale da Colonna F
+      frase_id: '',
       custom_phrase: '',
       musica_drive: '',
       email_destinatario: emailDest
@@ -231,19 +232,13 @@ function generaStoriaDaVideoDriveUI() {
     if (res.success) {
       ui.alert(
         '🎬 Generazione Storia Avviata!',
-        'La storia 9:16 con Logo Giancani e Frase di Prestigio (Colonna F) è in fase di montaggio.
-
-' +
-        'Riceverai il file MP4 e il copy pronto direttamente via email su:
-' + emailDest + '
-
-' +
+        'La storia 9:16 con Logo Giancani e Frase di Prestigio (Colonna F) è in fase di montaggio.\n\n' +
+        'Riceverai il file MP4 e il copy pronto direttamente via email su:\n' + emailDest + '\n\n' +
         '— Immobiliare Giancani',
         ui.ButtonSet.OK
       );
     } else {
-      ui.alert('❌ Errore Invio', 'Si è verificato un errore:
-' + res.error, ui.ButtonSet.OK);
+      ui.alert('❌ Errore Invio', 'Si è verificato un errore:\n' + res.error, ui.ButtonSet.OK);
     }
   }
 }
@@ -337,9 +332,7 @@ function sincronizzaFrasiPrestigioUI() {
 
   SpreadsheetApp.getUi().alert(
     '✅ Foglio Frasi Sincronizzato',
-    'La scheda "FRASI_PRESTIGIO_STORIE" è attiva e configurata con la Colonna F per le Storie dei Video Drive.
-
-— Immobiliare Giancani',
+    'La scheda "FRASI_PRESTIGIO_STORIE" è attiva e configurata con la Colonna F per le Storie dei Video Drive.\n\n— Immobiliare Giancani',
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }

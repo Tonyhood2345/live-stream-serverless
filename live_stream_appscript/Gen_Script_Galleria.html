@@ -1,0 +1,1608 @@
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// 🖼️ MODULO JAVASCRIPT: STUDIO GALLERIA & UPLOAD MOBILE DRIVE
+// Gestisce caricamento foto/video con watermark, sincronizzazione da Drive,
+// visualizzazione anteprime, editing stanze e generazione descrizioni DarIA
+// ═══════════════════════════════════════════════════════════════════════
+
+var _galleriaTabCorrente = '';
+var _galleriaAllItems = [];
+var _galleriaFiltroCorrente = 'tutti';
+var _galleriaSelezionati = new Set();
+var _schedaStudioPendingAction = null;
+var _editorItemIndex = -1;
+var _currentEditingType = 'foto';
+var _editorImgObj = null;
+var _cachedLogoImg = null;
+
+if (typeof LOGO_GIANCANI_URL === 'undefined') {
+  var LOGO_GIANCANI_URL = "https://lh3.googleusercontent.com/d/1BoZ_9QyYPRKjZFP__iPr7mmi0aGV0G3P";
+}
+
+// 📤 UPLOAD MOBILE & GESTIONE FILE
+function gestisciAnteprimaUploadFiles(inputEl) {
+  var files = inputEl.files;
+  var container = document.getElementById('upload-video-notes-container');
+  if (!container) return;
+  container.innerHTML = '';
+  container.style.display = 'none';
+
+  if (!files || files.length === 0) return;
+
+  var videoCount = 0;
+  for (var i = 0; i < files.length; i++) {
+    if (files[i].type && files[i].type.indexOf('video') !== -1) {
+      videoCount++;
+      var div = document.createElement('div');
+      div.className = 'form-group';
+      div.style.marginBottom = '8px';
+      div.innerHTML = '<label style="color: var(--gold-bright);">🎥 Didascalia Video (' + files[i].name + '):</label>' +
+                      '<input type="text" id="note-video-' + i + '" placeholder="es. Vista cucina drone, balcone e vista panoramica" value="Panoramica interni ed esterni con ripresa drone">';
+      container.appendChild(div);
+    }
+  }
+
+  if (videoCount > 0) {
+    container.style.display = 'block';
+  }
+}
+
+/**
+ * 🎨 Applica watermark logo Immobiliare Giancani e ridimensiona l'immagine
+ * a massimo 1920px per lato preservando l'aspect ratio originale.
+ * Questo previene categoricamente il superamento dei limiti di memoria di google.script.run (~2MB).
+ */
+function applicaWatermarkImage(file, callback) {
+  if (!file) {
+    if (typeof callback === 'function') callback('');
+    return;
+  }
+
+  // Identifica se è un'immagine
+  var isImg = file.type && file.type.indexOf('image') !== -1;
+  if (!isImg && file.name) {
+    var ext = file.name.split('.').pop().toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'].indexOf(ext) !== -1) {
+      isImg = true;
+    }
+  }
+
+  // Se non è un'immagine (video o altro), usa FileReader diretto con gestione errori
+  if (!isImg) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      if (typeof callback === 'function') callback(e.target.result);
+    };
+    reader.onerror = function(err) {
+      console.warn("Errore lettura file non-immagine:", err);
+      if (typeof callback === 'function') callback('');
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+
+  var reader = new FileReader();
+  reader.onerror = function(err) {
+    console.warn("Errore FileReader immagine:", err);
+    if (typeof callback === 'function') callback('');
+  };
+
+  reader.onload = function(e) {
+    var rawDataUrl = e.target.result;
+    var img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onerror = function(errImg) {
+      console.warn("Impossibile decodificare immagine su Canvas, bypass watermark:", errImg);
+      if (typeof callback === 'function') callback(rawDataUrl);
+    };
+
+    img.onload = function() {
+      try {
+        var origW = img.naturalWidth || img.width || 1200;
+        var origH = img.naturalHeight || img.height || 800;
+
+        // Limita a max 1920px per non saturare la memoria e rispettare il limite google.script.run
+        var MAX_DIM = 1920;
+        var targetW = origW;
+        var targetH = origH;
+
+        if (targetW > MAX_DIM || targetH > MAX_DIM) {
+          if (targetW >= targetH) {
+            targetH = Math.round((targetH * MAX_DIM) / targetW);
+            targetW = MAX_DIM;
+          } else {
+            targetW = Math.round((targetW * MAX_DIM) / targetH);
+            targetH = MAX_DIM;
+          }
+        }
+
+        var canvas = document.getElementById('watermark-canvas');
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvas.id = 'watermark-canvas';
+          canvas.style.display = 'none';
+          document.body.appendChild(canvas);
+        }
+
+        canvas.width = targetW;
+        canvas.height = targetH;
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, targetW, targetH);
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+
+        var concludiUpload = function() {
+          try {
+            var dataUrlOut = canvas.toDataURL('image/jpeg', 0.85);
+            if (typeof callback === 'function') callback(dataUrlOut);
+          } catch(eCanvas) {
+            console.warn("toDataURL fallito, uso rawDataUrl:", eCanvas);
+            if (typeof callback === 'function') callback(rawDataUrl);
+          }
+        };
+
+        var is360 = (file.name || '').toLowerCase().indexOf('360') !== -1;
+        var logo = new Image();
+        logo.crossOrigin = "anonymous";
+
+        logo.onload = function() {
+          try {
+            if (is360) {
+              var radius = targetW * 0.08;
+              var cX = targetW / 2;
+              var cY = targetH - (radius * 0.85);
+
+              ctx.fillStyle = '#FFFFFF';
+              ctx.beginPath();
+              ctx.arc(cX, cY, radius, 0, 2 * Math.PI);
+              ctx.fill();
+
+              var logoW = radius * 1.4;
+              var logoH = (logo.height / logo.width) * logoW;
+              ctx.drawImage(logo, cX - (logoW / 2), cY - (logoH / 2), logoW, logoH);
+            } else {
+              var logoWidth = targetW * 0.28;
+              var logoHeight = (logo.height / logo.width) * logoWidth;
+              var posX = (targetW - logoWidth) / 2;
+              var posY = (targetH - logoHeight) / 2;
+
+              ctx.save();
+              ctx.globalAlpha = 0.40;
+              ctx.drawImage(logo, posX, posY, logoWidth, logoHeight);
+              ctx.restore();
+            }
+          } catch(eDraw) {
+            console.warn("Disegno logo non riuscito:", eDraw);
+          }
+          concludiUpload();
+        };
+
+        logo.onerror = function() {
+          console.warn("Logo non raggiungibile per CORS, procedo senza watermark.");
+          concludiUpload();
+        };
+
+        logo.src = LOGO_GIANCANI_URL;
+
+      } catch(eOuter) {
+        console.warn("Errore elaborazione canvas:", eOuter);
+        if (typeof callback === 'function') callback(rawDataUrl);
+      }
+    };
+
+    img.src = rawDataUrl;
+  };
+
+  reader.readAsDataURL(file);
+}
+
+// 📋 SCHEDA IMMOBILE & REGIA DARIA
+function apriModalSchedaImmobileStudio(azione) {
+  _schedaStudioPendingAction = azione || 'modifica_corrente';
+  var modal = document.getElementById('modal-scheda-immobile-studio');
+  if (!modal) return;
+
+  var tabName = '';
+  if (azione === 'upload') {
+    tabName = (document.getElementById('upload-folder-name') ? document.getElementById('upload-folder-name').value : '').trim();
+  } else if (azione === 'sync') {
+    tabName = (document.getElementById('sync-drive-folder-input') ? document.getElementById('sync-drive-folder-input').value : '').trim();
+  } else {
+    tabName = _galleriaTabCorrente || (document.getElementById('select-immobile-galleria') ? document.getElementById('select-immobile-galleria').value : '');
+  }
+
+  // Precompila se l'immobile esiste già
+  if (tabName && typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(scheda) {
+        if (scheda && typeof scheda === 'object') {
+          if (scheda.tipoImmobile && document.getElementById('scheda-tipo-immobile')) document.getElementById('scheda-tipo-immobile').value = scheda.tipoImmobile;
+          if (scheda.metriQuadri && document.getElementById('scheda-mq-immobile')) document.getElementById('scheda-mq-immobile').value = scheda.metriQuadri.replace(/\s*metri quadri/i, '').trim();
+          if (scheda.zona && document.getElementById('scheda-zona-immobile')) document.getElementById('scheda-zona-immobile').value = scheda.zona;
+          if (scheda.prezzo && document.getElementById('scheda-prezzo-immobile')) document.getElementById('scheda-prezzo-immobile').value = scheda.prezzo;
+          if (scheda.stato && document.getElementById('scheda-stato-immobile')) document.getElementById('scheda-stato-immobile').value = scheda.stato;
+          if (scheda.statoDettaglio && document.getElementById('scheda-stato-dettaglio')) document.getElementById('scheda-stato-dettaglio').value = scheda.statoDettaglio;
+          if (scheda.noteDaria && document.getElementById('scheda-note-daria')) document.getElementById('scheda-note-daria').value = scheda.noteDaria;
+        }
+      })
+      .getSchedaImmobileDati(tabName);
+  }
+
+  modal.style.display = 'flex';
+}
+
+function chiudiModalSchedaImmobileStudio() {
+  var modal = document.getElementById('modal-scheda-immobile-studio');
+  if (modal) modal.style.display = 'none';
+  _schedaStudioPendingAction = null;
+}
+
+function normalizzaMqVisuale(el) {
+  if (el && el.value) {
+    el.value = el.value.replace(/m[q²]/gi, '').trim();
+  }
+}
+
+function getDatiSchedaImmobileStudioForm() {
+  var tipoEl = document.getElementById('scheda-tipo-immobile');
+  var tipo = (tipoEl ? tipoEl.value : '') || 'Appartamento';
+
+  var mqInput = document.getElementById('scheda-mq-immobile');
+  var mqVal = (mqInput ? mqInput.value : '').trim();
+  var mqNum = mqVal.replace(/[^\d.,]/g, '').trim();
+  var metriQuadri = mqNum ? (mqNum + ' metri quadri') : (mqVal ? (mqVal.toLowerCase().indexOf('metri quadri') !== -1 ? mqVal : mqVal + ' metri quadri') : '120 metri quadri');
+
+  var pInput = document.getElementById('scheda-prezzo-immobile');
+  var pVal = (pInput ? pInput.value : '').trim();
+  var prezzo = pVal ? (pVal.indexOf('€') !== -1 ? pVal : '€ ' + pVal) : 'Trattativa Riservata';
+
+  var zInput = document.getElementById('scheda-zona-immobile');
+  var zona = (zInput ? zInput.value : '').trim();
+
+  var sInput = document.getElementById('scheda-stato-immobile');
+  var stato = (sInput ? sInput.value : '') || 'rifinito e ristrutturato a nuovo';
+
+  var sdInput = document.getElementById('scheda-stato-dettaglio');
+  var statoDettaglio = (sdInput ? sdInput.value : '').trim();
+
+  var nInput = document.getElementById('scheda-note-daria');
+  var noteDaria = (nInput ? nInput.value : '').trim();
+
+  return {
+    tipoImmobile: tipo,
+    metriQuadri: metriQuadri,
+    zona: zona,
+    prezzo: prezzo,
+    stato: stato,
+    statoDettaglio: statoDettaglio,
+    noteDaria: noteDaria
+  };
+}
+
+function confermaSchedaImmobileStudio() {
+  var datiScheda = getDatiSchedaImmobileStudioForm();
+  var action = _schedaStudioPendingAction;
+  chiudiModalSchedaImmobileStudio();
+
+  if (action === 'upload') {
+    eseguiUploadProprietaEFileConScheda(datiScheda);
+  } else if (action === 'sync') {
+    eseguiSincronizzazioneDriveEsistenteConScheda(datiScheda);
+  } else {
+    var tabTarget = _galleriaTabCorrente || (document.getElementById('select-immobile-galleria') ? document.getElementById('select-immobile-galleria').value : '');
+    if (!tabTarget) { alert("Nessun immobile attivo selezionato."); return; }
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.success) {
+            alert("✅ Scheda Immobile e Regia DarIA salvate con successo per " + tabTarget + "!");
+          } else {
+            alert("⚠️ Errore salvataggio: " + (res ? res.error : ''));
+          }
+        })
+        .salvaSchedaImmobileDati(tabTarget, datiScheda);
+    }
+  }
+}
+
+// 🚀 CARICAMENTO SU DRIVE & RIGENERA REGIA LIVE
+function avviaUploadProprietaEFile() {
+  var folderNameInput = document.getElementById('upload-folder-name');
+  var folderName = folderNameInput ? folderNameInput.value.trim() : '';
+  var fileInput = document.getElementById('upload-file-input');
+
+  if (!folderName) { alert("Inserisci il nome della proprietà o cartella (es. Casa Poggio)."); return; }
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) { alert("Seleziona almeno un file foto o video dallo smartphone."); return; }
+
+  apriModalSchedaImmobileStudio('upload');
+}
+
+function eseguiUploadProprietaEFileConScheda(datiScheda) {
+  var folderNameInput = document.getElementById('upload-folder-name');
+  var folderName = folderNameInput ? folderNameInput.value.trim() : '';
+  var fileInput = document.getElementById('upload-file-input');
+  var btnUpload = document.getElementById('btn-avvia-upload');
+
+  if (!folderName || !fileInput || !fileInput.files || fileInput.files.length === 0) return;
+
+  var filesToProcess = Array.from(fileInput.files);
+  var totalFiles = filesToProcess.length;
+
+  var wrapper = document.getElementById('upload-progress-wrapper');
+  var pBar = document.getElementById('upload-progress-bar');
+  var pPct = document.getElementById('upload-progress-pct');
+  var pTitle = document.getElementById('upload-progress-title');
+  var pStep = document.getElementById('upload-progress-step');
+  var pCount = document.getElementById('upload-progress-count');
+  var reportBox = document.getElementById('upload-files-report-box');
+  var summaryBox = document.getElementById('upload-final-summary');
+
+  if (wrapper) wrapper.style.display = 'block';
+  if (summaryBox) { summaryBox.style.display = 'none'; summaryBox.innerHTML = ''; }
+  if (pBar) pBar.style.width = '0%';
+  if (pPct) pPct.innerText = '0%';
+  if (pTitle) pTitle.innerText = '⏳ Caricamento e Sincronizzazione Drive in corso...';
+  if (pCount) pCount.innerText = '0 di ' + totalFiles;
+  if (btnUpload) btnUpload.disabled = true;
+
+  if (reportBox) {
+    reportBox.innerHTML = filesToProcess.map(function(f, idx) {
+      var sizeMb = (f.size / (1024 * 1024)).toFixed(2);
+      var isVid = f.type && f.type.indexOf('video') !== -1;
+      var is360 = (f.name || '').toLowerCase().indexOf('360') !== -1;
+      var icon = isVid ? '🎥' : (is360 ? '🌐' : '🖼️');
+      return '<div id="upload-item-row-' + idx + '" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05);">' +
+               '<span style="color: var(--sand); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;">' + icon + ' ' + f.name + ' <small style="color: #888;">(' + sizeMb + ' MB)</small></span>' +
+               '<span id="upload-item-status-' + idx + '" style="color: #f1c40f; font-weight: 700;">⏳ In attesa...</span>' +
+             '</div>';
+    }).join('');
+  }
+
+  var filesSuccess = [];
+  var filesFailed = [];
+  var currentFileIdx = 0;
+
+  function processNextFile() {
+    if (currentFileIdx >= totalFiles) {
+      if (pBar) pBar.style.width = '100%';
+      if (pPct) pPct.innerText = '100%';
+      if (pStep) pStep.innerText = '✅ Elaborazione completata!';
+      if (btnUpload) btnUpload.disabled = false;
+
+      if (summaryBox) {
+        summaryBox.style.display = 'block';
+        if (filesFailed.length === 0) {
+          summaryBox.style.background = 'rgba(46, 204, 113, 0.2)';
+          summaryBox.style.border = '1px solid #2ecc71';
+          summaryBox.style.color = '#2ecc71';
+          var lastItem = (filesSuccess.length > 0) ? filesSuccess[filesSuccess.length - 1] : {};
+          var linkImmobile = lastItem.cartellaImmobileUrl ? '<a href="' + lastItem.cartellaImmobileUrl + '" target="_blank" style="color:var(--gold-bright); font-weight:800; text-decoration:underline;">📂 Apri Cartella Immobile Drive ↗</a>' : '';
+          var linkBasi = lastItem.cartellaBasiMusicaliUrl ? '<a href="' + lastItem.cartellaBasiMusicaliUrl + '" target="_blank" style="color:#2ecc71; font-weight:800; text-decoration:underline;">🎵 Apri Cartella Basi Musicali Drive ↗</a>' : '';
+          
+          summaryBox.innerHTML = '🎉 <strong>NUOVO IMMOBILE &amp; CARTELLA CREATI SU GOOGLE DRIVE CON SUCCESSO!</strong><br>' +
+                                 'Tutti i ' + filesSuccess.length + ' file sono stati caricati e archiviati sul Foglio <strong>' + folderName + '</strong> con testi descrittivi da Colonna F per DarIA!<br><br>' +
+                                 '<div style="display:flex; justify-content:center; gap:16px; margin: 10px 0; flex-wrap:wrap;">' +
+                                 linkImmobile + ' &nbsp;|&nbsp; ' + linkBasi +
+                                 '</div>' +
+                                 '<div style="margin-top:14px;">' +
+                                 '  <button type="button" onclick="apriModalGeneraReelStudio(\'' + cleanTabTarget + '\')" class="btn-gold" style="padding:10px 20px; font-weight:900; background:linear-gradient(135deg, #2ecc71, #27ae60); color:#fff; border-radius:6px; cursor:pointer; box-shadow: 0 4px 15px rgba(46,204,113,0.4);">' +
+                                 '    🎬 GENERA SUBITO VIDEO REEL (9:16) DA QUESTO IMMOBILE' +
+                                 '  </button>' +
+                                 '</div><br>— <strong>Immobiliare Giancani</strong>';
+        } else {
+          summaryBox.style.background = 'rgba(231, 76, 60, 0.2)';
+          summaryBox.style.border = '1px solid #e74c3c';
+          summaryBox.style.color = '#e74c3c';
+          var errListHtml = filesFailed.map(function(f) { return '<li><strong>' + f.fileName + '</strong>: ' + f.error + '</li>'; }).join('');
+          summaryBox.innerHTML = '⚠️ <strong>CARICAMENTO PARZIALE:</strong> ' + filesSuccess.length + ' caricati con successo, ' + filesFailed.length + ' non caricati.<br>' +
+                                 '<ul style="text-align: left; margin-top: 6px; padding-left: 20px;">' + errListHtml + '</ul><br>— <strong>Immobiliare Giancani</strong>';
+        }
+      }
+
+      if (typeof caricaElencoImmobiliDisponibili === 'function') caricaElencoImmobiliDisponibili();
+      var cleanTabTarget = folderName.replace(/[\[\]\*?:/\\']/g, '').replace(/\s+/g, '_').trim().substring(0, 80);
+      setTimeout(function() {
+        caricaGalleriaAnteprimaMedia(cleanTabTarget);
+      }, 1500);
+      return;
+    }
+
+    var file = filesToProcess[currentFileIdx];
+    var idx = currentFileIdx;
+    var statusRow = document.getElementById('upload-item-status-' + idx);
+
+    var pct = Math.round((idx / totalFiles) * 100);
+    if (pBar) pBar.style.width = pct + '%';
+    if (pPct) pPct.innerText = pct + '%';
+    if (pCount) pCount.innerText = (idx + 1) + ' di ' + totalFiles;
+    if (pStep) pStep.innerText = 'Elaborazione ' + file.name + '...';
+    if (statusRow) statusRow.innerHTML = '🎨 Watermark & Ridimensionamento...';
+
+    applicaWatermarkImage(file, function(base64Data) {
+      if (!base64Data) {
+        filesFailed.push({ fileName: file.name, error: "Lettura file fallita sul browser." });
+        if (statusRow) statusRow.innerHTML = '<span style="color: #e74c3c;">❌ Errore lettura file</span>';
+        currentFileIdx++;
+        processNextFile();
+        return;
+      }
+
+      var noteVideoEl = document.getElementById('note-video-' + idx);
+      var noteVideoText = noteVideoEl ? noteVideoEl.value.trim() : '';
+
+      var tipoMedia = 'foto';
+      if (file.type && file.type.indexOf('video') !== -1) tipoMedia = 'video';
+      else if ((file.name || '').toLowerCase().indexOf('360') !== -1) tipoMedia = '360';
+
+      var payloadSingle = {
+        fileName: file.name,
+        mimeType: file.type || 'image/jpeg',
+        base64Data: base64Data,
+        noteVideo: noteVideoText,
+        tipoMedia: tipoMedia
+      };
+
+      if (statusRow) statusRow.innerHTML = '🚀 Invio a Google Drive...';
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) {
+              filesSuccess.push(res);
+              if (statusRow) {
+                statusRow.innerHTML = '<span style="color: #2ecc71;">✅ Caricato (' + (res.stanza || 'Ambiente') + ')</span>';
+              }
+            } else {
+              filesFailed.push({ fileName: file.name, error: (res ? res.error : 'Errore sconosciuto') });
+              if (statusRow) {
+                statusRow.innerHTML = '<span style="color: #e74c3c;">❌ ' + (res ? res.error : 'Errore') + '</span>';
+              }
+            }
+            currentFileIdx++;
+            processNextFile();
+          })
+          .withFailureHandler(function(err) {
+            var errMsg = (err && err.message) ? err.message : String(err);
+            filesFailed.push({ fileName: file.name, error: errMsg });
+            if (statusRow) {
+              statusRow.innerHTML = '<span style="color: #e74c3c;">❌ ' + errMsg + '</span>';
+            }
+            currentFileIdx++;
+            processNextFile();
+          })
+          .caricaSingoloFileSuDriveEProprieta({
+            nomeCartella: folderName,
+            file: payloadSingle,
+            datiScheda: datiScheda
+          });
+      } else {
+        filesSuccess.push({ fileName: file.name, stanza: 'Locale Mock' });
+        if (statusRow) statusRow.innerHTML = '<span style="color: #2ecc71;">✅ Caricato (Mock)</span>';
+        currentFileIdx++;
+        processNextFile();
+      }
+    });
+  }
+
+  processNextFile();
+}
+
+// 📂 SINCRONIZZAZIONE DA CARTELLA DRIVE ESISTENTE
+function caricaListaCartelleDriveInPicker() {
+  var sel = document.getElementById('select-cartelle-drive-picker');
+  var authBox = document.getElementById('drive-auth-alert-box');
+  if (!sel) return;
+
+  sel.innerHTML = '<option value="">⏳ Scansione cartelle Google Drive in corso...</option>';
+
+  function popolaSelectCartelle(folders) {
+    if (!sel) return;
+    if (authBox) authBox.style.display = 'none';
+
+    if (folders && folders.unauthorized) {
+      if (authBox) authBox.style.display = 'block';
+      sel.innerHTML = '<option value="">⚠️ Google Drive richiede autorizzazione (Vedi avviso sotto)</option>';
+      return;
+    }
+
+    var list = Array.isArray(folders) ? folders : (folders && folders.folders ? folders.folders : []);
+    if (!list || list.length === 0) {
+      sel.innerHTML = '<option value="">📁 Incolla link o nome cartella nel campo a destra</option>';
+      return;
+    }
+
+    sel.innerHTML = '<option value="">📱 Scegli una Cartella Google Drive (1-Tap)...</option>';
+    list.forEach(function(f) {
+      if (!f) return;
+      var opt = document.createElement('option');
+      opt.value = f.id || f.name;
+      var cCount = (typeof f.fileCount === 'number' && f.fileCount > 0) ? (' (' + f.fileCount + ' file)') : '';
+      opt.innerText = f.name + cCount;
+      sel.appendChild(opt);
+    });
+  }
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(folders) {
+        popolaSelectCartelle(folders);
+      })
+      .withFailureHandler(function(err) {
+        fetch('https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?action=get_drive_folders')
+          .then(function(r){ return r.json(); })
+          .then(function(data){ popolaSelectCartelle(data); })
+          .catch(function(){ popolaSelectCartelle([]); });
+      })
+      .getListaCartelleDriveUtente();
+  } else {
+    fetch('https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?action=get_drive_folders')
+      .then(function(r){ return r.json(); })
+      .then(function(data){ popolaSelectCartelle(data); })
+      .catch(function(){ popolaSelectCartelle([]); });
+  }
+}
+
+function selezionaCartellaDriveDaPicker(folderId) {
+  if (!folderId) return;
+  var inp = document.getElementById('sync-drive-folder-input');
+  if (inp) inp.value = folderId;
+  caricaAnteprimaVisualeCartellaDrive(folderId);
+}
+
+function caricaAnteprimaVisualeCartellaDrive(folderIdOrName) {
+  if (!folderIdOrName) return;
+  var previewBox = document.getElementById('sync-folder-preview-box');
+  var previewGrid = document.getElementById('sync-preview-grid');
+  var countBadge = document.getElementById('sync-preview-count-badge');
+
+  if (previewBox) previewBox.style.display = 'block';
+  if (previewGrid) previewGrid.innerHTML = '<div style="font-size: 11px; color: var(--sand); padding: 6px;">⏳ Caricamento anteprima foto/video dalla cartella...</div>';
+
+  function renderFilePreview(files) {
+    if (!previewGrid) return;
+    previewGrid.innerHTML = '';
+
+    if (!files || files.length === 0) {
+      previewGrid.innerHTML = '<div style="font-size: 11px; color: var(--gold);">⚠️ Nessun file foto o video trovato in questa cartella.</div>';
+      if (countBadge) countBadge.innerText = '0 file';
+      return;
+    }
+
+    if (countBadge) countBadge.innerText = files.length + ' file trovati';
+
+    files.slice(0, 15).forEach(function(f) {
+      var d = document.createElement('div');
+      d.style.cssText = "flex: 0 0 75px; height: 75px; border-radius: 6px; overflow: hidden; position: relative; border: 1px solid rgba(201,163,94,0.4); background: #000;";
+      var mediaUrl = f.url || (f.id ? ('https://lh3.googleusercontent.com/d/' + f.id) : '');
+      if (f.tipo === 'video' || (f.mime && f.mime.indexOf('video') !== -1)) {
+        d.innerHTML = '<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #e74c3c;">🎥</div>' +
+                      '<span style="position: absolute; bottom: 2px; left: 2px; font-size: 9px; background: rgba(0,0,0,0.7); color: #fff; padding: 1px 3px; border-radius: 3px;">VIDEO</span>';
+      } else {
+        d.innerHTML = '<img src="' + mediaUrl + '" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src=\'data:image/svg+xml;utf8,<svg xmlns=\\\'http://www.w3.org/2000/svg\\\' width=\\\'75\\\' height=\\\'75\\\'><rect width=\\\'75\\\' height=\\\'75\\\' fill=\\\'%23222\\\'/><text x=\\\'37\\\' y=\\\'42\\\' fill=\\\'%23c9a35e\\\' font-size=\\\'18\\\' text-anchor=\\\'middle\\\'>🖼️</text></svg>\'">' +
+                      (f.tipo === '360' ? '<span style="position: absolute; bottom: 2px; right: 2px; font-size: 9px; background: rgba(52,152,219,0.8); color: #fff; padding: 1px 3px; border-radius: 3px;">360°</span>' : '');
+      }
+      previewGrid.appendChild(d);
+    });
+
+    if (files.length > 15) {
+      var dMore = document.createElement('div');
+      dMore.style.cssText = "flex: 0 0 75px; height: 75px; border-radius: 6px; border: 1px dashed rgba(201,163,94,0.5); display: flex; align-items: center; justify-content: center; color: var(--gold-bright); font-size: 11px; font-weight: 700; text-align: center;";
+      dMore.innerText = "+" + (files.length - 15) + " altri";
+      previewGrid.appendChild(dMore);
+    }
+  }
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        renderFilePreview(res && res.files ? res.files : (Array.isArray(res) ? res : []));
+      })
+      .withFailureHandler(function() {
+        renderFilePreview([]);
+      })
+      .getAnteprimaFileCartellaDrive(folderIdOrName);
+  } else {
+    fetch('https://script.google.com/macros/s/AKfycbwTAyOTWpm3mNGX-DAWbZ7XOtrog52md5-P_jUEHoEhsoXCrJGj_bLClOiDvo5FKUbpWg/exec?action=get_drive_folder_preview&id=' + encodeURIComponent(folderIdOrName))
+      .then(function(r){ return r.json(); })
+      .then(function(res){ renderFilePreview(res && res.files ? res.files : []); })
+      .catch(function(){ renderFilePreview([]); });
+  }
+}
+
+function avviaSincronizzazioneDriveEsistente() {
+  var folderInputEl = document.getElementById('sync-drive-folder-input');
+  var folderInput = folderInputEl ? folderInputEl.value.trim() : '';
+  if (!folderInput) {
+    alert("Inserisci il nome o l'URL/ID della cartella Google Drive da sincronizzare.");
+    return;
+  }
+
+  apriModalSchedaImmobileStudio('sync');
+}
+
+function eseguiSincronizzazioneDriveEsistenteConScheda(datiScheda) {
+  var folderInputEl = document.getElementById('sync-drive-folder-input');
+  var folderInput = folderInputEl ? folderInputEl.value.trim() : '';
+  var logoPosEl = document.getElementById('sync-logo-position');
+  var logoPos = logoPosEl ? logoPosEl.value : 'centrale_semitrasparente';
+  var msgEl = document.getElementById('sync-drive-status-msg');
+
+  if (!folderInput) return;
+
+  if (msgEl) {
+    msgEl.style.display = 'block';
+    msgEl.innerText = "⏳ Scansione cartella Google Drive '" + folderInput + "' in corso e applicazione scheda immobile DarIA...";
+  }
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (msgEl) {
+          if (res && res.success) {
+            msgEl.innerText = "🎉 SINCRONIZZAZIONE COMPLETATA! Caricate " + res.nuoviCaricati + " nuove foto/video su foglio '" + res.tabName + "' con descrizioni stanza DarIA! — Immobiliare Giancani";
+            if (typeof caricaElencoImmobiliDisponibili === 'function') caricaElencoImmobiliDisponibili();
+            if (typeof caricaGalleriaAnteprimaMedia === 'function') caricaGalleriaAnteprimaMedia(res.tabName);
+          } else {
+            msgEl.innerText = "⚠️ Errore sincronizzazione: " + (res ? res.error : '');
+          }
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (msgEl) msgEl.innerText = "⚠️ Errore di rete: " + err;
+      })
+      .sincronizzaDaCartellaDriveEsistente({
+        folderInput: folderInput,
+        logoPos: logoPos,
+        datiScheda: datiScheda
+      });
+  }
+}
+
+// 🖼️ ANTEPRIMA & GRID GALLERIA
+function caricaGalleriaAnteprimaMedia(tabName) {
+  _galleriaTabCorrente = tabName || '';
+  _galleriaSelezionati.clear();
+  aggiornaBulkBar();
+  var loader = document.getElementById('gallery-loading');
+  var emptyEl = document.getElementById('gallery-empty');
+  var container = document.getElementById('gallery-container');
+
+  if (loader) loader.style.display = 'block';
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (container) container.innerHTML = '';
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(items) {
+        if (loader) loader.style.display = 'none';
+        _galleriaAllItems = items || [];
+        if (_galleriaAllItems.length === 0) {
+          if (emptyEl) emptyEl.style.display = 'block';
+        } else {
+          renderGalleria(_galleriaFiltroCorrente);
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (loader) loader.style.display = 'none';
+        if (emptyEl) {
+          emptyEl.style.display = 'block';
+          emptyEl.innerText = '⚠️ Errore caricamento media: ' + err;
+        }
+      })
+      .getMediaPerImmobile(tabName);
+  }
+}
+
+function filtraGalleria(tipo, btn) {
+  _galleriaFiltroCorrente = tipo;
+  document.querySelectorAll('.filter-pill').forEach(function(p) { p.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  renderGalleria(tipo);
+}
+
+function renderGalleria(filtro) {
+  var container = document.getElementById('gallery-container');
+  var emptyEl = document.getElementById('gallery-empty');
+  if (!container) return;
+  container.innerHTML = '';
+
+  var items = filtro === 'tutti' ? _galleriaAllItems : _galleriaAllItems.filter(function(it) { return it.tipo === filtro; });
+  if (emptyEl) emptyEl.style.display = items.length === 0 ? 'block' : 'none';
+
+  items.forEach(function(item) {
+    var globalIdx = _galleriaAllItems.indexOf(item);
+    var div = document.createElement('div');
+    div.innerHTML = creaCardGalleria(item, globalIdx);
+    container.appendChild(div.firstChild);
+  });
+}
+
+function creaCardGalleria(item, idx) {
+  var isSel = _galleriaSelezionati.has(idx);
+  var mediaHtml = '';
+  if (item.tipo === 'video' && item.url) {
+    mediaHtml = '<video controls preload="metadata" style="width:100%;height:180px;object-fit:cover;background:#000;"><source src="' + item.url + '"></video>';
+  } else if (item.url) {
+    mediaHtml = '<img class="thumb" src="' + item.url + '" alt="' + (item.stanza || 'Media') + '" style="width:100%;height:180px;object-fit:cover;" onerror="this.style.background=\'#1a1206\';this.style.height=\'60px\'">';
+  } else {
+    mediaHtml = '<div style="height:80px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;color:var(--sand);font-size:11px;">Nessuna immagine</div>';
+  }
+
+  var is360 = item.tipo === '360';
+  var badgeColor = item.tipo === 'video' ? '#e74c3c' : is360 ? '#3498db' : '#c9a35e';
+  var badgeIcon = item.tipo === 'video' ? '🎥' : is360 ? '🌐' : '📷';
+  var photoBtn = (item.tipo === 'foto' || is360) && item.url ? '<button class="card-btn card-btn-photo" onclick="apriEditorFoto(' + idx + ')" title="Filtri & Ritocco Foto">🎨</button>' : '';
+  var sphericalBtn = is360 && item.url ? '<button onclick="apriVistaSferica360(\'' + item.url + '\')" style="width:100%;margin-top:4px;padding:6px;background:linear-gradient(135deg,#3498db,#2980b9);color:#fff;border:none;border-radius:var(--radius-sm);font-size:10px;font-weight:800;cursor:pointer;">🌐 PROVA VISTA SFERICA 360°</button>' : '';
+  
+  var toggle360Btn = '';
+  if (item.tipo !== 'video') {
+    if (is360) {
+      toggle360Btn = '<button type="button" onclick="cambiaTipoMediaSingolo(' + idx + ', \'foto\')" style="width:100%;margin-top:4px;padding:5px 8px;background:linear-gradient(135deg,#2980b9,#3498db);color:#fff;border:1px solid #3498db;border-radius:var(--radius-sm);font-size:10px;font-weight:800;cursor:pointer;" title="Impostata come 360°. Clicca per tornare a Foto Standard">🌐 360° ATTIVA (Clicca per Foto)</button>';
+    } else {
+      toggle360Btn = '<button type="button" onclick="cambiaTipoMediaSingolo(' + idx + ', \'360\')" style="width:100%;margin-top:4px;padding:5px 8px;background:rgba(52,152,219,0.18);color:#3498db;border:1px solid #3498db;border-radius:var(--radius-sm);font-size:10px;font-weight:800;cursor:pointer;" title="Clicca per trasformare questa foto in 360° Sferica per il player">🌐 TRASFORMA IN FOTO 360°</button>';
+    }
+  }
+
+  var smartStanzeHtml = typeof renderSmartStanzeBarHtml === 'function' ? renderSmartStanzeBarHtml('edit-stanza-' + idx, 'smart-sub-' + idx) : '';
+  var esclusioniMap = typeof _esclusioniMediaMap !== 'undefined' ? _esclusioniMediaMap : {};
+  var rowId = item.rowIndex || (idx + 2);
+  var isEscluso = !!esclusioniMap[rowId];
+
+  return '<div class="gallery-card' + (isSel ? ' selected' : '') + '" id="gcard-' + idx + '" style="position:relative;">'
+    + '<input type="checkbox" class="gallery-select-checkbox" ' + (isSel ? 'checked' : '') + ' onchange="toggleSelezioneCarta(' + idx + ', this)">'
+    + '<div class="gallery-media-container">' + mediaHtml
+    + '<span style="position:absolute;top:10px;left:10px;background:' + badgeColor + ';color:#fff;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;">' + badgeIcon + ' ' + (item.tipo || 'FOTO').toUpperCase() + '</span>'
+    + '</div>'
+    + '<div class="gallery-card-body">'
+    + '<div style="display:flex; gap:4px; margin-bottom:4px;">'
+    + (function() {
+        var tabN = _galleriaTabCorrente || '';
+        var tipoImm = typeof estraiTipoImmobileDaNomeCartella === 'function' ? estraiTipoImmobileDaNomeCartella(tabN) : 'Appartamento';
+        var stVal = item.stanza || '';
+        if (!stVal || stVal.toLowerCase() === 'ambiente' || stVal.toLowerCase().indexOf('ambiente ') === 0) {
+          stVal = tipoImm;
+        }
+        return '<input type="text" id="edit-stanza-' + idx + '" value="' + stVal.replace(/"/g, '&quot;') + '" onfocus="if(typeof autoAttivaSottoDettagli===\'function\')autoAttivaSottoDettagli(\'edit-stanza-' + idx + '\', \'smart-sub-' + idx + '\')" onkeydown="if(event.key===\'Enter\'){event.preventDefault();salvaStanzaGalleria(' + idx + ');}" style="flex:1; font-size:12px; font-weight:700; color:var(--gold); background:rgba(0,0,0,0.3); border:1px solid rgba(201,163,94,0.3); border-radius:4px; padding:4px; outline:none;" placeholder="Nome Stanza (es. Bagno, Cucina, ' + tipoImm + ')">';
+      })()
+    + '<button id="btn-save-stanza-' + idx + '" onclick="salvaStanzaGalleria(' + idx + ')" style="background:var(--gold); border:none; border-radius:4px; color:#120c04; cursor:pointer; padding:0 8px; font-size:12px;" title="Salva Nome Stanza e Genera Descrizione Emozionale (oppure premi INVIO)">💾</button>'
+    + '</div>'
+    + smartStanzeHtml
+    + '<textarea class="card-text-edit" id="testo-' + idx + '" readonly>' + (item.testo || '(nessun testo)') + '</textarea>'
+    + '<div class="card-controls">'
+    + '<button class="card-btn card-btn-play" onclick="riproduciTTSGalleria(' + idx + ')" title="Ascolta Lettura Voce">🔊</button>'
+    + '<button class="card-btn card-btn-edit" onclick="attivaEditTesto(' + idx + ')" title="Modifica Testo">✏️</button>'
+    + '<button class="card-btn card-btn-ai" onclick="rigeneraTestoAIGalleria(' + idx + ')" title="Analizza con Gemini Vision AI">🤖</button>'
+    + photoBtn
+    + '<button class="card-btn card-btn-del" onclick="eliminaMediaSingolo(' + idx + ')" title="Elimina Media">🗑️</button>'
+    + '</div>'
+    + toggle360Btn
+    + sphericalBtn
+    + '<button type="button" onclick="if(typeof toggleEsclusioneMediaSingolo===\'function\')toggleEsclusioneMediaSingolo(' + idx + ')" id="btn-inonda-' + idx + '" style="width:100%;margin-top:4px;padding:5px 8px;background:' + (isEscluso ? 'rgba(231,76,60,0.2)' : 'rgba(46,204,113,0.18)') + ';color:' + (isEscluso ? '#e74c3c' : '#2ecc71') + ';border:1px solid ' + (isEscluso ? '#e74c3c' : '#2ecc71') + ';border-radius:var(--radius-sm);font-size:10px;font-weight:800;cursor:pointer;" title="Clicca per includere o escludere questo ambiente dalla diretta streaming">'
+    + (isEscluso ? '🔴 ESCLUSO DALLA DIRETTA (Clicca per Abilitare)' : '🟢 IN ONDA NELLA DIRETTA (Clicca per Saltare)')
+    + '</button>'
+    + '<div style="margin-top:6px;">'
+    + '<label style="font-size:10px;color:var(--gold);display:block;">🎨 Posizione Logo Watermark (Miniatura):</label>'
+    + '<select id="gal-logo-pos-' + idx + '" style="width:100%;font-size:11px;padding:3px;background:rgba(0,0,0,0.5);color:white;border:1px solid rgba(201,163,94,0.3);border-radius:4px;">'
+    + '<option value="centrale_semitrasparente"' + (item.tipo !== '360' ? ' selected' : '') + '>🛡️ Logo Centrale Semitrasparente</option>'
+    + '<option value="360_nadir"' + (item.tipo === '360' ? ' selected' : '') + '>⚪ Logo Cerchio Nadir (Fondo 360°)</option>'
+    + '<option value="in_basso_destra">📐 Logo In Basso a Destra</option>'
+    + '<option value="in_basso_sinistra">📐 Logo In Basso a Sinistra</option>'
+    + '<option value="in_alto_destra">📐 Logo In Alto a Destra</option>'
+    + '<option value="in_alto_sinistra">📐 Logo In Alto a Sinistra</option>'
+    + '<option value="nessuno">🚫 Nessun Logo</option>'
+    + '</select>'
+    + '</div>'
+    + '<div id="save-bar-' + idx + '" style="display:none;margin-top:6px;">'
+    + '<button onclick="salvaTestoGalleria(' + idx + ')" style="width:100%;padding:4px;background:#2ecc71;color:#fff;border:none;border-radius:var(--radius-sm);font-size:11px;font-weight:700;cursor:pointer;">💾 Salva Testo</button>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+}
+
+function toggleSelezioneCarta(idx, chkEl) {
+  if (chkEl && chkEl.checked) _galleriaSelezionati.add(idx);
+  else _galleriaSelezionati.delete(idx);
+  var card = document.getElementById('gcard-' + idx);
+  if (card) card.classList.toggle('selected', _galleriaSelezionati.has(idx));
+  aggiornaBulkBar();
+}
+
+function aggiornaBulkBar() {
+  var bar = document.getElementById('galleria-bulk-bar');
+  var cnt = document.getElementById('galleria-sel-count');
+  var n = _galleriaSelezionati.size;
+  if (bar) bar.style.display = n > 0 ? 'flex' : 'none';
+  if (cnt) cnt.innerText = n + ' selezionat' + (n === 1 ? 'o' : 'i');
+}
+
+function selezionaTutteVisibili() {
+  _galleriaAllItems.forEach(function(item, idx) {
+    if (_galleriaFiltroCorrente === 'tutti' || item.tipo === _galleriaFiltroCorrente) {
+      _galleriaSelezionati.add(idx);
+      var card = document.getElementById('gcard-' + idx);
+      if (card) { card.classList.add('selected'); var chk = card.querySelector('input[type=checkbox]'); if (chk) chk.checked = true; }
+    }
+  });
+  aggiornaBulkBar();
+}
+
+function deselezionaTutte() {
+  _galleriaSelezionati.clear();
+  document.querySelectorAll('.gallery-card').forEach(function(c) {
+    c.classList.remove('selected');
+    var chk = c.querySelector('input[type=checkbox]'); if (chk) chk.checked = false;
+  });
+  aggiornaBulkBar();
+}
+
+function eliminaSelezionati() {
+  if (_galleriaSelezionati.size === 0) { alert('Nessun elemento selezionato.'); return; }
+  if (!confirm('Eliminare ' + _galleriaSelezionati.size + ' elementi? Azione non reversibile.')) return;
+  var rowIndexes = Array.from(_galleriaSelezionati).map(function(i) { return _galleriaAllItems[i].rowIndex; });
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) { alert('✅ ' + res.deleted + ' elementi eliminati!'); caricaGalleriaAnteprimaMedia(_galleriaTabCorrente); }
+        else alert('⚠️ Errore eliminazione.');
+      }).eliminaMediaGalleriaBulk(_galleriaTabCorrente, rowIndexes);
+  }
+}
+
+function eliminaMediaSingolo(idx) {
+  var item = _galleriaAllItems[idx];
+  if (!item) return;
+  if (!confirm('Eliminare "' + (item.stanza || 'questo elemento') + '"?')) return;
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) { alert('✅ Eliminato!'); caricaGalleriaAnteprimaMedia(_galleriaTabCorrente); }
+        else alert('⚠️ Errore: ' + (res ? res.error : ''));
+      }).eliminaMediaGalleria(_galleriaTabCorrente, item.rowIndex);
+  }
+}
+
+function pulisciTestoPerOratoreBrowser(testo) {
+  if (!testo) return '';
+  var t = testo.toString().trim();
+  t = t.replace(/https?:\/\/\S+|www\.\S+/gi, '');
+  t = t.replace(/\b\S+\.(com|it|net|org|io|app|exec|php|html)\b\S*/gi, '');
+  t = t.replace(/\b[\w-]+\.(jpg|jpeg|png|webp|gif|mp4|mov|avi|mp3|wav)\b/gi, '');
+  t = t.replace(/<[^>]+>/g, ' ');
+  t = t.replace(/[_#\\/|@{}<>[\]~^`+*=]/g, ' ');
+  t = t.replace(/\s+/g, ' ').trim();
+  return t;
+}
+
+function riproduciTTSGalleria(idx) {
+  var ta = document.getElementById('testo-' + idx);
+  var testoRaw = ta ? ta.value : (_galleriaAllItems[idx] ? _galleriaAllItems[idx].testo : '');
+  var testo = pulisciTestoPerOratoreBrowser(testoRaw);
+  if (!testo || testo === '(nessun testo)') { alert('Nessun testo da leggere.'); return; }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(testo);
+    utter.lang = 'it-IT'; utter.rate = 0.93; utter.pitch = 1.0;
+    var voices = window.speechSynthesis.getVoices();
+    var itVoice = voices.find(function(v) { return v.lang.indexOf('it') === 0; });
+    if (itVoice) utter.voice = itVoice;
+    window.speechSynthesis.speak(utter);
+  } else alert('TTS non supportato in questo browser.');
+}
+
+function convertiUrlDriveDirectJS(url) {
+  if (!url || typeof url !== 'string') return '';
+  url = url.trim();
+  if (url.indexOf('lh3.googleusercontent.com') !== -1 || url.indexOf('drive.google.com/uc') !== -1) {
+    return url;
+  }
+  var match = url.match(/\/d\/([^\/\?]+)/) || url.match(/id=([^\&]+)/);
+  if (match && match[1]) {
+    return 'https://lh3.googleusercontent.com/d/' + match[1];
+  }
+  return url;
+}
+
+function attivaEditTesto(idx) {
+  var ta = document.getElementById('testo-' + idx);
+  var saveBar = document.getElementById('save-bar-' + idx);
+  if (!ta) return;
+  ta.readOnly = false; ta.style.borderColor = '#3498db'; ta.focus();
+  if (saveBar) saveBar.style.display = 'block';
+}
+
+function salvaTestoGalleria(idx) {
+  var item = _galleriaAllItems[idx];
+  var ta = document.getElementById('testo-' + idx);
+  if (!item || !ta) return;
+  var newTesto = ta.value.trim();
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          item.testo = newTesto; ta.readOnly = true; ta.style.borderColor = '';
+          var sb = document.getElementById('save-bar-' + idx); if (sb) sb.style.display = 'none';
+          alert('💾 Testo salvato con successo!');
+        } else alert('⚠️ Errore: ' + (res ? res.error : ''));
+      }).salvaModificaTestoGalleria(_galleriaTabCorrente, item.rowIndex, newTesto);
+  }
+}
+
+function cambiaTipoMediaSingolo(idx, nuovoTipo) {
+  var item = _galleriaAllItems[idx];
+  if (!item) return;
+  var t = (nuovoTipo || 'foto').toLowerCase().trim();
+  item.tipo = t;
+  item.tipoMedia = t;
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          renderGalleria(_galleriaFiltroCorrente);
+        }
+      })
+      .modificaTipoMediaGalleria(_galleriaTabCorrente, item.rowIndex, t);
+  } else {
+    renderGalleria(_galleriaFiltroCorrente);
+  }
+}
+
+function salvaTutteModificheGalleria() {
+  if (!_galleriaAllItems || _galleriaAllItems.length === 0) {
+    alert("Nessun elemento da salvare nella galleria.");
+    return;
+  }
+
+  var modifiche = [];
+  _galleriaAllItems.forEach(function(item, idx) {
+    var inpStanza = document.getElementById('edit-stanza-' + idx);
+    var taTesto = document.getElementById('testo-' + idx);
+
+    var stanza = inpStanza ? inpStanza.value.trim() : (item.stanza || '');
+    var testo = taTesto ? taTesto.value.trim() : (item.testo || '');
+    var tipo = item.tipo || 'foto';
+
+    modifiche.push({
+      rowIndex: item.rowIndex || (idx + 2),
+      stanza: stanza,
+      testo: testo,
+      tipo: tipo
+    });
+  });
+
+  var statusEl = document.getElementById('status-salvataggio-bulk-galleria');
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--gold-bright)';
+    statusEl.innerText = "⏳ Salvataggio di tutte le " + modifiche.length + " modifiche su Google Sheets...";
+  }
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          if (statusEl) {
+            statusEl.style.color = '#2ecc71';
+            statusEl.innerText = "✅ Tutte le " + res.count + " modifiche sono state salvate con successo!";
+            setTimeout(function() { statusEl.style.display = 'none'; }, 4000);
+          }
+          alert("🎉 SALVATAGGIO COMPLETATO!\nTutte le modifiche a stanze, testi e impostazioni 360 sono state salvate.");
+          caricaGalleriaAnteprimaMedia(_galleriaTabCorrente);
+        } else {
+          if (statusEl) {
+            statusEl.style.color = '#e74c3c';
+            statusEl.innerText = "⚠️ Errore: " + (res ? res.error : '');
+          }
+          alert("⚠️ Errore salvataggio: " + (res ? res.error : ''));
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (statusEl) {
+          statusEl.style.color = '#e74c3c';
+          statusEl.innerText = "⚠️ Errore di rete: " + err;
+        }
+        alert("⚠️ Errore di connessione: " + err);
+      })
+      .salvaModificheGalleriaBulk(_galleriaTabCorrente, modifiche);
+  }
+}
+
+function salvaStanzaGalleria(idx) {
+  var item = _galleriaAllItems[idx];
+  var inputStanza = document.getElementById('edit-stanza-' + idx);
+  var btnSave = document.getElementById('btn-save-stanza-' + idx);
+  var ta = document.getElementById('testo-' + idx);
+  if (!item || !inputStanza) return;
+  var newStanza = inputStanza.value.trim();
+  if (!newStanza) {
+    alert("Inserisci il nome della stanza prima di salvare.");
+    return;
+  }
+  
+  var vecchioTesto = ta ? ta.value : (item.testo || '');
+  inputStanza.style.opacity = '0.6';
+  if (btnSave) {
+    btnSave.innerHTML = '⏳';
+    btnSave.disabled = true;
+    btnSave.style.opacity = '0.7';
+  }
+  if (ta) {
+    ta.value = "✨ Salvataggio e generazione automatica descrizione emozionale per " + newStanza + "...";
+    ta.style.opacity = '0.6';
+  }
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        inputStanza.style.opacity = '1';
+        if (btnSave) {
+          btnSave.innerHTML = '💾';
+          btnSave.disabled = false;
+          btnSave.style.opacity = '1';
+        }
+        if (res && res.success) {
+          item.stanza = newStanza;
+          if (res.nuovoTesto) {
+            item.testo = res.nuovoTesto;
+            if (ta) {
+              ta.value = res.nuovoTesto;
+              ta.style.opacity = '1';
+              ta.style.borderColor = '#2ecc71';
+              ta.style.boxShadow = '0 0 10px rgba(46, 204, 113, 0.4)';
+              setTimeout(function(){ ta.style.borderColor = ''; ta.style.boxShadow = ''; }, 3500);
+            }
+          }
+          inputStanza.style.borderColor = '#2ecc71';
+          setTimeout(function(){ inputStanza.style.borderColor = 'rgba(201,163,94,0.3)'; }, 2500);
+        } else {
+          if (ta) {
+            ta.value = vecchioTesto;
+            ta.style.opacity = '1';
+          }
+          alert('⚠️ Errore salvataggio stanza: ' + (res ? res.error : 'Errore sconosciuto'));
+        }
+      })
+      .withFailureHandler(function(err) {
+        inputStanza.style.opacity = '1';
+        if (btnSave) {
+          btnSave.innerHTML = '💾';
+          btnSave.disabled = false;
+          btnSave.style.opacity = '1';
+        }
+        if (ta) {
+          ta.value = vecchioTesto;
+          ta.style.opacity = '1';
+        }
+        alert('⚠️ Errore di connessione: ' + err);
+      })
+      .salvaModificaStanzaGalleria(_galleriaTabCorrente, item.rowIndex, newStanza);
+  }
+}
+
+function salvaAudioInColonnaJGalleria(idx) {
+  var item = _galleriaAllItems[idx];
+  if (!item) return;
+  var ta = document.getElementById('testo-' + idx);
+  var selVoce = document.getElementById('gal-voce-riga-' + idx);
+
+  var testoRaw = ta ? ta.value.trim() : (item.testo || '');
+  var testo = pulisciTestoPerOratoreBrowser(testoRaw);
+  var voce = selVoce ? selVoce.value : 'it-IT-IsabellaNeural';
+
+  var pCard = document.getElementById('gal-card-progress-' + idx);
+  var pBar = document.getElementById('gal-card-bar-' + idx);
+  var pPercent = document.getElementById('gal-card-status-percent-' + idx);
+  var pText = document.getElementById('gal-card-status-text-' + idx);
+
+  if (!testo) { alert("Inserisci prima il testo da sintetizzare."); return; }
+
+  if (pCard) {
+    pCard.style.display = 'block';
+    if (pBar) pBar.style.width = '25%';
+    if (pPercent) pPercent.innerText = '25%';
+    if (pText) pText.innerText = '⏳ 25% Lettura Testo & Connessione...';
+  }
+
+  setTimeout(function() {
+    if (pBar) pBar.style.width = '60%';
+    if (pPercent) pPercent.innerText = '60%';
+    if (pText) pText.innerText = '🎵 60% Creazione MP3 & 📄 TXT su Drive...';
+  }, 600);
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          if (pBar) pBar.style.width = '100%';
+          if (pPercent) pPercent.innerText = '100%';
+          if (pText) pText.innerText = '🎉 100% COMPLETATO! MP3 (Col J) e TXT (Col K) Salvati!';
+          item.colJ = res.audioUrl;
+          setTimeout(function() {
+            if (pCard) pCard.style.display = 'none';
+          }, 4000);
+        } else {
+          if (pBar) pBar.style.width = '100%';
+          if (pPercent) pPercent.innerText = 'ERR';
+          if (pText) pText.innerText = '⚠️ Errore salvataggio: ' + (res ? res.error : '');
+        }
+      })
+      .salvaAudioInColonnaJ(_galleriaTabCorrente, item.rowIndex, testo, voce);
+  }
+}
+
+function rigeneraTestoAIGalleria(idx) {
+  var item = _galleriaAllItems[idx];
+  if (!item) return;
+  var ta = document.getElementById('testo-' + idx);
+  if (ta) { ta.value = '⏳ Rigenerazione AI in corso...'; ta.readOnly = true; }
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          item.testo = res.newTesto;
+          if (ta) { ta.value = res.newTesto; ta.readOnly = true; ta.style.borderColor = ''; }
+          var sb = document.getElementById('save-bar-' + idx); if (sb) sb.style.display = 'none';
+          alert('🤖 Testo AI rigenerato e salvato nel foglio!');
+        } else {
+          if (ta) { ta.value = item.testo || ''; }
+          alert('⚠️ Errore AI: ' + (res ? res.error : ''));
+        }
+      }).rigeneraTestoDescrittivoAI(_galleriaTabCorrente, item.rowIndex);
+  }
+}
+
+// 🎨 CANVAS FOTO EDITOR & WATERMARK LOGO SFERICO
+function apriEditorFoto(idx) {
+  var item = _galleriaAllItems[idx];
+  if (!item || !item.url) { alert('Nessuna immagine disponibile.'); return; }
+  _editorItemIndex = idx;
+  _currentEditingType = item.tipo || 'foto';
+
+  var stanzaLabelEl = document.getElementById('editor-stanza-label');
+  if (stanzaLabelEl) stanzaLabelEl.innerText = (item.stanza || 'Foto') + ' (' + _currentEditingType.toUpperCase() + ')';
+  
+  var labelEl = document.getElementById('logo-mode-label');
+  var cardPosSel = document.getElementById('gal-logo-pos-' + idx);
+  var editorPosSel = document.getElementById('editor-logo-position');
+  if (cardPosSel && editorPosSel) {
+    editorPosSel.value = cardPosSel.value;
+  } else if (editorPosSel) {
+    editorPosSel.value = _currentEditingType === '360' ? '360_nadir' : 'centrale_semitrasparente';
+  }
+
+  if (labelEl) {
+    labelEl.innerText = "🏷️ Posizione Logo Agenzia / Watermark:";
+  }
+
+  var canvas = document.getElementById('editor-canvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  _editorImgObj = new Image();
+  _editorImgObj.crossOrigin = 'anonymous';
+
+  _editorImgObj.onload = function() {
+    canvas.width = _editorImgObj.naturalWidth || 1200;
+    canvas.height = _editorImgObj.naturalHeight || 800;
+    resetFiltriCanvas();
+    var modalEditor = document.getElementById('modal-photo-editor');
+    if (modalEditor) modalEditor.classList.add('open');
+  };
+
+  _editorImgObj.onerror = function() {
+    canvas.width = 1000; canvas.height = 500;
+    ctx.fillStyle = '#120c04'; ctx.fillRect(0, 0, 1000, 500);
+    ctx.fillStyle = '#c9a35e'; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center';
+    ctx.fillText('Immagine protetta da CORS', 500, 230);
+    ctx.fillText('Download comunque disponibile con modifiche applicate', 500, 260);
+    var modalEditor = document.getElementById('modal-photo-editor');
+    if (modalEditor) modalEditor.classList.add('open');
+  };
+
+  _editorImgObj.src = item.url;
+}
+
+(function precaricaLogoEditor() {
+  _cachedLogoImg = new Image();
+  _cachedLogoImg.crossOrigin = "anonymous";
+  _cachedLogoImg.src = LOGO_GIANCANI_URL;
+})();
+
+function impostaPresetFotografico(b, c, s) {
+  var bEl = document.getElementById('slider-brightness');
+  var cEl = document.getElementById('slider-contrast');
+  var sEl = document.getElementById('slider-saturation');
+  if (bEl) bEl.value = b;
+  if (cEl) cEl.value = c;
+  if (sEl) sEl.value = s;
+
+  document.querySelectorAll('.btn-preset-calibrato').forEach(function(btn) {
+    btn.style.border = '1px solid var(--line-soft)';
+    btn.style.background = 'rgba(255,255,255,0.06)';
+    btn.style.color = '#fff';
+  });
+
+  if (b === 100 && c === 100 && s === 100) {
+    var pEl = document.getElementById('preset-realta');
+    if (pEl) { pEl.style.border = '1px solid #2ecc71'; pEl.style.background = 'rgba(46,204,113,0.2)'; pEl.style.color = '#2ecc71'; }
+  } else if (b === 104 && c === 103 && s === 102) {
+    var pEl2 = document.getElementById('preset-realestate');
+    if (pEl2) { pEl2.style.border = '1px solid #f1c40f'; pEl2.style.background = 'rgba(241,196,15,0.2)'; pEl2.style.color = '#f1c40f'; }
+  }
+
+  aggiornaFiltriCanvas();
+}
+
+function aggiornaFiltriCanvas() {
+  var canvas = document.getElementById('editor-canvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  if (!_editorImgObj || !_editorImgObj.complete || !_editorImgObj.naturalWidth) return;
+
+  var b = document.getElementById('slider-brightness') ? document.getElementById('slider-brightness').value : 100;
+  var c = document.getElementById('slider-contrast') ? document.getElementById('slider-contrast').value : 100;
+  var s = document.getElementById('slider-saturation') ? document.getElementById('slider-saturation').value : 100;
+
+  var vb = document.getElementById('val-brightness'); if (vb) vb.innerText = b + '%';
+  var vc = document.getElementById('val-contrast'); if (vc) vc.innerText = c + '%';
+  var vs = document.getElementById('val-saturation'); if (vs) vs.innerText = s + '%';
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.filter = 'brightness(' + b + '%) contrast(' + c + '%) saturate(' + s + ')';
+  ctx.drawImage(_editorImgObj, 0, 0);
+  ctx.filter = 'none';
+
+  var chkMask = document.getElementById('chk-enable-mask');
+  var maskEnabled = chkMask ? chkMask.checked : false;
+  if (maskEnabled) {
+    var posX = ((document.getElementById('slider-mask-x') ? document.getElementById('slider-mask-x').value : 50) / 100) * canvas.width;
+    var posY = ((document.getElementById('slider-mask-y') ? document.getElementById('slider-mask-y').value : 50) / 100) * canvas.height;
+    var size = parseInt((document.getElementById('slider-mask-size') ? document.getElementById('slider-mask-size').value : 80), 10) * (canvas.width / 1000);
+    var opacity = (document.getElementById('slider-mask-opacity') ? document.getElementById('slider-mask-opacity').value : 100) / 100;
+
+    var mx = document.getElementById('val-mask-x'); if (mx) mx.innerText = (document.getElementById('slider-mask-x') ? document.getElementById('slider-mask-x').value : 50) + '%';
+    var my = document.getElementById('val-mask-y'); if (my) my.innerText = (document.getElementById('slider-mask-y') ? document.getElementById('slider-mask-y').value : 50) + '%';
+    var ms = document.getElementById('val-mask-size'); if (ms) ms.innerText = Math.round(size) + 'px';
+    var mo = document.getElementById('val-mask-opacity'); if (mo) mo.innerText = (document.getElementById('slider-mask-opacity') ? document.getElementById('slider-mask-opacity').value : 100) + '%';
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(posX, posY, size, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  var chkLogo = document.getElementById('chk-enable-logo');
+  var logoEnabled = chkLogo ? chkLogo.checked : true;
+  if (logoEnabled) {
+    disegnaWatermarkODecorazione(ctx, canvas.width, canvas.height, _currentEditingType);
+  }
+}
+
+function applicaMiglioramentoGraficoAuto() {
+  impostaPresetFotografico(104, 103, 102);
+}
+
+function disegnaWatermarkODecorazione(ctx, width, height, tipoMedia) {
+  var chkLogo = document.getElementById('chk-enable-logo');
+  var logoEnabled = chkLogo ? chkLogo.checked : true;
+  if (!logoEnabled) return;
+
+  var selPosEl = document.getElementById('editor-logo-position');
+  var posizione = selPosEl ? selPosEl.value : (_currentEditingType === '360' ? '360_nadir' : 'centrale_semitrasparente');
+  if (posizione === 'nessuno') return;
+
+  var logo = _cachedLogoImg && _cachedLogoImg.complete && _cachedLogoImg.naturalWidth ? _cachedLogoImg : null;
+
+  var eseguiRenderLogo = function(lImg) {
+    ctx.save();
+    var logoW = width * 0.20;
+    var logoH = (lImg.height / lImg.width) * logoW;
+    var margin = width * 0.03;
+
+    if (posizione === '360_nadir') {
+      var radius = width * 0.08;
+      var centerX = width / 2;
+      var centerY = height - (radius * 0.85);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      ctx.fill();
+
+      var lw = radius * 1.4;
+      var lh = (lImg.height / lImg.width) * lw;
+      ctx.drawImage(lImg, centerX - (lw / 2), centerY - (lh / 2), lw, lh);
+
+    } else if (posizione === 'in_basso_destra') {
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(lImg, width - logoW - margin, height - logoH - margin, logoW, logoH);
+    } else if (posizione === 'in_basso_sinistra') {
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(lImg, margin, height - logoH - margin, logoW, logoH);
+    } else if (posizione === 'in_alto_destra') {
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(lImg, width - logoW - margin, margin, logoW, logoH);
+    } else if (posizione === 'in_alto_sinistra') {
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(lImg, margin, margin, logoW, logoH);
+    } else { // centrale_semitrasparente
+      var cW = width * 0.30;
+      var cH = (lImg.height / lImg.width) * cW;
+      ctx.globalAlpha = 0.40;
+      ctx.drawImage(lImg, (width - cW) / 2, (height - cH) / 2, cW, cH);
+    }
+
+    ctx.restore();
+  };
+
+  if (logo) {
+    eseguiRenderLogo(logo);
+  } else {
+    var newLogo = new Image();
+    newLogo.crossOrigin = "anonymous";
+    newLogo.onload = function() {
+      _cachedLogoImg = newLogo;
+      eseguiRenderLogo(newLogo);
+    };
+    newLogo.src = LOGO_GIANCANI_URL;
+  }
+}
+
+function resetFiltriCanvas() {
+  impostaPresetFotografico(100, 100, 100);
+  var cm = document.getElementById('chk-enable-mask'); if (cm) cm.checked = false;
+  var cl = document.getElementById('chk-enable-logo'); if (cl) cl.checked = true;
+  var sx = document.getElementById('slider-mask-x'); if (sx) sx.value = 50;
+  var sy = document.getElementById('slider-mask-y'); if (sy) sy.value = 50;
+  var ss = document.getElementById('slider-mask-size'); if (ss) ss.value = 80;
+  var so = document.getElementById('slider-mask-opacity'); if (so) so.value = 100;
+  aggiornaFiltriCanvas();
+}
+
+function chiudiEditorFoto() {
+  var modalEditor = document.getElementById('modal-photo-editor');
+  if (modalEditor) modalEditor.classList.remove('open');
+  _editorImgObj = null;
+  _editorItemIndex = -1;
+}
+
+function salvaEditorFoto() {
+  var canvas = document.getElementById('editor-canvas');
+  if (!canvas) return;
+  try {
+    var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    var a = document.createElement('a'); a.href = dataUrl; a.download = 'foto_modificata_giancani.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    alert('✅ Foto scaricata con successo! Ricaricala su Google Drive e aggiorna il link nel foglio.\n\n— Da Immobiliare Giancani');
+  } catch(ex) {
+    alert('⚠️ CORS: Impossibile scaricare direttamente. Modifica la foto manualmente e ricaricala su Drive.\n\n— Da Immobiliare Giancani');
+  }
+  chiudiEditorFoto();
+}
+
+// 🤖 GEMINI VISION E GALLERIA
+function caricaGeminiKeyWeb() {
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run.withSuccessHandler(function(res) {
+      if (res && res.geminiKey) {
+        var el = document.getElementById('input-gemini-key');
+        if (el) el.value = res.geminiKey;
+      }
+    }).getGeminiKeyWeb();
+  }
+}
+
+function salvaGeminiKeyWeb() {
+  var keyEl = document.getElementById('input-gemini-key');
+  var key = keyEl ? keyEl.value : '';
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run.withSuccessHandler(function(res) {
+      if (res && res.success) alert("✅ Chiave Gemini salvata!");
+      else alert("⚠️ Errore salvataggio chiave.");
+    }).salvaGeminiKeyWeb(key);
+  }
+}
+
+function avviaVisioneStanzeGemini() {
+  if (!confirm('Avviare Gemini AI sulle immagini "Ambiente"?\nQuesto processo sfrutterà la tua chiave Gemini per guardare le foto e riconoscerne il tipo (Cucina, Salotto ecc).')) return;
+  
+  var cnt = document.getElementById('galleria-sel-count');
+  if (cnt) cnt.innerText = "🤖 Gemini sta guardando le foto... (può richiedere tempo)";
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run.withSuccessHandler(function(res) {
+      if (res && res.success) {
+        alert('✅ Visione AI Completata! ' + res.updated + ' stanze riconosciute e aggiornate.');
+        caricaGalleriaAnteprimaMedia(_galleriaTabCorrente);
+      } else {
+        alert('⚠️ Errore Gemini: ' + (res ? res.error : ''));
+        if (cnt) cnt.innerText = "⚠️ Errore AI";
+      }
+    }).analizzaStanzeMassivoGemini(_galleriaTabCorrente);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🎵 GESTIONE BASI MUSICALI DRIVE & GENERATORE REEL 9:16 (STUDIO GALLERIA)
+// ═══════════════════════════════════════════════════════════════════════
+
+var _basiMusicaliCache = [];
+var _basiMusicaliFolderUrl = 'https://drive.google.com';
+
+function caricaBasiMusicaliStudioGalleria() {
+  var badge = document.getElementById('badge-basi-musicali-count');
+  var selectGalleria = document.getElementById('select-basi-musicali-galleria');
+  var selectModal = document.getElementById('modal-reel-musica-select');
+  var linkDrive = document.getElementById('link-cartella-basi-musicali-drive');
+
+  if (badge) badge.innerText = "⏳ Scansione brani Drive...";
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          _basiMusicaliCache = res.brani || [];
+          _basiMusicaliFolderUrl = res.url || 'https://drive.google.com';
+
+          if (linkDrive) linkDrive.href = _basiMusicaliFolderUrl;
+
+          var count = _basiMusicaliCache.length;
+          if (badge) {
+            badge.innerText = "🎵 " + count + (count === 1 ? " brano MP3" : " brani MP3");
+            badge.style.background = count > 0 ? "rgba(46, 204, 113, 0.25)" : "rgba(243, 156, 18, 0.25)";
+          }
+
+          var optionsHtml = '<option value="">Traccia Predefinita (Sicilian Sunset)</option>';
+          _basiMusicaliCache.forEach(function(b) {
+            optionsHtml += '<option value="' + b.id + '">' + b.name + ' (' + b.size + ')</option>';
+          });
+
+          if (selectGalleria) selectGalleria.innerHTML = optionsHtml;
+          if (selectModal) selectModal.innerHTML = optionsHtml;
+        } else {
+          if (badge) badge.innerText = "⚠️ Errore lettura Drive";
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (badge) badge.innerText = "⚠️ Errore connessione";
+      })
+      .getListaBasiMusicaliDrive();
+  } else {
+    if (badge) badge.innerText = "🎵 3 brani MP3 (Mock)";
+  }
+}
+
+function apriModalGeneraReelStudio(tabName) {
+  var targetTab = tabName || _galleriaTabCorrente;
+  if (!targetTab) {
+    var sel = document.getElementById('select-immobile-galleria');
+    targetTab = sel ? sel.value : '';
+  }
+
+  if (!targetTab) {
+    alert("Seleziona prima un immobile attivo nella galleria per generare il Reel.");
+    return;
+  }
+
+  var modal = document.getElementById('modal-genera-reel-studio');
+  var inputNome = document.getElementById('modal-reel-immobile-nome');
+  var txtF = document.getElementById('modal-reel-testo-f');
+  var statusMsg = document.getElementById('modal-reel-status-msg');
+  var btn = document.getElementById('btn-avvia-reel-studio');
+
+  if (inputNome) inputNome.value = targetTab.replace(/_/g, ' ');
+  if (statusMsg) { statusMsg.style.display = 'none'; statusMsg.innerHTML = ''; }
+  if (btn) btn.disabled = false;
+
+  // Cerca il testo Colonna F memorizzato nei media della galleria corrente
+  var testoF = '';
+  if (_galleriaAllItems && _galleriaAllItems.length > 0) {
+    for (var i = 0; i < _galleriaAllItems.length; i++) {
+      if (_galleriaAllItems[i].testoF && _galleriaAllItems[i].testoF.trim().length > 15) {
+        testoF = _galleriaAllItems[i].testoF.trim();
+        break;
+      }
+    }
+  }
+
+  if (!testoF) {
+    testoF = "Splendido " + targetTab.replace(/_/g, ' ') + " in vendita. Ampia metratura di oltre 120 metri quadri, vani luminosi, rifiniture curate. Per info e visite: 320 1667156 — Immobiliare Giancani";
+  }
+
+  if (txtF) txtF.value = testoF;
+
+  // Assicura che le basi musicali siano popolate nel select
+  caricaBasiMusicaliStudioGalleria();
+
+  if (modal) modal.style.display = 'flex';
+}
+
+function chiudiModalGeneraReelStudio() {
+  var modal = document.getElementById('modal-genera-reel-studio');
+  if (modal) modal.style.display = 'none';
+}
+
+function confermaEAvviaReelStudio() {
+  var tabName = _galleriaTabCorrente;
+  var txtFEl = document.getElementById('modal-reel-testo-f');
+  var testoF = txtFEl ? txtFEl.value.trim() : '';
+  var musSelect = document.getElementById('modal-reel-musica-select');
+  var musicaId = musSelect ? musSelect.value : '';
+  var emailEl = document.getElementById('modal-reel-email-dest');
+  var emailDest = emailEl ? emailEl.value.trim() : 'giancaniimmobiliare@gmail.com';
+  var btn = document.getElementById('btn-avvia-reel-studio');
+  var statusMsg = document.getElementById('modal-reel-status-msg');
+
+  if (!testoF) {
+    alert("Inserisci o verifica il testo della Colonna F prima di procedere.");
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (statusMsg) {
+    statusMsg.style.display = 'block';
+    statusMsg.style.color = 'var(--gold-bright)';
+    statusMsg.innerHTML = '⏳ Invio richiesta a GitHub Actions per rendering video 9:16 (FFmpeg) ed invio email...';
+  }
+
+  var payload = {
+    tabName: tabName,
+    riga: 2,
+    testoF: testoF,
+    musicaDriveId: musicaId,
+    email: emailDest
+  };
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn) btn.disabled = false;
+        if (res && res.success) {
+          if (statusMsg) {
+            statusMsg.style.color = '#2ecc71';
+            statusMsg.innerHTML = '✅ <strong>Richiesta inviata con successo!</strong><br>' + res.msg;
+          }
+          alert('🎬 GENERAZIONE REEL AVVIATA!
+
+La richiesta è stata inoltrata a GitHub Actions.
+Riceverai il video montato (con box scuro al 60% e musica) con il copy pronto direttamente via email su:
+' + emailDest + '
+
+— Immobiliare Giancani');
+          setTimeout(chiudiModalGeneraReelStudio, 2000);
+        } else {
+          if (statusMsg) {
+            statusMsg.style.color = '#e74c3c';
+            statusMsg.innerHTML = '❌ ' + (res ? res.error : 'Errore sconosciuto');
+          }
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (btn) btn.disabled = false;
+        var errStr = (err && err.message) ? err.message : String(err);
+        if (statusMsg) {
+          statusMsg.style.color = '#e74c3c';
+          statusMsg.innerHTML = '❌ Errore chiamata: ' + errStr;
+        }
+      })
+      .avviaGenerazioneReelDaGalleria(payload);
+  } else {
+    setTimeout(function() {
+      if (btn) btn.disabled = false;
+      if (statusMsg) {
+        statusMsg.style.color = '#2ecc71';
+        statusMsg.innerHTML = '✅ Mock: Workflow avviato con successo!';
+      }
+    }, 1000);
+  }
+}
+
+// Inizializza le basi musicali all'avvio
+setTimeout(function() {
+  try { caricaBasiMusicaliStudioGalleria(); } catch(e) {}
+}, 2000);
+
+</script>

@@ -80,7 +80,7 @@ PAGES = [
     {
         "nome": "Immobiliare Giancani (Pagina Ufficiale)",
         "id": (os.environ.get("FB_PAGE_ID") or "234931856561526").strip(),
-        "token": (os.environ.get("FB_PAGE_TOKEN") or "EAAZAH7q8wRZAEBSrhdzTmfl8ZCzdKNEjlxs2DiLoOPinfdZABC7FdxCTmgfnA3A0bMrp2hWMBcEfWr2jIeygQX4eaUvUY9odfl0zKSQi6xY4RddUFrQ2MNL6GichP3oKloZCjRdI6cZCoflKHDmWtXqE7FWM2e9HzOYKCkgn0GVfo9Mdn3wajoshjmZAlPQ5q5iCc3lSyURtp4m8t18").strip(),
+        "token": (os.environ.get("FB_PAGE_TOKEN") or "EAAZAH7q8wRZAEBS3ZAfEIpFIcXPJ87gDZAY8QjpGvBSjgC44c22JVeZAiDxMOM85JRMKM2T1hLgekBCkT0z5geNsb3KxAhMr7W7xlOGVKJsdKV9rZCEKLupIy1uNaDkVZAXmFtn0stiB212odWJ2ZCZBtlWkZAzy5wmPfKyZC3g27g6RXs0FK2GiYc5MeqaZCZBuoYjIyreTZAxwOqtfESifVw").strip(),
         "is_antonio": False
     },
     {

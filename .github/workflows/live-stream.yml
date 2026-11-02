@@ -74,12 +74,12 @@ jobs:
           echo "⏰ [Controllo Orario] Ora a Roma: $ROME_HOUR:$ROME_MIN (Evento: ${{ github.event_name }})"
 
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            # Consente l'avvio schedulato solo nella finestra delle ore 18:45-19:30 ora di Roma (evita doppio avvio tra ora solare e legale)
-            if [ "$ROME_HOUR" = "18" ] || [ "$ROME_HOUR" = "19" ]; then
+            # Consente l'avvio serale nella finestra 18:00 - 21:30 ora di Roma (gestisce cambi DST e code GitHub Actions)
+            if [ "$ROME_HOUR" -ge 18 ] && [ "$ROME_HOUR" -le 21 ]; then
               echo "✅ Finestra Diretta Serale Ore 19:00 confermata ($ROME_HOUR:$ROME_MIN Europe/Rome)!"
               echo "should_run=true" >> $GITHUB_OUTPUT
             else
-              echo "⏭️ Trigger cron fuori finestra 19:00 ($ROME_HOUR:$ROME_MIN Europe/Rome - altro fuso DST). Salto esecuzione."
+              echo "⏭️ Trigger cron fuori finestra serale 18:00-21:30 ($ROME_HOUR:$ROME_MIN Europe/Rome). Salto esecuzione."
               echo "should_run=false" >> $GITHUB_OUTPUT
             fi
           else

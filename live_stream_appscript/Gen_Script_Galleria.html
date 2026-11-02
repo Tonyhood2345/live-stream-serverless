@@ -1605,4 +1605,285 @@ setTimeout(function() {
   try { caricaBasiMusicaliStudioGalleria(); } catch(e) {}
 }, 2000);
 
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🎬 GESTIONE STORIE 9:16 DA VIDEO DRIVE SENZA TESTO & FRASI PRESTIGIO
+// ═══════════════════════════════════════════════════════════════════════
+
+var _videoSenzaTestoCache = [];
+var _frasiPrestigioCache = [];
+var _videoSenzaTestoFolderUrl = 'https://drive.google.com';
+var _frasiSheetUrl = 'https://docs.google.com/spreadsheets/d/1s68pw0WEUcV0ZqltiahAqCp_r5rsycSjxKNh0VZQq_g/edit';
+
+/**
+ * 🔄 Carica i video dalla cartella 'Video_Senza_Testo_Storie' e le frasi da 'FRASI_PRESTIGIO_STORIE'
+ */
+function caricaDatiStorieStudioGalleria() {
+  var badgeVid = document.getElementById('badge-video-senza-testo-count');
+  var badgeFra = document.getElementById('badge-frasi-prestigio-count');
+  var selectVid = document.getElementById('select-video-storie-galleria');
+  var selectFra = document.getElementById('select-frase-storie-galleria');
+  var selectMus = document.getElementById('select-musica-storie-galleria');
+  var linkVid = document.getElementById('link-cartella-video-storie-drive');
+  var linkFra = document.getElementById('link-foglio-frasi-prestigio');
+
+  if (badgeVid) badgeVid.innerText = "⏳ Scansione video Drive...";
+  if (badgeFra) badgeFra.innerText = "⏳ Lettura Colonna F...";
+
+  // 1. Carica brani musicali se cache disponibile
+  if (selectMus && typeof _basiMusicaliCache !== 'undefined' && _basiMusicaliCache.length > 0) {
+    var optMus = '<option value="">Traccia Predefinita (Sicilian Sunset)</option>';
+    _basiMusicaliCache.forEach(function(b) {
+      optMus += '<option value="' + b.id + '">' + b.name + ' (' + b.size + ')</option>';
+    });
+    selectMus.innerHTML = optMus;
+  }
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    // 2. Chiamata Video Senza Testo
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          _videoSenzaTestoCache = res.videos || [];
+          _videoSenzaTestoFolderUrl = res.url || 'https://drive.google.com';
+          if (linkVid) linkVid.href = _videoSenzaTestoFolderUrl;
+
+          var count = _videoSenzaTestoCache.length;
+          if (badgeVid) {
+            badgeVid.innerText = "🎥 " + count + (count === 1 ? " video" : " video");
+            badgeVid.style.background = count > 0 ? "rgba(46, 204, 113, 0.25)" : "rgba(231, 76, 60, 0.25)";
+          }
+
+          var opts = '';
+          if (_videoSenzaTestoCache.length === 0) {
+            opts += '<option value="">⚠️ Nessun video caricato in cartella Drive (clicca Apri Cartella)</option>';
+          } else {
+            opts += '<option value="">-- Seleziona un video senza testo da Drive --</option>';
+            _videoSenzaTestoCache.forEach(function(v) {
+              opts += '<option value="' + v.id + '">' + v.name + ' (' + v.size + ')</option>';
+            });
+          }
+          if (selectVid) selectVid.innerHTML = opts;
+        } else {
+          if (badgeVid) badgeVid.innerText = "❌ Errore video";
+        }
+      })
+      .withFailureHandler(function() {
+        if (badgeVid) badgeVid.innerText = "❌ Errore connessione";
+      })
+      .getOrCreateCartellaVideoSenzaTestoDrive();
+
+    // 3. Chiamata Frasi Prestigio Colonna F
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res && res.success) {
+          _frasiPrestigioCache = res.frasi || [];
+          _frasiSheetUrl = res.sheetUrl || _frasiSheetUrl;
+          if (linkFra) linkFra.href = _frasiSheetUrl;
+
+          var total = _frasiPrestigioCache.length;
+          if (badgeFra) {
+            badgeFra.innerText = "📜 " + total + " frasi Colonna F";
+            badgeFra.style.background = "rgba(212, 175, 55, 0.25)";
+          }
+
+          var optsF = '<option value="">🎲 Selezione Casuale Automatica da Colonna F</option>';
+          optsF += '<option value="CUSTOM">✍️ Inserisci Frase Personalizzata Istantanea...</option>';
+          _frasiPrestigioCache.forEach(function(f) {
+            var label = '[' + f.categoria + '] ' + f.titolo;
+            var estratto = (f.colonnaF || f.fraseSlogan || '').substring(0, 45);
+            if (estratto) label += ' ("' + estratto + '...")';
+            optsF += '<option value="' + f.id + '">' + label + '</option>';
+          });
+          if (selectFra) selectFra.innerHTML = optsF;
+        } else {
+          if (badgeFra) badgeFra.innerText = "❌ Errore frasi";
+        }
+      })
+      .withFailureHandler(function() {
+        if (badgeFra) badgeFra.innerText = "❌ Errore connessione";
+      })
+      .getElencoFrasiPrestigio();
+  }
+}
+
+/**
+ * 👁️ Mostra anteprima del testo Colonna F quando l'utente seleziona una frase
+ */
+function gestisciCambioFraseStorie(val) {
+  var boxCustom = document.getElementById('box-frase-personalizzata-storie');
+  var anteprima = document.getElementById('box-anteprima-colonna-f');
+
+  if (val === 'CUSTOM') {
+    if (boxCustom) boxCustom.style.display = 'block';
+    if (anteprima) anteprima.innerHTML = '<em>✍️ Modalità Frase Personalizzata: digita la frase sopra. Lo script aggiungerà in automatico "— Immobiliare Giancani".</em>';
+    return;
+  }
+
+  if (boxCustom) boxCustom.style.display = 'none';
+
+  if (!val) {
+    if (anteprima) anteprima.innerHTML = '<em>💡 Modalità Casuale: verrà estratta una frase a rotazione dalla <strong>Colonna F</strong> garantendo massima varietà per le Storie.</em>';
+    return;
+  }
+
+  var fraseTrovata = null;
+  for (var i = 0; i < _frasiPrestigioCache.length; i++) {
+    if (String(_frasiPrestigioCache[i].id) === String(val)) {
+      fraseTrovata = _frasiPrestigioCache[i];
+      break;
+    }
+  }
+
+  if (fraseTrovata && anteprima) {
+    anteprima.innerHTML = '<strong>' + (fraseTrovata.titolo || '') + '</strong><br>' +
+      '<span style="color: var(--gold-bright); font-style: italic;">"' + (fraseTrovata.colonnaF || fraseTrovata.fraseSlogan || '') + '"</span>';
+  }
+}
+
+/**
+ * ➕ Gestione Finestra Modale per Nuova Frase
+ */
+function apriModalNuovaFraseStudio() {
+  var modal = document.getElementById('modal-nuova-frase-studio');
+  if (modal) modal.style.display = 'flex';
+  var msg = document.getElementById('modal-frase-status-msg');
+  if (msg) msg.style.display = 'none';
+}
+
+function chiudiModalNuovaFraseStudio() {
+  var modal = document.getElementById('modal-nuova-frase-studio');
+  if (modal) modal.style.display = 'none';
+}
+
+function salvaNuovaFraseStudio() {
+  var cat = document.getElementById('modal-frase-categoria').value;
+  var tit = document.getElementById('modal-frase-titolo').value.trim();
+  var slog = document.getElementById('modal-frase-slogan').value.trim();
+  var foc = document.getElementById('modal-frase-focus').value.trim();
+  var btn = document.getElementById('btn-salva-frase-studio');
+  var msg = document.getElementById('modal-frase-status-msg');
+
+  if (!tit || !slog) {
+    alert('Compila almeno il Titolo / Gancio e la Frase principale!');
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (msg) {
+    msg.style.display = 'block';
+    msg.style.color = '#f39c12';
+    msg.innerText = '💾 Salvataggio in Colonna F Google Sheets in corso...';
+  }
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn) btn.disabled = false;
+        if (res && res.success) {
+          if (msg) {
+            msg.style.color = '#2ecc71';
+            msg.innerText = '✅ Frase inserita con successo nel Foglio Google (Colonna F)!';
+          }
+          document.getElementById('modal-frase-titolo').value = '';
+          document.getElementById('modal-frase-slogan').value = '';
+          document.getElementById('modal-frase-focus').value = '';
+          // Ricarica frasi
+          setTimeout(function() {
+            chiudiModalNuovaFraseStudio();
+            caricaDatiStorieStudioGalleria();
+          }, 1200);
+        } else {
+          if (msg) {
+            msg.style.color = '#e74c3c';
+            msg.innerText = '❌ Errore: ' + (res ? res.error : 'Errore sconosciuto');
+          }
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (btn) btn.disabled = false;
+        if (msg) {
+          msg.style.color = '#e74c3c';
+          msg.innerText = '❌ Errore: ' + (err.message || String(err));
+        }
+      })
+      .aggiungiNuovaFrasePrestigio(cat, tit, slog, foc);
+  }
+}
+
+/**
+ * 🚀 Genera Storia 9:16 da Video Drive e invia per Email
+ */
+function confermaEAvviaStoriaStudio() {
+  var videoId = document.getElementById('select-video-storie-galleria').value;
+  var fraseId = document.getElementById('select-frase-storie-galleria').value;
+  var customPhrase = '';
+  if (fraseId === 'CUSTOM') {
+    customPhrase = document.getElementById('input-frase-custom-storie').value.trim();
+    if (!customPhrase) {
+      alert('Inserisci il testo per la frase personalizzata prima di continuare.');
+      return;
+    }
+  }
+
+  var musicaId = document.getElementById('select-musica-storie-galleria').value;
+  var btn = document.getElementById('btn-avvia-storia-studio');
+  var feedback = document.getElementById('storia-status-feedback');
+
+  if (btn) btn.disabled = true;
+  if (feedback) {
+    feedback.style.color = '#f39c12';
+    feedback.innerText = '⏳ Inoltro richiesta generazione Storia a GitHub Actions...';
+  }
+
+  var payload = {
+    videoDrive: videoId,
+    fraseId: (fraseId !== 'CUSTOM') ? fraseId : '',
+    customPhrase: customPhrase,
+    musicaDrive: musicaId,
+    email: 'giancaniimmobiliare@gmail.com'
+  };
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (btn) btn.disabled = false;
+        if (res && res.success) {
+          if (feedback) {
+            feedback.style.color = '#2ecc71';
+            feedback.innerText = '✅ Workflow Storia 9:16 avviato con successo!';
+          }
+          alert('🎬 GENERAZIONE STORIA 9:16 AVVIATA!\n\nLa richiesta è stata inoltrata a GitHub Actions.\n\nLo script sta montando il video con:\n- Logo Ufficiale Giancani in alto\n- Box scuro 60% al fondo con la Frase Prestigio da Colonna F\n- Traccia musicale tagliata e sfumata\n\nRiceverai il file MP4 finale con il copy pronto direttamente via email su:\ngiancaniimmobiliare@gmail.com\n\n— Immobiliare Giancani');
+        } else {
+          if (feedback) {
+            feedback.style.color = '#e74c3c';
+            feedback.innerText = '❌ ' + (res ? res.error : 'Errore esecuzione');
+          }
+        }
+      })
+      .withFailureHandler(function(err) {
+        if (btn) btn.disabled = false;
+        if (feedback) {
+          feedback.style.color = '#e74c3c';
+          feedback.innerText = '❌ Errore chiamata: ' + (err.message || String(err));
+        }
+      })
+      .avviaGenerazioneStoriaDaGalleria(payload);
+  } else {
+    setTimeout(function() {
+      if (btn) btn.disabled = false;
+      if (feedback) {
+        feedback.style.color = '#2ecc71';
+        feedback.innerText = '✅ Mock: Workflow Storia avviato con successo!';
+      }
+    }, 1000);
+  }
+}
+
+// Inizializza anche i dati Storie all'avvio
+setTimeout(function() {
+  try { caricaDatiStorieStudioGalleria(); } catch(e) {}
+}, 2500);
+
 </script>

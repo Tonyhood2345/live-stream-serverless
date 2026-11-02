@@ -1,3 +1,4 @@
+// [Aggiornato Basi Musicali Drive 1793623463.07158]
 // ═══════════════════════════════════════════════════════════════════════
 // 📁 MODULO 08: AUTO-VISION, GALLERIA FOTO & GOOGLE DRIVE
 // Gestisce sincronizzazione immagini, salvataggio testi Colonna F e cartelle Drive
@@ -1402,6 +1403,267 @@ function avviaGenerazioneReelDaGalleria(payload) {
       return {
         success: false,
         error: 'Errore GitHub (' + code + '): ' + res.getContentText()
+      };
+    }
+  } catch(e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🎬 GESTIONE VIDEO SENZA TESTO DRIVE & FRASI PRESTIGIO PER LE STORIE
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * 📁 Crea o recupera la cartella Google Drive per i VIDEO SENZA TESTO
+ * 'Video_Senza_Testo_Storie': dove Antonio carica i video grezzi da usare per le Storie.
+ */
+function getOrCreateCartellaVideoSenzaTestoDrive() {
+  try {
+    var folderName = 'Video_Senza_Testo_Storie';
+    var master = null;
+    if (typeof DRIVE_MASTER_FOLDER_ID !== 'undefined' && DRIVE_MASTER_FOLDER_ID) {
+      try { master = DriveApp.getFolderById(DRIVE_MASTER_FOLDER_ID); } catch(eM) {}
+    }
+    if (!master && typeof CONFIG !== 'undefined' && CONFIG.DRIVE_ROOT_FOLDER_ID) {
+      try {
+        var rootFolders = DriveApp.getFoldersByName(CONFIG.DRIVE_ROOT_FOLDER_ID);
+        if (rootFolders.hasNext()) master = rootFolders.next();
+      } catch(eR) {}
+    }
+    var folder = null;
+    if (master) {
+      var sub = master.getFoldersByName(folderName);
+      folder = sub.hasNext() ? sub.next() : master.createFolder(folderName);
+    } else {
+      var gen = DriveApp.getFoldersByName(folderName);
+      folder = gen.hasNext() ? gen.next() : DriveApp.createFolder(folderName);
+    }
+    try { folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eSh) {}
+
+    var videos = [];
+    try {
+      var files = folder.getFiles();
+      while (files.hasNext()) {
+        var fi = files.next();
+        var n = fi.getName();
+        if (fi.getMimeType().indexOf('video') !== -1 || n.match(/\.(mp4|mov|m4v)$/i)) {
+          videos.push({ id: fi.getId(), name: n, size: (fi.getSize()/(1024*1024)).toFixed(2) + ' MB', url: fi.getUrl() });
+        }
+      }
+    } catch(eV) {}
+
+    return { success: true, id: folder.getId(), name: folderName, url: folder.getUrl(), videos: videos };
+  } catch(e) {
+    return { success: false, error: e.toString(), url: 'https://drive.google.com', videos: [] };
+  }
+}
+
+/**
+ * 📜 Crea o sincronizza la scheda 'FRASI_PRESTIGIO_STORIE' in Google Sheets
+ * Popola l'archivio delle frasi con testo rigorosamente in Colonna F e chiusura '— Immobiliare Giancani'
+ */
+function creaOSincronizzaSchedaFrasiPrestigio() {
+  try {
+    var ss = getSpreadsheetSicuro();
+    if (!ss) return { success: false, error: 'Spreadsheet non accessibile' };
+
+    var sheetName = 'FRASI_PRESTIGIO_STORIE';
+    var sheet = ss.getSheetByName(sheetName);
+    var isNew = false;
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      isNew = true;
+    }
+
+    if (isNew || sheet.getLastRow() < 2) {
+      sheet.clear();
+      sheet.appendRow([
+        'ID',
+        'Categoria',
+        'Titolo_Gancio',
+        'Frase_Slogan',
+        'Focus_Prestigio',
+        'Colonna_F_Testo_Elaborazione',
+        'Stato'
+      ]);
+      sheet.getRange('A1:G1').setFontWeight('bold').setBackground('#c9a35e').setFontColor('#ffffff');
+
+      var frasiIniziali = [
+        ['1', 'Prestigio & Valore', "L'Arte dell'Abitare", 'Il vero lusso è lo spazio la luce e la quiete in cui scegli di vivere.', 'Esclusività e Silenzio', "Il vero lusso non è ciò che mostri, ma lo spazio, la luce e la quiete in cui scegli di vivere. La tua dimora ideale inizia da qui. — Immobiliare Giancani", 'Attivo'],
+        ['2', 'Prestigio & Valore', 'Oltre le Semplici Mura', 'Ogni casa ha un anima ma solo chi sa guardare oltre sa valorizzarne il pregio.', 'Consulenza Sartoriale', "Ogni casa ha un'anima, ma solo chi sa guardare oltre sa valorizzarne il reale pregio. Esperienza e riservatezza al tuo servizio. — Immobiliare Giancani", 'Attivo'],
+        ['3', 'Curiosità & Emozione', 'La Sensazione di Casa', 'Ti sei mai chiesto perché certe case ti fanno sentire a casa al primo istante?', 'Intrigo Emozionale', "Ti sei mai chiesto perché certe case ti fanno sentire a casa fin dal primo istante in cui varchi la soglia? Scopri la magia dei dettagli. — Immobiliare Giancani", 'Attivo'],
+        ['4', 'Prestigio & Valore', 'Patrimonio di Famiglia', 'Acquistare un immobile di pregio è la costruzione solida del tuo patrimonio.', 'Solidità Finanziaria', "Acquistare un immobile di valore non è una spesa, è la costruzione solida del tuo patrimonio di famiglia. Guidiamo le tue scelte con autorevolezza. — Immobiliare Giancani", 'Attivo'],
+        ['5', 'Stimolo & Ambizione', 'Il Tuo Prossimo Livello', 'Meriti uno spazio che rifletta davvero i tuoi traguardi.', 'Upgrade di Vita', "Non rimandare il tuo sogno: meriti uno spazio che rifletta davvero i tuoi traguardi. Sali di livello e scegli l'eccellenza. — Immobiliare Giancani", 'Attivo'],
+        ['6', 'Curiosità & Emozione', 'Luce & Armonia', 'Sai qual è la differenza tra abitare e vivere bene?', 'Benessere Quotidiano', "Sai qual è la differenza tra abitare e vivere bene? La risposta è in questa luce e nella perfetta armonia degli spazi. Lasciati ispirare. — Immobiliare Giancani", 'Attivo'],
+        ['7', 'Sicurezza & Garanzia', 'Tranquillità Assoluta', 'La serenità di acquistare senza alcuna sorpresa non ha prezzo.', 'Garanzia e Tutela', "La serenità di acquistare senza alcuna sorpresa non ha prezzo. Verifichiamo ogni dettaglio prima, durante e dopo il rogito. — Immobiliare Giancani", 'Attivo'],
+        ['8', 'Prestigio & Valore', 'Stile Senza Tempo', 'L eleganza non è farsi notare ma farsi ricordare.', 'Eleganza Architettonica', "L'eleganza autentica non è farsi notare, ma farsi ricordare. Trova la dimora che esprime al meglio la tua personalità. — Immobiliare Giancani", 'Attivo'],
+        ['9', 'Curiosità & Emozione', 'Il Tuo Nuovo Capitolo', 'E se la casa che hai sempre sognato fosse molto più vicina di quanto immagini?', 'Opportunità Riservata', "E se la casa che hai sempre sognato fosse molto più vicina di quanto immagini? Il tuo prossimo capitolo comincia da qui. — Immobiliare Giancani", 'Attivo'],
+        ['10', 'Stimolo & Ambizione', 'Spazi da Vivere', 'Immagina di svegliarti ogni giorno dove libertà e vista si fondono.', 'Lifestyle Esclusivo', "Immagina di svegliarti ogni giorno in un ambiente dove libertà, vista e comfort si fondono. Trasforma la tua immaginazione in realtà. — Immobiliare Giancani", 'Attivo'],
+        ['11', 'Sicurezza & Garanzia', 'Zero Imprevisti', 'Vendere o acquistare casa con un metodo certificato.', 'Professionalità Integrale', "Vendere o acquistare casa con un metodo collaudato significa sicurezza totale e zero imprevisti. Scegli la certezza di professionisti dedicati. — Immobiliare Giancani", 'Attivo'],
+        ['12', 'Prestigio & Valore', 'Architetture d Autore', 'Non semplici immobili ma architetture pensate per chi pretende il massimo.', 'Qualità Costruttiva', "Non selezioniamo semplici immobili: scegliamo architetture d'eccellenza per chi pretende il massimo dallo stile di vita. — Immobiliare Giancani", 'Attivo'],
+        ['13', 'Curiosità & Emozione', 'I Dettagli Invisibili', 'I dettagli apparentemente invisibili creano la vera perfezione.', 'Cura del Particolare', "I dettagli apparentemente invisibili sono quelli che creano la vera perfezione. Guarda con occhi nuovi lo spazio che ti meriti. — Immobiliare Giancani", 'Attivo'],
+        ['14', 'Stimolo & Ambizione', 'La Felicità ha un Indirizzo', 'La felicità cresce negli spazi giusti e nei luoghi che ispirano.', 'Futuro e Famiglia', "La felicità ha un indirizzo. Inizia a scrivere la tua nuova storia circondato dal valore, dalla bellezza e dalla sicurezza. — Immobiliare Giancani", 'Attivo'],
+        ['15', 'Prestigio & Valore', 'Consulenza Sartoriale', 'Ogni compravendita richiede precisione sartoriale e riservatezza.', 'Metodo Personalizzato', "Come un abito di alta sartoria, ogni compravendita immobiliare richiede precisione millimetrica e riservatezza. Affidati all'eccellenza. — Immobiliare Giancani", 'Attivo']
+      ];
+
+      for (var i = 0; i < frasiIniziali.length; i++) {
+        sheet.appendRow(frasiIniziali[i]);
+      }
+    }
+
+    var sheetUrl = ss.getUrl() + '#gid=' + sheet.getSheetId();
+    return { success: true, sheetUrl: sheetUrl, totalFrasi: sheet.getLastRow() - 1 };
+  } catch(e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+/**
+ * ➕ Aggiunge una nuova frase di prestigio alla scheda 'FRASI_PRESTIGIO_STORIE'
+ */
+function aggiungiNuovaFrasePrestigio(categoria, titolo, fraseSlogan, focus) {
+  try {
+    var ss = getSpreadsheetSicuro();
+    if (!ss) return { success: false, error: 'Spreadsheet non accessibile' };
+
+    var sheet = ss.getSheetByName('FRASI_PRESTIGIO_STORIE');
+    if (!sheet) {
+      creaOSincronizzaSchedaFrasiPrestigio();
+      sheet = ss.getSheetByName('FRASI_PRESTIGIO_STORIE');
+    }
+
+    var nextId = sheet.getLastRow();
+    var cat = categoria || 'Prestigio & Valore';
+    var tit = titolo || 'Eccellenza Quotidiana';
+    var slog = fraseSlogan || '';
+    var foc = focus || 'Autorevolezza';
+
+    var testoColF = slog;
+    testoColF = testoColF.replace(/\b(mq|mq\.|m\^2|m²|MQ)\b/gi, 'metri quadri');
+    if (testoColF.indexOf('— Immobiliare Giancani') === -1) {
+      testoColF = testoColF.trim() + ' — Immobiliare Giancani';
+    }
+
+    sheet.appendRow([
+      String(nextId),
+      cat,
+      tit,
+      slog,
+      foc,
+      testoColF,
+      'Attivo'
+    ]);
+
+    return { success: true, id: nextId, colonnaF: testoColF };
+  } catch(e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+
+/**
+ * 📖 Recupera l'elenco completo delle Frasi di Prestigio dalla scheda 'FRASI_PRESTIGIO_STORIE'
+ * Estrae rigorosamente i testi dalla Colonna F per Studio Galleria
+ */
+function getElencoFrasiPrestigio() {
+  try {
+    var ss = getSpreadsheetSicuro();
+    if (!ss) return { success: false, error: 'Spreadsheet non accessibile' };
+
+    var sheet = ss.getSheetByName('FRASI_PRESTIGIO_STORIE');
+    if (!sheet) {
+      creaOSincronizzaSchedaFrasiPrestigio();
+      sheet = ss.getSheetByName('FRASI_PRESTIGIO_STORIE');
+    }
+
+    var numRighe = sheet.getLastRow();
+    if (numRighe < 2) {
+      creaOSincronizzaSchedaFrasiPrestigio();
+      numRighe = sheet.getLastRow();
+    }
+
+    var data = sheet.getRange(2, 1, numRighe - 1, 7).getValues();
+    var frasi = [];
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      if (r[5] && String(r[5]).trim()) { // Colonna F
+        frasi.push({
+          id: String(r[0] || (i + 1)),
+          categoria: String(r[1] || 'Prestigio & Valore'),
+          titolo: String(r[2] || "L'Arte dell'Abitare"),
+          fraseSlogan: String(r[3] || ''),
+          focus: String(r[4] || 'Eccellenza'),
+          colonnaF: String(r[5] || ''),
+          stato: String(r[6] || 'Attivo')
+        });
+      }
+    }
+
+    var sheetUrl = ss.getUrl() + '#gid=' + sheet.getSheetId();
+    return { success: true, sheetUrl: sheetUrl, frasi: frasi, total: frasi.length };
+  } catch(e) {
+    return { success: false, error: e.toString(), frasi: [] };
+  }
+}
+
+/**
+ * 🚀 Invia il dispatch a GitHub Actions per generare la Storia 9:16 da video Drive
+ * Flusso: Video senza testo + Logo Giancani + Card scura 60% con Frase Prestigio Colonna F + Musica
+ */
+function avviaGenerazioneStoriaDaGalleria(payload) {
+  try {
+    var videoDrive = (payload && payload.videoDrive) ? String(payload.videoDrive).trim() : '';
+    var fraseId = (payload && payload.fraseId) ? String(payload.fraseId).trim() : '';
+    var customPhrase = (payload && payload.customPhrase) ? String(payload.customPhrase).trim() : '';
+    var musicaDrive = (payload && payload.musicaDrive) ? String(payload.musicaDrive).trim() : '';
+    var emailDest = (payload && payload.email) ? payload.email : ((typeof CONFIG !== 'undefined' && CONFIG.PRIMARY_EMAIL) ? CONFIG.PRIMARY_EMAIL : 'giancaniimmobiliare@gmail.com');
+
+    var ghUser = (typeof CONFIG !== 'undefined' && CONFIG.GITHUB_USER) ? CONFIG.GITHUB_USER : 'Tonyhood2345';
+    var ghRepo = 'live-stream-serverless';
+    var ghToken = (typeof CONFIG !== 'undefined' && CONFIG.GITHUB_TOKEN) ? CONFIG.GITHUB_TOKEN : '';
+
+    if (!ghToken) {
+      return { success: false, error: 'Token GitHub non configurato in CONFIG.GITHUB_TOKEN' };
+    }
+
+    var dispatchUrl = 'https://api.github.com/repos/' + ghUser + '/' + ghRepo + '/actions/workflows/genera_storia_drive.yml/dispatches';
+    var reqBody = {
+      ref: 'main',
+      inputs: {
+        video_drive: videoDrive,
+        frase_id: fraseId,
+        custom_phrase: customPhrase,
+        musica_drive: musicaDrive,
+        email_destinatario: emailDest
+      }
+    };
+
+    var res = UrlFetchApp.fetch(dispatchUrl, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        'Authorization': 'token ' + ghToken,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'ImmobiliareGiancani-AppScript'
+      },
+      payload: JSON.stringify(reqBody),
+      muteHttpExceptions: true
+    });
+
+    var code = res.getResponseCode();
+    if (code === 204 || code === 200 || code === 201) {
+      return {
+        success: true,
+        code: code,
+        msg: 'Workflow Generazione Storia avviato su GitHub Actions con successo! Il video 9:16 con Logo e Frase verrà inviato via email a ' + emailDest
+      };
+    } else {
+      return {
+        success: false,
+        code: code,
+        error: 'Errore avvio GitHub Actions (' + code + '): ' + res.getContentText()
       };
     }
   } catch(e) {

@@ -81,7 +81,8 @@ def carica_frasi_prestigio(sheet_id=DEFAULT_SHEET_ID):
         if res.status_code == 200 and len(res.text) > 100:
             reader = csv.reader(io.StringIO(res.text))
             rows = list(reader)
-            if len(rows) > 1:
+            # Verifica che sia la scheda attesa (intestazione contiene Categoria e Colonna F)
+            if len(rows) > 1 and len(rows[0]) >= 6 and 'Categoria' in rows[0][1]:
                 for r in rows[1:]:
                     if len(r) > 5 and r[5].strip():
                         frasi.append({
@@ -214,17 +215,17 @@ def disegna_testo_centrato(draw, testo, font, cy, cx, colore=(255, 255, 255, 255
 
 def genera_overlay_storia_drive(frase_item, output_path):
     """
-    Costruisce l'overlay grafico 9:16 (1080x1920) per Storie:
-    - In Alto: Logo Immobiliare Giancani protetto su backdrop semi-trasparente
-    - Al Centro: Ampio spazio video panoramico libero
+    Costruisce gli overlay grafici 9:16 (1080x1920) per Storie:
+    - In Alto: Logo Immobiliare Giancani protetto su backdrop semi-trasparente (salvato come _logo.png)
     - In Basso: Box luxury scuro (60% opacità) con cornice oro, categoria, titolo elegante,
-                frase di stimolo/curiosità e chiusura — Immobiliare Giancani
+                frase di stimolo/curiosità e chiusura — Immobiliare Giancani (salvato come _card.png)
+    Ritorna: tupla (path_logo, path_card) per consentire l'animazione indipendente della slide.
     """
     W, H = 1080, 1920
-    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     cx = W // 2
 
     # ── 1. LOGO IN ALTO (Y: 120 - 240) ──
+    overlay_logo = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     if os.path.exists(LOGO_PATH):
         try:
             logo = Image.open(LOGO_PATH).convert("RGBA")
@@ -243,12 +244,16 @@ def genera_overlay_storia_drive(frase_item, output_path):
 
             lx = (W - target_w) // 2
             ly = 130
-            overlay.paste(logo_bg, (lx - pad_x, ly - pad_y), logo_bg)
-            overlay.paste(logo_resized, (lx, ly), logo_resized)
+            overlay_logo.paste(logo_bg, (lx - pad_x, ly - pad_y), logo_bg)
+            overlay_logo.paste(logo_resized, (lx, ly), logo_resized)
         except Exception as eLogo:
             print(f"⚠️ Errore rendering logo: {eLogo}")
 
+    logo_out_path = output_path.replace(".png", "_logo.png")
+    overlay_logo.save(logo_out_path, "PNG")
+
     # ── 2. BOX SCURO PRESTIGIO & CURIOSITÀ IN BASSO (Y: 1240 - 1760) ──
+    overlay_card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     card_w = 940
     card_h = 510
     card_x = (W - card_w) // 2
@@ -264,9 +269,9 @@ def genera_overlay_storia_drive(frase_item, output_path):
         outline=(212, 175, 55, 210),
         width=3
     )
-    overlay.paste(card, (card_x, card_y), card)
+    overlay_card.paste(card, (card_x, card_y), card)
 
-    draw = ImageDraw.Draw(overlay)
+    draw = ImageDraw.Draw(overlay_card)
 
     font_badge = get_font("Cinzel-Bold.ttf", 23, fallback_bold=True)
     font_titolo = get_font("PlayfairDisplay-Bold.ttf", 36, fallback_bold=True)
@@ -300,9 +305,17 @@ def genera_overlay_storia_drive(frase_item, output_path):
     draw.line([(cx - 110, curr_y - 12), (cx + 110, curr_y - 12)], fill=(212, 175, 55, 160), width=1)
     disegna_testo_centrato(draw, "— IMMOBILIARE GIANCANI —", font_brand, curr_y, cx, colore=(212, 175, 55, 255))
 
-    overlay.save(output_path, "PNG")
-    print(f"🎨 Overlay Storia generato: {output_path}")
-    return output_path
+    card_out_path = output_path.replace(".png", "_card.png")
+    overlay_card.save(card_out_path, "PNG")
+
+    # Salva anche immagine combinata per retrocompatibilità
+    combined = Image.alpha_composite(overlay_logo, overlay_card)
+    combined.save(output_path, "PNG")
+
+    print(f"🎨 Overlay Storia generati con successo:")
+    print(f"   • Logo: {logo_out_path}")
+    print(f"   • Card Animata: {card_out_path}")
+    return logo_out_path, card_out_path
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -324,26 +337,43 @@ def ottieni_durata_video(video_path):
     return max(4.0, dur)
 
 
-def monta_video_storia(video_input, overlay_png, music_input, output_mp4):
+def monta_video_storia(video_input, overlay_input, music_input, output_mp4):
     durata = ottieni_durata_video(video_input)
     print(f"🎬 Montaggio Storia Video (Durata: {durata:.2f}s, Formato 9:16)...")
 
-    filtri = [
-        f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30[vbase];"
-        f"[vbase][1:v]overlay=0:0[vout]"
-    ]
-    
-    cmd = [
-        FFMPEG_EXE, "-y",
-        "-i", video_input,
-        "-i", overlay_png
-    ]
+    if isinstance(overlay_input, (tuple, list)) and len(overlay_input) >= 2:
+        logo_png, card_png = overlay_input[0], overlay_input[1]
+        card_slide_expr = "x=0:y='if(lte(t, 0.85), 550 - 550*sin(t*3.1415926/(2*0.85)), 0)'"
+        filtri = [
+            f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30[vbase];"
+            f"[vbase][1:v]overlay=0:0[vwithlogo];"
+            f"[vwithlogo][2:v]overlay={card_slide_expr}[vout]"
+        ]
+        cmd = [
+            FFMPEG_EXE, "-y",
+            "-i", video_input,
+            "-i", logo_png,
+            "-i", card_png
+        ]
+        music_input_idx = 3
+    else:
+        overlay_png = overlay_input[0] if isinstance(overlay_input, (tuple, list)) else overlay_input
+        filtri = [
+            f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30[vbase];"
+            f"[vbase][1:v]overlay=0:0[vout]"
+        ]
+        cmd = [
+            FFMPEG_EXE, "-y",
+            "-i", video_input,
+            "-i", overlay_png
+        ]
+        music_input_idx = 2
 
     fade_start = max(0, durata - 2.0)
     if music_input and os.path.exists(music_input):
         cmd.extend(["-stream_loop", "-1", "-i", music_input])
         filtri.append(
-            f"[2:a]atrim=0:{durata},afade=t=out:st={fade_start}:d=2.0,volume=0.38[aout]"
+            f"[{music_input_idx}:a]atrim=0:{durata},afade=t=out:st={fade_start}:d=2.0,volume=0.38[aout]"
         )
         map_a = ["[aout]"]
     else:
@@ -471,14 +501,14 @@ def esegui_flusso_storia(video_drive=None, phrase_id=None, music_drive=None, ema
     # 3. Overlay Grafico (Logo + Box Prestigio)
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     overlay_path = os.path.join(TEMP_DIR, f"overlay_storia_{ts}.png")
-    genera_overlay_storia_drive(frase_scelta, overlay_path)
+    overlay_res = genera_overlay_storia_drive(frase_scelta, overlay_path)
 
     # 4. Rendering Video
     if not output_path:
         tit_clean = re.sub(r'[^a-zA-Z0-9_-]', '_', frase_scelta.get('titolo', 'storia').lower())[:25]
         output_path = os.path.join(OUTPUT_DIR, f"storia_{tit_clean}_{ts}.mp4")
 
-    video_finale = monta_video_storia(video_file, overlay_path, musica_file, output_path)
+    video_finale = monta_video_storia(video_file, overlay_res, musica_file, output_path)
 
     # 5. Invio Email
     invia_email_storia(email_dest, frase_scelta, video_finale)

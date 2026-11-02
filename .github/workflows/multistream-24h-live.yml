@@ -1,4 +1,4 @@
-﻿name: 🔴 Multistream 24H Infinito — Facebook Live 24H & YouTube Live 24H
+name: 🔴 Multistream 24H Infinito — Facebook Live 24H & YouTube Live 24H
 
 on:
   schedule:
@@ -48,13 +48,17 @@ jobs:
       - name: Setup Headless Environment, Audio Engine and Chrome
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core
+          sudo apt-get install -y ffmpeg xvfb openbox pulseaudio pulseaudio-utils alsa-utils jq curl fonts-dejavu-core espeak-ng speech-dispatcher libespeak-ng1
+          python3 -m pip install --no-cache-dir edge-tts requests yt-dlp || true
           
           # Installazione Google Chrome stabile
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+          if ! command -v google-chrome &> /dev/null; then
+            sudo install -d -m 0755 /etc/apt/keyrings
+            curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg
+            echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+            sudo apt-get update
+            sudo apt-get install -y google-chrome-stable
+          fi
           google-chrome --version
           ffmpeg -version | head -1
 
@@ -79,6 +83,14 @@ jobs:
               type pulse
           }
           EOF
+
+          # Avvio Microservizio Locale Edge TTS per DarIA e DarIO (Porta 5050)
+          if [ -f scripts/tts_server.py ]; then
+            echo "🎙️ Avvio microservizio Edge TTS locale su porta 5050..."
+            python3 scripts/tts_server.py &
+            sleep 3
+            curl -s http://127.0.0.1:5050/health && echo " -> TTS Server OK!" || echo " -> Avviso TTS Server"
+          fi
 
           # Avvio Xvfb a 1920x1080
           Xvfb :99 -screen 0 1920x1080x24 &
@@ -187,7 +199,7 @@ jobs:
 
           VIDEO_URL="${{ github.event.inputs.video_url }}"
           if [ -z "$VIDEO_URL" ]; then
-            VIDEO_URL="https://tonyhood2345.github.io/live-stream-serverless/?formato=orizzontale"
+            VIDEO_URL="https://tonyhood2345.github.io/live-stream-serverless/orizzontale.html"
           fi
 
           echo "🚀 Avvio Chrome per Diretta 24H Multistream su: $VIDEO_URL (Scala: $SCALE)"
@@ -232,8 +244,7 @@ jobs:
             echo "📢 [STAFFETTA 24H] Innesco del prossimo runner Multistream per garantire continuità 24/7..."
             GH_TOKEN="${{ secrets.LIVE_GITHUB_TOKEN }}"
             if [ -z "$GH_TOKEN" ]; then
-              GH_TOKEN="${{ secrets.LIVE_GITHUB_TOKEN }}"
-            if [ -z "$GH_TOKEN" ]; then GH_TOKEN="${{ github.token }}"; fi
+              GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
             fi
             curl -s -X POST \
               -H "Authorization: token $GH_TOKEN" \
@@ -255,6 +266,8 @@ jobs:
 
           # 2. FACEBOOK LIVE 24H (DINAMICA VIA GRAPH API)
           echo "📘 [Facebook Live 24H] Generazione automatica sessione Live via Meta Graph API..."
+          export FB_PAGE_TOKEN="EAAZAH7q8wRZAEBS3ZAfEIpFIcXPJ87gDZAY8QjpGvBSjgC44c22JVeZAiDxMOM85JRMKM2T1hLgekBCkT0z5geNsb3KxAhMr7W7xlOGVKJsdKV9rZCEKLupIy1uNaDkVZAXmFtn0stiB212odWJ2ZCZBtlWkZAzy5wmPfKyZC3g27g6RXs0FK2GiYc5MeqaZCZBuoYjIyreTZAxwOqtfESifVw"
+          export FB_PAGE_ID="234931856561526"
           python3 scripts/crea_diretta_facebook_dinamica.py || true
 
           FB_URL=""

@@ -727,10 +727,62 @@ def esegui_singolo_ciclo(stato):
     stato["ciclo_progressivo"] = ciclo
     salva_stato(stato)
 
+    # Watchdog di sicurezza: innesca la diretta serale alle ore 18:55 se non ancora partita
+    verifica_e_innesca_diretta_serale(stato)
+
     # Verifica se è scoccata la quarta ora per il riassunto unico su Telegram
     verifica_e_invia_report_4ore(stato)
 
     log(f"✅ Ciclo #{ciclo} completato con successo. Prossimo ciclo ({stato['prossimo_tipo']}) tra 15 minuti.")
+
+
+def verifica_e_innesca_diretta_serale(stato):
+    """
+    Controllo di Sicurezza Diretta Facebook Ore 19:00:
+    Tra le 18:45 e le 19:30 ora di Roma, se la diretta serale non è ancora stata
+    innescata oggi, invia una chiamata workflow_dispatch a live-stream.yml.
+    Questo elimina al 100% i ritardi delle code cron dei server GitHub Actions.
+    """
+    try:
+        now_it = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
+        try:
+            import zoneinfo
+            now_it = datetime.datetime.now(zoneinfo.ZoneInfo("Europe/Rome"))
+        except Exception:
+            pass
+
+        ora = now_it.hour
+        minuto = now_it.minute
+        oggi_str = now_it.strftime("%Y-%m-%d")
+
+        # Finestra di innesco serale: 18:45 - 19:30 ora di Roma
+        in_finestra = (ora == 18 and minuto >= 45) or (ora == 19 and minuto <= 30)
+        if not in_finestra:
+            return
+
+        ultimo_innesco = stato.get("ultimo_innesco_diretta_19", "")
+        if ultimo_innesco == oggi_str:
+            log(f"📺 [Watchdog Live] Diretta serale per la data {oggi_str} già innescata regolarmente.")
+            return
+
+        gh_token = os.environ.get("LIVE_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN")
+        repo = "Tonyhood2345/live-stream-serverless"
+        url = f"https://api.github.com/repos/{repo}/actions/workflows/live-stream.yml/dispatches"
+        headers = {
+            "Authorization": f"token {gh_token}",
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "Giancani-Orchestrator"
+        }
+        log(f"🚨 [Watchdog Live] Ore {ora:02d}:{minuto:02d} Roma: innesco automatico immediato Diretta Serale live-stream.yml...")
+        resp = requests.post(url, headers=headers, json={"ref": "main"}, timeout=15, verify=False)
+        if resp.status_code in (204, 201, 200):
+            log(f"✅ [Watchdog Live] Diretta Serale innescata con successo (status {resp.status_code})! — Immobiliare Giancani")
+            stato["ultimo_innesco_diretta_19"] = oggi_str
+            salva_stato(stato)
+        else:
+            log(f"⚠️ [Watchdog Live] Risposta API dispatch: {resp.status_code} - {resp.text[:120]}")
+    except Exception as e:
+        log(f"⚠️ [Watchdog Live] Errore verifica diretta serale: {e}")
 
 
 def main():

@@ -1,0 +1,378 @@
+        <!-- 🖼️ TAB 5: STUDIO GALLERIA AVANZATA & UPLOAD MOBILE -->
+        <div id="tab-galleria" class="tab-content">
+          <div class="tab-header-bar">
+            <div class="section-title">🖼️ Studio Galleria & Upload Drive</div>
+            <button class="btn-tutorial-trigger" onclick="apriTutorialTab('tab-galleria')">❓ Tutorial & Guida</button>
+          </div>
+          
+          <!-- BOX CARICAMENTO RAPIDO DA CELLULARE -->
+          <div class="upload-box-card">
+            <div class="section-title" style="color: var(--gold-bright);">📤 CARICAMENTO RAPIDO FOTO / VIDEO DA CELLULARE <button type="button" class="btn-help-mini" onclick="toggleMiniTutorial(this, 'tut-upload-cellulare')" title="Guida & Mini Tutorial: 📤 Caricamento Rapido da Cellulare">❓</button></div>
+<div id="tut-upload-cellulare" class="mini-tutorial-box">
+  <h4>💡 Guida Rapida: 📤 Caricamento Rapido da Cellulare</h4>
+  <div class="tut-serve"><strong>🎯 A cosa serve:</strong> Carica foto, video o scatti 360° direttamente dallo smartphone: il sistema crea la cartella su Drive, applica il watermark con il logo e genera i testi AI.</div>
+  <div class="tut-steps">
+    <strong>🛠️ Come funziona (Mini Tutorial):</strong>
+    <ol>
+      <li>Digita il nome dell'immobile (es. Casa Centro Storico).</li><li>Seleziona le foto dal rullino del telefono e tocca <em>'Carica & Elabora con AI'</em>.</li><li>I file verranno caricati su Drive con watermark e inseriti automaticamente nel foglio Google.</li>
+    </ol>
+  </div>
+  <div class="tut-close-btn" onclick="toggleMiniTutorial(null, 'tut-upload-cellulare')">✖️ Chiudi Guida</div>
+</div>
+            <p style="font-size: 11px; color: var(--sand); margin-bottom: 12px;">
+              Crea una nuova cartella su Google Drive, applica il watermark con il logo e genera automaticamente i testi parlato con la voce IA!
+            </p>
+
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>Nome Cartella / Proprietà (es. "casa poggio"):</label>
+                <input type="text" id="upload-folder-name" placeholder="es. Casa Poggio" required>
+              </div>
+
+              <div class="form-group full">
+                <label>Seleziona Foto, Video o 360° dallo Smartphone:</label>
+                <input type="file" id="upload-file-input" multiple accept="image/*,video/*" style="padding: 8px; background: rgba(0,0,0,0.4);" onchange="gestisciAnteprimaUploadFiles(this)">
+              </div>
+            </div>
+
+            <!-- Elenco dinamico note per video -->
+            <div id="upload-video-notes-container" style="margin-top: 12px; display: none;"></div>
+
+            <div style="margin-top: 14px;">
+              <button id="btn-avvia-upload" onclick="avviaUploadProprietaEFile()" class="btn-gold" style="background: linear-gradient(135deg, var(--gold-bright), var(--gold-dark)); color: #120c04; font-weight: 800; padding: 12px; width: 100%;">
+                🚀 CARICA SU DRIVE & RIGENERA REGIA LIVE
+              </button>
+            </div>
+            <div id="upload-status-msg" style="font-size: 11px; color: var(--gold-bright); text-align: center; margin-top: 8px; display: none;"></div>
+
+            <!-- 📊 BARRA DI AVANZAMENTO & REPORT FILE UPLOAD -->
+            <div id="upload-progress-wrapper" style="margin-top: 14px; background: rgba(0,0,0,0.65); border: 1px solid var(--gold); border-radius: 10px; padding: 14px; display: none;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span id="upload-progress-title" style="font-size: 13px; font-weight: 700; color: var(--gold-bright);">⏳ Caricamento File in corso...</span>
+                <span id="upload-progress-pct" style="font-size: 14px; font-weight: 900; color: #2ecc71;">0%</span>
+              </div>
+
+              <!-- Barra Grafica -->
+              <div style="width: 100%; height: 14px; background: rgba(255,255,255,0.1); border-radius: 7px; overflow: hidden; position: relative; border: 1px solid rgba(201,163,94,0.4);">
+                <div id="upload-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #f39c12, #2ecc71); transition: width 0.3s ease; box-shadow: 0 0 10px rgba(46,204,113,0.5);"></div>
+              </div>
+
+              <!-- Dettaglio Testuale Stato Corrente -->
+              <div id="upload-progress-details" style="font-size: 11px; color: var(--sand); margin-top: 6px; display: flex; justify-content: space-between;">
+                <span id="upload-progress-step">Preparazione file...</span>
+                <span id="upload-progress-count" style="font-weight: 700; color: var(--gold-bright);">0 di 0</span>
+              </div>
+
+              <!-- Elenco Dettagliato Singoli File (Successo / Errore) -->
+              <div id="upload-files-report-box" style="margin-top: 10px; max-height: 190px; overflow-y: auto; background: rgba(0,0,0,0.5); border-radius: 6px; padding: 8px; font-size: 11px; border: 1px solid rgba(255,255,255,0.08);">
+                <!-- Popolato dinamicamente durante l'upload -->
+              </div>
+
+              <!-- Riepilogo Finale e Notifica Errori -->
+              <div id="upload-final-summary" style="margin-top: 10px; display: none; padding: 10px; border-radius: 8px; font-size: 12px; text-align: center;"></div>
+            </div>
+          </div>
+
+          <!-- 🎵 BOX CARTELLA BASI MUSICALI PROFESSIONALI DRIVE -->
+          <div class="upload-box-card" style="background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(15,20,30,0.85)); border: 1.5px solid rgba(212,175,55,0.45); border-radius: 12px; padding: 14px 18px; margin-top: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div class="section-title" style="color: var(--gold-bright); margin: 0; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <span>🎵</span> BASI MUSICALI PROFESSIONALI (GOOGLE DRIVE)
+              </div>
+              <span id="badge-basi-musicali-count" style="font-size: 11px; background: rgba(212,175,55,0.25); border: 1px solid var(--gold); color: #fff; padding: 3px 10px; border-radius: 12px; font-weight: 800;">
+                ⏳ Scansione brani...
+              </span>
+            </div>
+            <p style="font-size: 11.5px; color: var(--sand); margin-top: 6px; margin-bottom: 12px; line-height: 1.4;">
+              Cartella Google Drive dedicata dove caricare i tuoi file MP3/audio di alta qualità per la colonna sonora dei video <strong>Reel 9:16</strong> e per la <strong>Regia Live</strong>.
+            </p>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <a id="link-cartella-basi-musicali-drive" href="https://drive.google.com" target="_blank" class="btn-gold" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; font-size: 11.5px; font-weight: 800; background: linear-gradient(135deg, #f39c12, #e67e22); color: #fff; border-radius: 6px; box-shadow: 0 2px 10px rgba(243,156,18,0.3);">
+                📂 APRI CARTELLA BASI MUSICALI SU DRIVE ↗
+              </a>
+              <button type="button" onclick="caricaBasiMusicaliStudioGalleria()" style="font-size: 11px; padding: 8px 12px; border: 1px solid var(--gold); background: rgba(0,0,0,0.5); color: var(--gold-bright); border-radius: 6px; cursor: pointer; font-weight: 700;">
+                🔄 Aggiorna Brani
+              </button>
+              <div style="flex: 1; min-width: 220px;">
+                <select id="select-basi-musicali-galleria" style="width: 100%; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid rgba(212,175,55,0.4); padding: 8px; border-radius: 6px; font-size: 11.5px;">
+                  <option value="">⏳ Caricamento brani da Drive...</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- BOX SINCRONIZZAZIONE CARTELLA DRIVE ESISTENTE -->
+          <div class="upload-box-card" style="background: rgba(30, 144, 255, 0.08); border-color: rgba(30, 144, 255, 0.3); margin-top: 16px;">
+            <div class="section-title" style="color: #70a1ff;">📂 SINCRONIZZA FOTO & VIDEO DA CARTELLA DRIVE ESISTENTE (1-TAP DA CELLULARE) <button type="button" class="btn-help-mini" onclick="toggleMiniTutorial(this, 'tut-sync-drive')" title="Guida & Mini Tutorial: 📂 Sincronizzazione da Cartella Drive">❓</button></div>
+<div id="tut-sync-drive" class="mini-tutorial-box">
+  <h4>💡 Guida Rapida: 📂 Sincronizzazione da Cartella Drive</h4>
+  <div class="tut-serve"><strong>🎯 A cosa serve:</strong> Importa in un colpo solo tutte le foto presenti in una cartella Google Drive già esistente creando la scheda immobile nel foglio.</div>
+  <div class="tut-steps">
+    <strong>🛠️ Come funziona (Mini Tutorial):</strong>
+    <ol>
+      <li>Incolla il link o l'ID della cartella Google Drive contenente le foto.</li><li>Clicca <em>'Sincronizza Cartella'</em>: il sistema importerà tutte le immagini assegnando le stanze in automatico.</li>
+    </ol>
+  </div>
+  <div class="tut-close-btn" onclick="toggleMiniTutorial(null, 'tut-sync-drive')">✖️ Chiudi Guida</div>
+</div>
+            <p style="font-size: 11px; color: var(--sand); margin-bottom: 12px;">
+              📱 <strong>SEMPLICE DA CELLULARE:</strong> Tocca una delle tue cartelle Google Drive qui sotto per vederne l'anteprima foto/video e sincronizzarla in 1-Tap senza dover incollare link!
+            </p>
+
+            <div class="form-grid cols-2">
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label style="margin: 0;">📱 Seleziona Cartella Drive (1-Tap):</label>
+                  <button type="button" onclick="caricaListaCartelleDriveInPicker()" style="font-size: 10px; padding: 2px 8px; cursor: pointer; color: #fbbf24; border: 1px solid #fbbf24; border-radius: 4px; background: rgba(0,0,0,0.6); font-weight: 700;">🔄 Ricarica</button>
+                </div>
+                <select id="select-cartelle-drive-picker" style="background: rgba(0,0,0,0.6); color: var(--gold-bright); border: 1px solid var(--gold); padding: 8px; font-size: 13px;" onchange="selezionaCartellaDriveDaPicker(this.value)">
+                  <option value="">⏳ Scansione cartelle Google Drive in corso...</option>
+                </select>
+                <div id="drive-auth-alert-box" style="display: none; margin-top: 6px; padding: 6px 10px; background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; border-radius: 6px; font-size: 11px; color: #fbbf24;">
+                  🔑 <strong>Google Drive richiede autorizzazione:</strong> <a href="https://script.google.com/home/projects/1TrXxMTUpqWS0AFizBkBbeznFterICAm9hkeF7EQRDesvZgwTNMO1Nwft/edit" target="_blank" style="color: #fff; text-decoration: underline; font-weight: 800;">Clicca qui per autorizzare in 1-Click ▶️</a>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>📂 Nome o URL / ID Cartella (Manuale o Selezionata):</label>
+                <input type="text" id="sync-drive-folder-input" placeholder="es. Villa Favara oppure link/ID Cartella" onchange="caricaAnteprimaVisualeCartellaDrive(this.value)">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 10px;">
+              <label>🎨 Posizione & Tipo Logo Watermark:</label>
+              <select id="sync-logo-position">
+                <option value="360_nadir" selected>⚪ Logo Cerchiato Bianco sul Fondo (Nadir Foto 360°)</option>
+                <option value="centrale_semitrasparente">🛡️ Logo Centrale Semitrasparente (Foto Semplici)</option>
+                <option value="in_basso_destra">📐 Logo in Basso a Destra (Standard)</option>
+                <option value="in_basso_sinistra">📐 Logo in Basso a Sinistra</option>
+              </select>
+            </div>
+
+            <!-- CONTENITORE ANTEPRIMA VISUALE FOTO/VIDEO CARTELLA DRIVE -->
+            <div id="sync-folder-preview-box" style="margin-top: 14px; background: rgba(0,0,0,0.4); border: 1px solid rgba(201,163,94,0.3); border-radius: 10px; padding: 10px; display: none;">
+              <div style="font-size: 12px; font-weight: 700; color: var(--gold-bright); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <span>🖼️ ANTEPRIMA VISUALE CONTENUTO CARTELLA:</span>
+                <span id="sync-preview-count-badge" style="font-size: 10px; background: rgba(30,144,255,0.3); padding: 2px 8px; border-radius: 10px; color: white;">0 file</span>
+              </div>
+              <div id="sync-preview-grid" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px;"></div>
+            </div>
+
+            <div style="margin-top: 14px;">
+              <button onclick="avviaSincronizzazioneDriveEsistente()" class="btn-gold" style="width: 100%; background: linear-gradient(135deg, #1e90ff, #70a1ff); color: white; font-weight: 800; font-size: 14px; padding: 12px;">
+                🔄 1-TAP: SINCRONIZZA QUESTA CARTELLA SULLO SHEET & IN GALLERIA
+              </button>
+            </div>
+            <div id="sync-drive-status-msg" style="font-size: 12px; color: #2ecc71; text-align: center; margin-top: 8px; display: none;"></div>
+          </div>
+
+          <div class="section-card">
+
+            <!-- Selezione immobile + filtri tipo media -->
+            <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px;">
+              <div class="form-group" style="flex:1; min-width:220px;">
+                <label>📁 Immobile Attivo:</label>
+                <select id="select-immobile-galleria" onchange="caricaGalleriaAnteprimaMedia(this.value)"></select>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="filter-pill active" onclick="filtraGalleria('tutti',this)">📷 Tutti</button>
+                <button class="filter-pill" onclick="filtraGalleria('foto',this)">🖼️ Foto</button>
+                <button class="filter-pill" onclick="filtraGalleria('video',this)">🎥 Video</button>
+                <button class="filter-pill" onclick="filtraGalleria('360',this)">🌐 360°</button>
+                <button type="button" class="filter-pill" style="border: 1px solid var(--gold); color: var(--gold-bright); font-weight: 800; background: rgba(201,163,94,0.18);" onclick="apriModalSchedaImmobileStudio('modifica_corrente')" title="Visualizza o modifica la Scheda Immobile e le Note per DarIA">📋 Scheda Immobile &amp; DarIA</button>
+                <button type="button" class="filter-pill" style="border: 1.5px solid #2ecc71; color: #2ecc71; font-weight: 900; background: rgba(46,204,113,0.18); box-shadow: 0 0 10px rgba(46,204,113,0.25);" onclick="apriModalGeneraReelStudio()" title="🎬 Genera Video Reel 9:16 con Box Scuro Semitrasparente, Colonna F e Traccia Musicale">🎬 GENERA REEL 9:16</button>
+              </div>
+            </div>
+
+            <!-- Barra azioni bulk -->
+            <div id="galleria-bulk-bar">
+              <span id="galleria-sel-count" style="font-size:12px; font-weight:700; color:var(--sand); flex:1;">0 selezionati</span>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button onclick="avviaVisioneStanzeGemini()" style="padding:6px 12px; border-radius:var(--radius-sm); background:linear-gradient(135deg,#8e44ad,#9b59b6); color:#fff; border:none; font-size:11px; font-weight:800; cursor:pointer; min-height:36px; box-shadow: 0 0 10px rgba(142,68,173,0.5);">🤖 AVVIA AI VISIONE STANZE</button>
+                <button onclick="salvaTutteModificheGalleria()" style="padding:6px 12px; border-radius:var(--radius-sm); background:linear-gradient(135deg,#f1c40f,#e67e22); color:#120c04; border:none; font-size:11px; font-weight:800; cursor:pointer; min-height:36px; box-shadow: 0 0 10px rgba(241,196,15,0.3);">💾 SALVA TUTTE LE MODIFICHE</button>
+                <button onclick="selezionaTutteVisibili()" style="padding:6px 12px; border-radius:var(--radius-sm); background:rgba(52,152,219,0.2); color:#3498db; border:1px solid #3498db; font-size:11px; font-weight:700; cursor:pointer; min-height:36px;">☑ TUTTE</button>
+                <button onclick="deselezionaTutte()" style="padding:6px 12px; border-radius:var(--radius-sm); background:rgba(201,163,94,0.1); color:var(--gold); border:1px solid var(--gold); font-size:11px; font-weight:700; cursor:pointer; min-height:36px;">✕ NESSUNA</button>
+                <button onclick="eliminaSelezionati()" style="padding:6px 14px; border-radius:var(--radius-sm); background:rgba(231,76,60,0.25); color:#e74c3c; border:1px solid #e74c3c; font-size:11px; font-weight:800; cursor:pointer; min-height:36px;">🗑️ ELIMINA</button>
+              </div>
+            </div>
+
+            <div id="gallery-loading" style="text-align:center; padding:30px; color:var(--sand); font-size:13px; display:none;">⏳ Caricamento media in corso...</div>
+            <div id="gallery-empty" style="text-align:center; padding:30px; color:var(--sand); font-size:13px; display:none;">📭 Nessun media trovato. Seleziona un immobile con dati nel foglio.</div>
+            <div id="gallery-container" class="gallery-grid"></div>
+
+            <!-- 💾 BARRA SALVATAGGIO COMPLETO GALLERIA (1-CLICK) -->
+            <div style="margin-top: 24px; padding: 18px 20px; background: linear-gradient(135deg, rgba(201,163,94,0.18), rgba(20,12,8,0.95)); border: 2px solid var(--gold); border-radius: var(--radius-lg); text-align: center; box-shadow: 0 6px 25px rgba(0,0,0,0.7);">
+              <div style="font-size: 15px; font-weight: 800; color: var(--gold-bright); margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span>💾</span> SALVATAGGIO COMPLETO DI TUTTE LE MODIFICHE
+              </div>
+              <div style="font-size: 11.5px; color: var(--sand); margin-bottom: 14px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Hai modificato nomi di stanze, testi descrittivi o convertito foto in 360°? Clicca il pulsante qui sotto per salvare <b>TUTTE le modifiche in una volta sola</b> sul tuo Foglio Google!
+              </div>
+              <button type="button" onclick="salvaTutteModificheGalleria()" class="btn-gold" style="width: 100%; max-width: 480px; padding: 14px 24px; font-size: 14px; font-weight: 900; background: linear-gradient(135deg, #2ecc71, #27ae60); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 18px rgba(46,204,113,0.45); text-transform: uppercase; letter-spacing: 0.5px; margin: 0 auto; display: block;">
+                💾 SALVA TUTTE LE MODIFICHE DELLA GALLERIA (1-Click)
+              </button>
+              <div id="status-salvataggio-bulk-galleria" style="display: none; margin-top: 10px; font-size: 12px; font-weight: 700; color: #2ecc71;"></div>
+            </div>
+
+            <!-- 📋 MODALE SCHEDA IMMOBILE & REGIA DARIA (STUDIO GALLERIA) -->
+            <div id="modal-scheda-immobile-studio" style="display: none; background: rgba(0,0,0,0.85); position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99999; justify-content: center; align-items: center; padding: 16px; backdrop-filter: blur(6px);">
+              <div style="background: #18120c; border: 1.5px solid var(--gold); border-radius: 14px; max-width: 580px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: 0 12px 45px rgba(0,0,0,0.95); position: relative;">
+                
+                <!-- Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid rgba(201,163,94,0.3); padding-bottom: 10px;">
+                  <div>
+                    <div style="font-size: 16px; font-weight: 800; color: var(--gold-bright); display: flex; align-items: center; gap: 8px;">
+                      📋 SCHEDA IMMOBILE &amp; REGIA DARIA
+                    </div>
+                    <div style="font-size: 11px; color: var(--sand); margin-top: 3px;">
+                      Imposta i parametri chiave: DarIA li integrerà in automatico nei commenti per ogni stanza!
+                    </div>
+                  </div>
+                  <button type="button" onclick="chiudiModalSchedaImmobileStudio()" style="background: none; border: none; color: #bbb; font-size: 22px; cursor: pointer; padding: 0 6px;">✕</button>
+                </div>
+
+                <form id="form-scheda-immobile-studio" onsubmit="event.preventDefault(); confermaSchedaImmobileStudio();">
+                  
+                  <!-- Tipo di Immobile (Tutti i tipi) -->
+                  <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11.5px; color: var(--gold); font-weight: 700;">🏠 Tipo di Immobile:</label>
+                    <select id="scheda-tipo-immobile" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line); border-radius: 6px; font-size: 13px;">
+                      <option value="Appartamento" selected>🏢 Appartamento</option>
+                      <option value="Villa">🏡 Villa</option>
+                      <option value="Villetta a schiera">🏘️ Villetta a schiera</option>
+                      <option value="Attico / Mansarda">🏙️ Attico / Mansarda</option>
+                      <option value="Casa Indipendente">🏠 Casa Indipendente / Terratetto</option>
+                      <option value="Rustico / Casale">🌾 Rustico / Casale / Cascina</option>
+                      <option value="Magazzino / Deposito">📦 Magazzino / Deposito</option>
+                      <option value="Locale Commerciale">🏪 Locale Commerciale / Negozio</option>
+                      <option value="Ufficio / Studio">💼 Ufficio / Studio Professionale</option>
+                      <option value="Garage / Box Auto">🚗 Garage / Box Auto / Posto Auto</option>
+                      <option value="Capannone">🏭 Capannone Artigianale / Industriale</option>
+                      <option value="Palazzina / Stabile">🏬 Palazzina / Stabile Intero</option>
+                      <option value="Terreno Edificabile">🏗️ Terreno Edificabile</option>
+                      <option value="Terreno Agricolo">🌳 Terreno Agricolo</option>
+                      <option value="Casa Vacanze / Pregio">🏖️ Casa Vacanze / Immobile di Pregio</option>
+                      <option value="Struttura Ricettiva / B&B">🏨 Struttura Ricettiva / B&B / Hotel</option>
+                      <option value="Loft / Open Space">🏛️ Loft / Open Space</option>
+                      <option value="Altro Immobile">📍 Altro Tipo di Immobile</option>
+                    </select>
+                  </div>
+
+                  <!-- Grid 2 colonne: Metri quadri e Prezzo -->
+                  <div class="form-grid cols-2" style="margin-bottom: 12px; gap: 10px;">
+                    <div class="form-group">
+                      <label style="font-size: 11.5px; color: var(--gold); font-weight: 700;">📐 Metri Quadri (MQ):</label>
+                      <input type="text" id="scheda-mq-immobile" placeholder="es. 120" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px;" oninput="normalizzaMqVisuale(this)">
+                      <small style="font-size: 10px; color: var(--sand); display: block; margin-top: 2px;">Verrà sempre salvato come "metri quadri"</small>
+                    </div>
+
+                    <div class="form-group">
+                      <label style="font-size: 11.5px; color: var(--gold); font-weight: 700;">💰 Prezzo (€):</label>
+                      <input type="text" id="scheda-prezzo-immobile" placeholder="es. 145.000 € (o vuoto per Tratt. Riservata)" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px;">
+                    </div>
+                  </div>
+
+                  <!-- Zona / Posizione -->
+                  <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 11.5px; color: var(--gold); font-weight: 700;">📍 Zona / Città / Posizione:</label>
+                    <input type="text" id="scheda-zona-immobile" placeholder="es. Agrigento centro, Via Atenea, Villaggio Mosè, Favara zona San Francesco..." style="width: 100%; padding: 8px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line); border-radius: 6px; font-size: 12.5px;">
+                  </div>
+
+                  <!-- Stato / Descrizione Immobile (rifinito, nuovo, ecc.) -->
+                  <div class="form-grid cols-2" style="margin-bottom: 12px; gap: 10px;">
+                    <div class="form-group">
+                      <label style="font-size: 11.5px; color: var(--gold); font-weight: 700;">✨ Stato / Finiture Principali:</label>
+                      <select id="scheda-stato-immobile" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line); border-radius: 6px; font-size: 12px;">
+                        <option value="rifinito e ristrutturato a nuovo" selected>✨ Rifinito e ristrutturato a nuovo</option>
+                        <option value="nuova costruzione mai abitato">🆕 Nuova costruzione (mai abitato)</option>
+                        <option value="ottimo stato abitabile subito">👍 Ottimo stato / Abitabile subito</option>
+                        <option value="di lusso con finiture di alto pregio">💎 Di lusso / Con finiture di pregio</option>
+                        <option value="buono stato parzialmente ristrutturato">🛠️ Buono stato / Parzialmente ristrutturato</option>
+                        <option value="da ristrutturare con ottimo potenziale">🔨 Da ristrutturare / Ottimo potenziale</option>
+                        <option value="al grezzo da personalizzare">🧱 Al grezzo / Da personalizzare</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label style="font-size: 11.5px; color: var(--gold); font-weight: 700;">🔍 Dettagli Finiture (Opzionale):</label>
+                      <input type="text" id="scheda-stato-dettaglio" placeholder="es. parquet rovere, infissi taglio termico..." style="width: 100%; padding: 8px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line); border-radius: 6px; font-size: 12px;">
+                    </div>
+                  </div>
+
+                  <!-- Spazio libero Note per DarIA -->
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                      <label style="font-size: 11.5px; color: var(--gold); font-weight: 700;">🎙️ Spazio Libero — Istruzioni di Regia per DarIA:</label>
+                      <span style="font-size: 10px; color: var(--sand);">Guida per i commenti automatici alle immagini</span>
+                    </div>
+                    <textarea id="scheda-note-daria" rows="3" placeholder="Indica qui dettagli da far commentare a DarIA nelle foto (es. luminosità favolosa, vista mozzafiato, ottima esposizione a sud, ideale per famiglie numerose o investimento b&amp;b, materiali di pregio, comodo corridoio di disimpegno, contesto tranquillo e servito...)" style="width: 100%; padding: 9px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; line-height: 1.4; resize: vertical;"></textarea>
+                  </div>
+
+                  <!-- Pulsanti Azione -->
+                  <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+                    <button type="button" onclick="chiudiModalSchedaImmobileStudio()" class="btn-gold" style="background: rgba(255,255,255,0.1); color: #ccc; border: 1px solid #555; padding: 10px 16px; font-size: 12px; border-radius: 6px; cursor: pointer;">
+                      ✖️ Annulla
+                    </button>
+                    <button type="submit" id="btn-conferma-scheda-studio" class="btn-gold" style="background: linear-gradient(135deg, var(--gold-bright), var(--gold-dark)); color: #120c04; border: none; padding: 10px 22px; font-size: 12px; font-weight: 800; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 15px rgba(201,163,94,0.4);">
+                      🚀 CONFERMA &amp; PROCEDI
+                    </button>
+                  </div>
+
+                </form>
+              </div>
+            </div>
+
+            <!-- 🎬 MODALE GENERATORE REEL 9:16 (STUDIO GALLERIA) -->
+            <div id="modal-genera-reel-studio" style="display: none; background: rgba(0,0,0,0.85); position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99999; justify-content: center; align-items: center; padding: 16px; backdrop-filter: blur(6px);">
+              <div style="background: #141820; border: 1.5px solid var(--gold); border-radius: 14px; max-width: 580px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: 0 12px 45px rgba(0,0,0,0.95); position: relative;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid rgba(201,163,94,0.3); padding-bottom: 10px;">
+                  <div style="font-size: 16px; font-weight: 800; color: var(--gold-bright); display: flex; align-items: center; gap: 8px;">
+                    🎬 GENERATORE VIDEO REEL 9:16 (IMMOBILIARE GIANCANI)
+                  </div>
+                  <button type="button" onclick="chiudiModalGeneraReelStudio()" style="background: transparent; border: none; font-size: 18px; color: #aaa; cursor: pointer;">✖️</button>
+                </div>
+
+                <div style="font-size: 11.5px; color: var(--sand); margin-bottom: 14px; line-height: 1.5;">
+                  Genera in automatico un video Reel 9:16 per questo immobile con il <strong>box scuro semitrasparente al 60% a sinistra</strong>, testo estratto rigorosamente dalla <strong>Colonna F</strong>, musica sincronizzata e invio automatico con file allegato alla tua email.
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--gold-bright);">🏠 Immobile Selezionato:</label>
+                  <input type="text" id="modal-reel-immobile-nome" readonly style="background: rgba(0,0,0,0.4); border: 1px solid #444; color: #fff; padding: 8px; width: 100%; border-radius: 6px; font-weight: 700;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--gold-bright);">📋 Testo Parlato (Colonna F) per l'elaborazione Reel:</label>
+                  <textarea id="modal-reel-testo-f" rows="4" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.4); color: #fff; padding: 8px; width: 100%; border-radius: 6px; font-size: 11.5px; line-height: 1.4;"></textarea>
+                  <div style="font-size: 10.5px; color: #888; margin-top: 3px;">I dati (Titolo, Prezzo, 5-6 caratteristiche in maiuscolo e telefono) verranno estratti automaticamente da questo testo.</div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--gold-bright);">🎵 Traccia Musicale (dalla Cartella Basi Professionali):</label>
+                  <select id="modal-reel-musica-select" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(212,175,55,0.4); color: #fff; padding: 8px; width: 100%; border-radius: 6px; font-size: 11.5px;">
+                    <option value="">Traccia Predefinita (Sicilian Sunset)</option>
+                  </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--gold-bright);">📧 Email di Consegna Allegato Video:</label>
+                  <input type="email" id="modal-reel-email-dest" value="giancaniimmobiliare@gmail.com" style="background: rgba(0,0,0,0.4); border: 1px solid #444; color: #fff; padding: 8px; width: 100%; border-radius: 6px; font-size: 11.5px;">
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 16px;">
+                  <button type="button" id="btn-avvia-reel-studio" onclick="confermaEAvviaReelStudio()" class="btn-gold" style="flex: 1; padding: 12px; font-weight: 900; font-size: 13px; background: linear-gradient(135deg, #2ecc71, #27ae60); color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(46,204,113,0.4);">
+                    🚀 GENERA REEL &amp; INVIA EMAIL CON ALLEGATO
+                  </button>
+                  <button type="button" onclick="chiudiModalGeneraReelStudio()" style="padding: 12px 18px; background: rgba(255,255,255,0.1); border: 1px solid #666; color: #fff; border-radius: 8px; cursor: pointer;">
+                    Annulla
+                  </button>
+                </div>
+
+                <div id="modal-reel-status-msg" style="display: none; margin-top: 12px; font-size: 12px; font-weight: 700; text-align: center;"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+

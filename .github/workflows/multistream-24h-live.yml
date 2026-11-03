@@ -94,7 +94,10 @@ jobs:
 
           # Avvio Xvfb a 1920x1080
           Xvfb :99 -screen 0 1920x1080x24 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+          echo "PULSE_SERVER=unix:/tmp/pulse-socket" >> $GITHUB_ENV
           export DISPLAY=:99
+          export PULSE_SERVER=unix:/tmp/pulse-socket
           openbox &
           sleep 2
 
@@ -191,6 +194,9 @@ jobs:
 
       - name: Avvio Browser Headless Google Chrome
         run: |
+          export DISPLAY=:99
+          export PULSE_SERVER=unix:/tmp/pulse-socket
+
           mkdir -p /tmp/chrome_clean_profile
           touch "/tmp/chrome_clean_profile/First Run"
 
@@ -202,7 +208,7 @@ jobs:
             VIDEO_URL="https://tonyhood2345.github.io/live-stream-serverless/orizzontale.html"
           fi
 
-          echo "🚀 Avvio Chrome per Diretta 24H Multistream su: $VIDEO_URL (Scala: $SCALE)"
+          echo "🚀 Avvio Chrome per Diretta 24H Multistream su: $VIDEO_URL (Scala: $SCALE, Display: $DISPLAY)"
           google-chrome \
             --kiosk \
             --window-position=0,0 \
@@ -211,6 +217,7 @@ jobs:
             --enable-extensions \
             --load-extension=/tmp/hide_banner_ext \
             --disable-extensions-except=/tmp/hide_banner_ext \
+            --remote-debugging-port=9222 \
             --enable-webgl \
             --ignore-gpu-blocklist \
             --use-gl=swiftshader \
@@ -219,6 +226,10 @@ jobs:
             --no-sandbox \
             --no-first-run \
             --no-default-browser-check \
+            --disable-first-run-ui \
+            --disable-infobars \
+            --disable-session-crashed-bubble \
+            --disable-restore-session-state \
             --disable-notifications \
             --disable-features=AudioServiceOutOfProcess \
             --enable-features=UsePulseAudio \
@@ -229,6 +240,13 @@ jobs:
 
           echo "Attesa di 15 secondi per il caricamento completo del player..."
           sleep 15
+
+          echo "🔍 Verifica processi Chrome:"
+          ps aux | grep -i chrome || true
+
+          echo "📸 Frame di verifica X11 su display :99 per confermare rendering:"
+          ffmpeg -y -f x11grab -video_size 1920x1080 -i :99 -vframes 1 /tmp/frame_verifica.png || true
+          ls -lh /tmp/frame_verifica.png || true
 
       - name: Innesco Relais Staffetta 24H (Auto-rinnovo automatico prima del timeout)
         run: |

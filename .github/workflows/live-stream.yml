@@ -281,6 +281,11 @@ jobs:
 
           echo "Attesa di 10 secondi per il caricamento della pagina..."
           sleep 10
+          echo "🔍 Verifica processi Chrome attivi:"
+          ps aux | grep -i chrome || true
+          echo "📸 Frame di verifica X11 su display :99 per confermare rendering:"
+          ffmpeg -y -f x11grab -video_size 1920x1080 -i :99 -vframes 1 /tmp/frame_verifica.png || true
+          ls -lh /tmp/frame_verifica.png || true
           echo "Verifica sink inputs PulseAudio (Chrome Audio Output):"
           pactl list sink-inputs || true
 

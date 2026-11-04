@@ -86,6 +86,7 @@ CATALOGO_IMMOBILI_CACHE = os.path.join(ASSETS_DIR, "catalogo_immobili_cache.json
 FB_PAGE_ID = (os.environ.get("FB_PAGE_ID") or "234931856561526").strip()
 FB_PAGE_TOKEN = (os.environ.get("FB_PAGE_TOKEN") or "EAAZAH7q8wRZAEBS4ZC4Nh6cBZBy3bJsccPVrkCPT9C4x7hGaXUMymWqrWWXsiyhZBo0Y67P7pSA4AZBq9h0ZA8Fn6k5oJLkfTlaAjyHxPtvCMqmxKtrea9B0lDkSJZBKaAoskUzjcXrZCvBKbZBd1iOZBZAOd5HCPvJ3JleccjZA3LPPrlurRZC82BsK0wWsRWZAhPMsPMUjQ8N2zk0If74lSWTOeiN").strip()
 FB_ANTONIO_ID = os.environ.get("FB_ANTONIO_ID", "108297671444008").strip()
+FB_ANTONIO_TOKEN = (os.environ.get("FB_ANTONIO_TOKEN") or "EAAZAH7q8wRZAEBSZChEjm60RoOxPsrzRJKtJMW3bmHczyoxyElZAsrddpbHFFXw02pJ84ZBcBsoT17n4l3zqDAon3ZAIZBjIWoBbHVGKlEIAAzSvMuH4I3MxQA0CqFF1usXim6SfDK4zvYpL9U46ZA8wZACZBpemQO4szFFoRH9wRZATCrNhkX5MGsOQXMtbN5PZAQtZCWpiTVw9UwQFydWavwEZAX").strip()
 IG_ACCOUNT_ID = os.environ.get("IG_ACCOUNT_ID", "17841400301393511").strip()
 YT_CHANNEL_HANDLE = "@immobiliaregiancani761"
 CHANNEL_URL = f"https://www.youtube.com/{YT_CHANNEL_HANDLE}/videos"
@@ -461,6 +462,14 @@ def esegui_ciclo_immagini(indice_stile):
     res_fb = pubblica_storia_facebook(FB_PAGE_ID, FB_PAGE_TOKEN, video_path)
     res_ig = pubblica_storia_instagram(video_path)
 
+    # Pubblicazione su Profilo/Pagina Personale Antonio Giancani
+    if FB_ANTONIO_ID and FB_ANTONIO_TOKEN:
+        try:
+            res_ant = pubblica_storia_facebook(FB_ANTONIO_ID, FB_ANTONIO_TOKEN, video_path)
+            log(f"   👤 [ANTONIO GIANCANI] Esito storia immagine: {res_ant.get('success')}")
+        except Exception as eAnt:
+            log(f"   ⚠️ Avviso pubblicazione Antonio (Immagine): {eAnt}")
+
     # 3. YouTube Shorts / Storie Verticali
     try:
         from pubblica_storia_facebook import pubblica_short_youtube
@@ -583,11 +592,13 @@ def esegui_ciclo_video_youtube():
         res_th = {"success": False, "url": "https://www.threads.net/@giancani_immobiliare"}
 
     # Opzionale: versione Antonio Giancani
-    try:
-        clip_antonio = genera_clip_30s(video_locale, scelto, per_antonio=True)
-        pubblica_storia_facebook(FB_ANTONIO_ID, FB_PAGE_TOKEN, clip_antonio)
-    except Exception as eAnt:
-        log(f"   ⚠️ Avviso pubblicazione Antonio: {eAnt}")
+    if FB_ANTONIO_ID and FB_ANTONIO_TOKEN:
+        try:
+            clip_antonio = genera_clip_30s(video_locale, scelto, per_antonio=True)
+            res_ant = pubblica_storia_facebook(FB_ANTONIO_ID, FB_ANTONIO_TOKEN, clip_antonio)
+            log(f"   👤 [ANTONIO GIANCANI] Esito storia video: {res_ant.get('success')}")
+        except Exception as eAnt:
+            log(f"   ⚠️ Avviso pubblicazione Antonio (Video): {eAnt}")
 
     # Evento per il report 4 ore
     evento = {
@@ -744,10 +755,11 @@ def verifica_e_innesca_diretta_serale(stato):
     Questo elimina al 100% i ritardi delle code cron dei server GitHub Actions.
     """
     try:
-        now_it = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
+        from datetime import timezone, timedelta
+        now_it = datetime.now(timezone.utc) + timedelta(hours=1)
         try:
             import zoneinfo
-            now_it = datetime.datetime.now(zoneinfo.ZoneInfo("Europe/Rome"))
+            now_it = datetime.now(zoneinfo.ZoneInfo("Europe/Rome"))
         except Exception:
             pass
 

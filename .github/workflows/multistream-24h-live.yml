@@ -13,7 +13,7 @@ on:
       yt_key:
         description: 'YouTube Stream Key'
         required: false
-        default: 'j99b-ra2c-u5j9-wm2a-cmju'
+        default: '055j-3cje-m4jg-9zzj-bs7s'
       fb_key:
         description: 'Facebook Stream Key o RTMP URL (lasciare vuoto per generazione automatica continua)'
         required: false
@@ -277,7 +277,7 @@ jobs:
 
           # 1. YOUTUBE LIVE 24H
           YT_KEY="${{ github.event.inputs.yt_key }}"
-          if [ -z "$YT_KEY" ]; then YT_KEY="j99b-ra2c-u5j9-wm2a-cmju"; fi
+          if [ -z "$YT_KEY" ]; then YT_KEY="055j-3cje-m4jg-9zzj-bs7s"; fi
           YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"
           echo "🔴 [YouTube Live 24H] Destinazione: $YT_URL"
           TEE_DESTS+=("[f=flv:onfail=ignore]${YT_URL}")

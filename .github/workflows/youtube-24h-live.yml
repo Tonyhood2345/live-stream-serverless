@@ -13,7 +13,7 @@ on:
       yt_key:
         description: 'YouTube Stream Key'
         required: false
-        default: 'j99b-ra2c-u5j9-wm2a-cmju'
+        default: '055j-3cje-m4jg-9zzj-bs7s'
       duration_minutes:
         description: 'Durata streaming runner in minuti (max 350 per rispetto limiti GitHub)'
         required: false
@@ -241,7 +241,7 @@ jobs:
 
           YT_KEY="${{ github.event.inputs.yt_key }}"
           if [ -z "$YT_KEY" ]; then
-            YT_KEY="j99b-ra2c-u5j9-wm2a-cmju"
+            YT_KEY="055j-3cje-m4jg-9zzj-bs7s"
           fi
 
           YT_URL="rtmp://a.rtmp.youtube.com/live2/$YT_KEY"

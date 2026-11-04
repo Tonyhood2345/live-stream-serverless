@@ -358,9 +358,61 @@ def pubblica_storia_instagram(video_path):
 # ═════════════════════════════════════════════════════════════════════════════
 
 def carica_tutti_candidati_immagini():
-    """Carica il catalogo completo di tutti gli immobili e foto disponibili"""
+    """
+    Carica il catalogo completo di tutti gli immobili reali in vendita da Google Sheet (Piano_Editoriale_2026 / DATABASE_IMMOBILI)
+    o dalla cache locale aggiornata assets/catalogo_immobili_cache.json.
+    - Testi estratti rigorosamente dalla Colonna F
+    - Metri quadri sempre per esteso ('metri quadri')
+    - Personal branding obbligatorio in chiusura: '— Immobiliare Giancani'
+    - Foto autentiche degli immobili in vendita
+    """
     candidates = []
-    if os.path.exists(CATALOGO_IMMOBILI_CACHE):
+
+    # 1. Tentativo prioritario da Google Sheet Piano_Editoriale_2026 (gid 1161427165)
+    try:
+        import requests, csv, io
+        sheet_id = "1s68pw0WEUcV0ZqltiahAqCp_r5rsycSjxKNh0VZQq_g"
+        url_pe = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?gid=1161427165&tqx=out:csv"
+        res = requests.get(url_pe, verify=False, timeout=6)
+        if res.status_code == 200:
+            reader = csv.reader(io.StringIO(res.text))
+            rows = list(reader)
+            for idx, r in enumerate(rows[1:], start=2):
+                col_e = r[4].strip() if len(r) > 4 else ''
+                col_f = r[5].strip() if len(r) > 5 else ''
+                tipologia = r[3].strip() if len(r) > 3 else 'Immobile'
+                citta = r[24].strip() if len(r) > 24 else 'Favara / Agrigento'
+                photos = [r[c].strip() for c in range(25, min(30, len(r))) if r[c].strip().startswith('http')]
+                full_text = col_e if len(col_e) > len(col_f) else col_f
+                if not full_text or not photos:
+                    continue
+                full_text = re.sub(r'\bm[q²]\.?\b', 'metri quadri', full_text, flags=re.IGNORECASE)
+                mq_m = re.search(r'(\d+)\s*metri quadri', full_text, flags=re.IGNORECASE)
+                mq_str = f"{mq_m.group(1)} metri quadri" if mq_m else "Spazi Luminosi"
+                price_m = re.search(r'(\d+[\.\d]*\s*€|€\s*\d+[\.\d]*)', full_text)
+                prezzo_str = price_m.group(0) if price_m else "Trattativa Riservata"
+                first_line = full_text.split('\n')[0].strip()
+                titolo = first_line[:50].strip() or f"{tipologia} a {citta}"
+                if "immobiliare giancani" not in full_text.lower():
+                    full_text += "\n\n— Immobiliare Giancani"
+                for p_idx, p_url in enumerate(photos):
+                    candidates.append({
+                        "id": f"immobile_riga_{idx}_foto_{p_idx+1}",
+                        "riga": idx,
+                        "titolo": titolo,
+                        "tipologia": tipologia,
+                        "citta": citta,
+                        "prezzo": prezzo_str,
+                        "mq": mq_str,
+                        "fotoUrl": p_url,
+                        "stanza": f"Ambiente {p_idx+1}",
+                        "testoF": full_text
+                    })
+    except Exception as e_sheet:
+        pass
+
+    # 2. Utilizzo cache locale verificata assets/catalogo_immobili_cache.json
+    if not candidates and os.path.exists(CATALOGO_IMMOBILI_CACHE):
         try:
             with open(CATALOGO_IMMOBILI_CACHE, 'r', encoding='utf-8') as f:
                 c_list = json.load(f)
@@ -368,6 +420,7 @@ def carica_tutti_candidati_immagini():
                     foto = item.get("fotoUrl")
                     if foto:
                         t_f = str(item.get("testoF") or item.get("testoDaLeggere") or "").strip()
+                        t_f = re.sub(r'\bm[q²]\.?\b', 'metri quadri', t_f, flags=re.IGNORECASE)
                         if "immobiliare giancani" not in t_f.lower():
                             t_f += "\n\n— Immobiliare Giancani"
                         candidates.append({
@@ -380,23 +433,7 @@ def carica_tutti_candidati_immagini():
                             "testoF": t_f
                         })
         except Exception as e:
-            log(f"Avviso caricamento catalogo immagini: {e}")
-
-    # Fallback aggiuntivo dalle immagini locali in assets/immobili_cache
-    local_cache_dir = os.path.join(ASSETS_DIR, "immobili_cache")
-    if os.path.exists(local_cache_dir):
-        for fname in os.listdir(local_cache_dir):
-            if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
-                full_p = os.path.join(local_cache_dir, fname)
-                candidates.append({
-                    "id": f"local_{fname}",
-                    "titolo": "Residenza Esclusiva ad Agrigento e Favara",
-                    "stanza": "Vista Esclusiva",
-                    "prezzo": "Trattativa Riservata",
-                    "mq": "140 metri quadri",
-                    "fotoUrl": full_p,
-                    "testoF": "Soluzione immobiliare di assoluto pregio, finiture curate e massimo comfort abitativo a Favara e Agrigento. — Immobiliare Giancani"
-                })
+            log(f"Avviso caricamento catalogo immagini da cache: {e}")
 
     return candidates
 

@@ -85,3 +85,14 @@ jobs:
           git config --global user.email "bot@immobiliaregiancani.it"
           git add stato_orchestratore_15min.json storico_immagini_pubblicate.json registro_video_pubblicati.json registro_video_pubblicati_orari.json buffer_report_4ore.json catalogo_youtube_cache.json assets/catalogo_immobili_cache.json output_storie/*.png live_stream_appscript/*.json 2>/dev/null || true
           git diff --staged --quiet || (git commit -m "chore: Aggiornato stato orchestratore 15min e report buffer [skip ci]" && git pull --rebase -X theirs origin main && git push origin main) || true
+
+      - name: 🔄 Passaggio di Testimone Staffetta 15 Minuti (Continuo 24H)
+        if: always() && github.event.inputs.invia_report_subito != 'true'
+        run: |
+          echo "⏳ Attesa 900s (15 minuti) per garantire l'alternanza esatta 24/7..."
+          sleep 900
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.LIVE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/bot_orchestratore_15min.yml/dispatches \
+            -d '{"ref":"main"}' && echo " ✅ Prossimo ciclo innescato con successo!" || echo " ⚠️ Errore chiamata staffetta"

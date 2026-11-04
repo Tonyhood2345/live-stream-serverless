@@ -86,7 +86,7 @@ PAGES = [
     {
         "nome": "Antonio Giancani (Profilo Personale)",
         "id": os.environ.get("FB_ANTONIO_ID", "108297671444008"),
-        "token": os.environ.get("FB_ANTONIO_TOKEN", "EAAZAH7q8wRZAEBSQbsAIPVhCwMvrhECfhs5UNWL8ZBIOrUbCXqWCQtsyntumIOAvDCRUcg2FsmJBNtiXOEOO2TROFJE9CBXrZBT4GPrZAZCjB73WZALCECi7Ik9ZCae5y01ZB5ZAV7VH7qHyNdeZCWZCG9xViT0gZCYwnV7MCSuQKS5ZA1ZCdw5nom0IH8uub3ZAwVsIGhNSDdkJWZCgCIzs1b8ia"),
+        "token": os.environ.get("FB_ANTONIO_TOKEN", "EAAZAH7q8wRZAEBSZChEjm60RoOxPsrzRJKtJMW3bmHczyoxyElZAsrddpbHFFXw02pJ84ZBcBsoT17n4l3zqDAon3ZAIZBjIWoBbHVGKlEIAAzSvMuH4I3MxQA0CqFF1usXim6SfDK4zvYpL9U46ZA8wZACZBpemQO4szFFoRH9wRZATCrNhkX5MGsOQXMtbN5PZAQtZCWpiTVw9UwQFydWavwEZAX"),
         "is_antonio": True
     }
 ]

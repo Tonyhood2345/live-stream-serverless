@@ -86,7 +86,7 @@ PAGES = [
     {
         "nome": "Antonio Giancani (Profilo Personale)",
         "id": os.environ.get("FB_ANTONIO_ID", "108297671444008"),
-        "token": os.environ.get("FB_ANTONIO_TOKEN", "EAAZAH7q8wRZAEBSQbsAIPVhCwMvrhECfhs5UNWL8ZBIOrUbCXqWCQtsyntumIOAvDCRUcg2FsmJBNtiXOEOO2TROFJE9CBXrZBT4GPrZAZCjB73WZALCECi7Ik9ZCae5y01ZB5ZAV7VH7qHyNdeZCWZCG9xViT0gZCYwnV7MCSuQKS5ZA1ZCdw5nom0IH8uub3ZAwVsIGhNSDdkJWZCgCIzs1b8ia"),
+        "token": os.environ.get("FB_ANTONIO_TOKEN", "EAAZAH7q8wRZAEBSZChEjm60RoOxPsrzRJKtJMW3bmHczyoxyElZAsrddpbHFFXw02pJ84ZBcBsoT17n4l3zqDAon3ZAIZBjIWoBbHVGKlEIAAzSvMuH4I3MxQA0CqFF1usXim6SfDK4zvYpL9U46ZA8wZACZBpemQO4szFFoRH9wRZATCrNhkX5MGsOQXMtbN5PZAQtZCWpiTVw9UwQFydWavwEZAX"),
         "is_antonio": True
     }
 ]
@@ -602,6 +602,75 @@ def genera_intro_invito_dinamico(personaggio="daria", testo_f="", is_live=True, 
         ]
         return random.choice(followups)
 
+
+def seleziona_musica_random_drive(durata_secondi=15.0):
+    """
+    Seleziona a random una base musicale royalty-free dalla cartella 
+    02_MUSICA_IA_STORIE (proveniente da Google Drive 'Diretta01' giancaniimmobiliare@gmail.com).
+    Applica taglio preciso a 15 secondi con dissolvenza in ingresso (0.5s) e uscita (1.5s).
+    """
+    music_dirs = [
+        os.path.join(BASE_DIR, "02_MUSICA_IA_STORIE"),
+        os.path.join(os.path.dirname(BASE_DIR), "02_MUSICA_IA_STORIE"),
+        os.path.join(BASE_DIR, "diretta_live_project", "02_MUSICA_IA_STORIE"),
+        os.path.join(BASE_DIR, "diretta_live_project", "musica_sottofondo"),
+        os.path.join(os.path.dirname(BASE_DIR), "diretta_live_project", "musica_sottofondo")
+    ]
+    candidates = []
+    for md in music_dirs:
+        if os.path.exists(md):
+            for f in os.listdir(md):
+                if f.lower().endswith(('.mp3', '.wav', '.m4a')):
+                    p = os.path.join(md, f)
+                    if os.path.getsize(p) > 10000:
+                        candidates.append(p)
+    if not candidates:
+        return genera_audio_musica_allegra()
+
+    storico_musica_file = os.path.join(SCRATCH_DIR, "storico_musica_random.json")
+    storico = []
+    if os.path.exists(storico_musica_file):
+        try:
+            with open(storico_musica_file, "r", encoding="utf-8") as f_st:
+                storico = json.load(f_st)
+        except Exception:
+            storico = []
+
+    valid_candidates = [c for c in candidates if os.path.basename(c) not in storico]
+    if not valid_candidates:
+        valid_candidates = candidates
+        storico = []
+
+    scelta = random.choice(valid_candidates)
+    storico.append(os.path.basename(scelta))
+    if len(storico) > 8:
+        storico = storico[-8:]
+    try:
+        with open(storico_musica_file, "w", encoding="utf-8") as f_st:
+            json.dump(storico, f_st)
+    except Exception:
+        pass
+
+    print(f"🎵 [MUSICA DRIVE 02_MUSICA_IA_STORIE] Traccia random: {os.path.basename(scelta)}")
+
+    out_trimmed = os.path.join(SCRATCH_DIR, f"music_cut_{uuid.uuid4().hex[:8]}.mp3")
+    ffmpeg_bin = find_ffmpeg()
+    cmd = [
+        ffmpeg_bin, "-y",
+        "-stream_loop", "-1",
+        "-i", scelta,
+        "-t", str(durata_secondi),
+        "-af", f"afade=t=in:ss=0:d=0.5,afade=t=out:st={durata_secondi - 1.5}:d=1.5",
+        "-c:a", "libmp3lame",
+        "-b:a", "192k",
+        out_trimmed
+    ]
+    res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if res.returncode == 0 and os.path.exists(out_trimmed) and os.path.getsize(out_trimmed) > 5000:
+        return out_trimmed
+    return scelta
+
+
 def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_positiva=None, fascia_info=None):
     """Combina le voci di DarIA e DarIO (dialogo radiofonico) con musica allegra e auto-ducking"""
     if not output_mixed_m4a:
@@ -631,20 +700,12 @@ def crea_audio_mix_completo(testo_f, is_live=True, output_mixed_m4a=None, frase_
             testo_recitato = f"Un caloroso saluto da Immobiliare Giancani! {testo_f_clean} Contattateci oggi stesso per visitarla di persona. — Immobiliare Giancani"
         voice_path = genera_voce_tts(testo_recitato, voice_id="it-IT-DiegoNeural")
     
-    # Selezione colonna sonora royalty-free con regola anti-ripetizione (> 10 storie)
-    music_path = None
+    # Selezione colonna sonora royalty-free da Google Drive 02_MUSICA_IA_STORIE a random
     try:
-        import gestore_musica_storie as gms
-        music_path = gms.ottieni_colonna_sonora_storia(durata_secondi=15.0)
-    except Exception as e_gms:
-        print(f"Avviso fallback gestore musica: {e_gms}")
-        if fascia_info and fascia_info.get("musica_file"):
-            cand_music = os.path.join(ASSETS_DIR, fascia_info["musica_file"])
-            if os.path.exists(cand_music) and os.path.getsize(cand_music) > 10000:
-                music_path = cand_music
-                print(f"[OK] Canzone royalty-free Facebook selezionata ({fascia_info['nome']}): {fascia_info['musica_titolo']}")
-        if not music_path:
-            music_path = genera_audio_musica_allegra()
+        music_path = seleziona_musica_random_drive(durata_secondi=15.0)
+    except Exception as e_mus_dr:
+        print(f"Avviso musica random drive: {e_mus_dr}")
+        music_path = genera_audio_musica_allegra()
     ffmpeg_bin = find_ffmpeg()
 
     if voice_path and os.path.exists(voice_path):

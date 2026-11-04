@@ -21,7 +21,7 @@ on:
       yt_key:
         description: 'YouTube Stream Key o URL RTMP completo'
         required: false
-        default: 'byga-0tdf-uu9w-zetp-392s'
+        default: 'yqdc-ckfd-x6p4-f89b-bvss'
       tk_key:
         description: 'TikTok RTMP URL completo o Stream Key'
         required: false
@@ -295,7 +295,7 @@ jobs:
           # --- DESTINAZIONE 1: YOUTUBE LIVE (24 ORE SU 24 INFINITO) ---
           YT_KEY="${{ github.event.inputs.yt_key }}"
           if [ -z "$YT_KEY" ]; then
-            YT_KEY="byga-0tdf-uu9w-zetp-392s"
+            YT_KEY="yqdc-ckfd-x6p4-f89b-bvss"
           fi
           YT_URL=""
           if [[ "$YT_KEY" == rtmp* ]]; then

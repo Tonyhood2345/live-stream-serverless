@@ -39,7 +39,7 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.LIVE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: 🐍 Setup Python 3.10
         uses: actions/setup-python@v5
@@ -87,8 +87,15 @@ jobs:
         run: |
           git config --global user.name "Giancani Orchestrator Bot"
           git config --global user.email "bot@immobiliaregiancani.it"
-          git add stato_orchestratore_15min.json storico_immagini_pubblicate.json registro_video_pubblicati.json registro_video_pubblicati_orari.json buffer_report_4ore.json catalogo_youtube_cache.json assets/catalogo_immobili_cache.json assets/video_stock/*.mp4 output_storie/*.png live_stream_appscript/*.json 2>/dev/null || true
-          git diff --staged --quiet || (git commit -m "chore: Aggiornato stato orchestratore 15min e report buffer [skip ci]" && git pull --rebase -X theirs origin main && git push origin main) || true
+          git remote set-url origin https://x-access-token:${{ secrets.LIVE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git add stato_orchestratore_15min.json storico_immagini_pubblicate.json registro_video_pubblicati.json registro_video_pubblicati_orari.json buffer_report_4ore.json catalogo_youtube_cache.json assets/catalogo_immobili_cache.json assets/video_stock/*.mp4 live_stream_appscript/*.json 2>&1 || true
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: Aggiornato stato orchestratore 15min e report buffer [skip ci]"
+            git pull --rebase -X theirs origin main || true
+            git push origin main && echo "✅ Push stato su GitHub eseguito con successo!" || echo "⚠️ Push via git CLI non riuscito (fallback API attivo)"
+          else
+            echo "ℹ️ Nessuna modifica da committare via git."
+          fi
 
       - name: 🔄 Passaggio di Testimone Staffetta 15 Minuti (Continuo 24H)
         if: always() && github.event.inputs.invia_report_subito != 'true'

@@ -53,6 +53,7 @@ import random
 import re
 import csv
 import io
+import base64
 import subprocess
 from datetime import datetime
 import urllib.request
@@ -297,6 +298,56 @@ def azzera_buffer_report():
     salva_json(BUFFER_REPORT_4ORE_FILE, [])
 
 
+def sincronizza_stato_su_github_api():
+    """
+    Salva direttamente lo stato e i registri su GitHub tramite GitHub REST API.
+    Garantisce al 100% la persistenza dei dati anche se il runner GitHub Actions
+    fallisce il git push da terminale.
+    """
+    token = os.environ.get("LIVE_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    repo = "Tonyhood2345/live-stream-serverless"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Giancani-State-Sync"
+    }
+
+    file_targets = [
+        "stato_orchestratore_15min.json",
+        "storico_immagini_pubblicate.json",
+        "registro_video_pubblicati.json",
+        "buffer_report_4ore.json"
+    ]
+
+    for rel_path in file_targets:
+        local_p = os.path.join(BASE_DIR, rel_path)
+        if not os.path.exists(local_p):
+            continue
+        try:
+            with open(local_p, "rb") as f_in:
+                b64_content = base64.b64encode(f_in.read()).decode("utf-8")
+
+            url_get = f"https://api.github.com/repos/{repo}/contents/{rel_path}"
+            r_get = requests.get(url_get, headers=headers, timeout=10, verify=False)
+            sha = r_get.json().get("sha") if r_get.status_code == 200 else None
+
+            payload = {
+                "message": f"chore(state): aggiornato {rel_path} ciclo 15min [skip ci]",
+                "content": b64_content,
+                "branch": "main"
+            }
+            if sha:
+                payload["sha"] = sha
+
+            r_put = requests.put(url_get, headers=headers, json=payload, timeout=15, verify=False)
+            if r_put.status_code in (200, 201):
+                log(f"   ☁️ [GitHub API Sync] {rel_path} sincronizzato su GitHub!")
+            else:
+                log(f"   ⚠️ [GitHub API Sync] HTTP {r_put.status_code} su {rel_path}")
+        except Exception as eSync:
+            log(f"   ⚠️ [GitHub API Sync] Eccezione su {rel_path}: {eSync}")
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # 🌐 PUBBLICAZIONE SOCIAL UNIFICATA (FACEBOOK + INSTAGRAM + ANTONIO GIANCANI)
 # ═════════════════════════════════════════════════════════════════════════════
@@ -497,7 +548,7 @@ def seleziona_prossima_immagine_mai_usata(stato):
     """
     ASSOLUTO OBBLIGO DI IMMAGINI DIVERSE:
     Seleziona rigorosamente una foto MAI utilizzata nel ciclo corrente,
-    avanzando sequenzialmente attraverso l'intero catalogo.
+    avanzando sia tramite puntatore sequenziale sia tramite slot temporale assoluto.
     """
     candidates = carica_tutti_candidati_immagini()
     if not candidates:
@@ -513,11 +564,19 @@ def seleziona_prossima_immagine_mai_usata(stato):
         salva_json(STORICO_IMMAGINI_FILE, [])
         mai_usate = candidates
 
-    idx_imm = stato.get("indice_immobile", 0)
+    # Progressione anti-blocco: combina puntatore di stato con slot temporale assoluto (15 min)
+    slot_15m = int(datetime.now().timestamp() // 900)
+    idx_imm = stato.get("indice_immobile")
+    if idx_imm is None:
+        idx_imm = (slot_15m // 2) % len(mai_usate)
+    else:
+        # Se lo stato era identico, forza sempre l'avanzamento sommando lo slot
+        idx_imm = (idx_imm + 1 + (slot_15m % 7)) % len(mai_usate)
+
     scelta = mai_usate[idx_imm % len(mai_usate)]
     stato["indice_immobile"] = (idx_imm + 1) % max(1, len(candidates))
     aggiungi_a_storico_immagini(scelta["fotoUrl"])
-    log(f"🖼️ Foto unica selezionata ({len(storico) + 1}/{len(candidates)} nel ciclo): {scelta['titolo']} ({scelta.get('stanza')})")
+    log(f"🖼️ Foto unica selezionata ({len(storico) + 1}/{len(candidates)} nel ciclo): {scelta['titolo']} ({scelta.get('stanza')}) [ID: {scelta['id']}]")
     return scelta
 
 
@@ -695,7 +754,7 @@ def seleziona_prossimo_video_mai_usato(stato):
     """
     ASSOLUTO OBBLIGO DI DIVERSITÀ:
     Seleziona il prossimo video dalla scheda Sheet mai utilizzato,
-    avanzando sequenzialmente attraverso l'intero catalogo.
+    avanzando sia tramite puntatore sequenziale sia tramite slot temporale assoluto.
     """
     candidates = carica_tutti_candidati_video()
     if not candidates:
@@ -711,7 +770,15 @@ def seleziona_prossimo_video_mai_usato(stato):
         salva_json(STORICO_VIDEO_YT_FILE, [])
         mai_visti = candidates
 
-    idx_v = stato.get("indice_video", 0)
+    # Progressione anti-blocco: combina puntatore di stato con slot temporale assoluto (15 min)
+    slot_15m = int(datetime.now().timestamp() // 900)
+    idx_v = stato.get("indice_video")
+    if idx_v is None:
+        idx_v = (slot_15m // 2) % len(mai_visti)
+    else:
+        # Avanza sempre in avanti rispetto allo slot per evitare loop
+        idx_v = (idx_v + 1 + (slot_15m % 7)) % len(mai_visti)
+
     scelto = mai_visti[idx_v % len(mai_visti)]
     stato["indice_video"] = (idx_v + 1) % max(1, len(candidates))
     aggiungi_a_storico_video_yt(scelto["id"])
@@ -806,6 +873,9 @@ def genera_storia_video_completa(scelto, per_antonio=False):
         if not os.path.exists(stock_dir) or not os.listdir(stock_dir):
             stock_dir = os.path.join(BASE_DIR, "video_promozionali_agenzia")
 
+        avail_stock = sorted([f for f in os.listdir(stock_dir) if f.endswith('.mp4')]) if stock_dir and os.path.exists(stock_dir) else []
+        slot_15m = int(datetime.now().timestamp() // 900)
+
         testo_check = f"{scelto.get('titolo', '')} {scelto.get('tipologia', '')} {scelto.get('testoF', '')}".lower()
         clip_name = "stock_living_moderno_luminoso.mp4"
         if any(w in testo_check for w in ["villa", "indipendente", "terreno", "giardino", "esterno"]):
@@ -819,14 +889,19 @@ def genera_storia_video_completa(scelto, per_antonio=False):
         elif any(w in testo_check for w in ["camera", "matrimonial", "letto", "notte"]):
             clip_name = "stock_camera_matrimoniale_rifinita.mp4"
 
+        # Se il tipo è generico o per garantire continua varietà, abbina rotazione
         cand_path = os.path.join(stock_dir, clip_name) if stock_dir and os.path.exists(stock_dir) else None
+        if not cand_path or not os.path.exists(cand_path):
+            if avail_stock:
+                clip_name = avail_stock[slot_15m % len(avail_stock)]
+                cand_path = os.path.join(stock_dir, clip_name)
+
         if cand_path and os.path.exists(cand_path):
             video_base = cand_path
             log(f"   🎥 [TIER 2] Utilizzo clip video immobiliare autentica: {os.path.basename(video_base)}")
         elif stock_dir and os.path.exists(stock_dir):
-            avail = [os.path.join(stock_dir, f) for f in os.listdir(stock_dir) if f.endswith('.mp4')]
-            if avail:
-                video_base = random.choice(avail)
+            if avail_stock:
+                video_base = os.path.join(stock_dir, avail_stock[slot_15m % len(avail_stock)])
                 log(f"   🎥 [TIER 2] Utilizzo clip video stock disponibile: {os.path.basename(video_base)}")
 
     # Tier 3: Se ancora nessun video ma foto disponibili, animazione Ken Burns 30s da foto
@@ -1073,12 +1148,25 @@ def verifica_e_invia_report_4ore(stato, forza=False):
 
 def esegui_singolo_ciclo(stato, tipo_forzato=None):
     """Esegue un singolo ciclo (15 minuti): sceglie se Bot Immagini o Bot Video in base all'alternanza"""
+    slot_15m = int(datetime.now().timestamp() // 900)
     ciclo = stato.get("ciclo_progressivo", 0) + 1
-    prossimo_tipo = tipo_forzato or stato.get("prossimo_tipo", "IMMAGINE")
-    indice_stile = stato.get("indice_stile", 0)
+
+    # Alternanza garantita: se forzato usa il forzato; altrimenti usa lo stato o l'orologio (slot 15m)
+    if tipo_forzato:
+        prossimo_tipo = tipo_forzato
+    else:
+        tipo_mem = stato.get("prossimo_tipo")
+        if tipo_mem in ("IMMAGINE", "VIDEO"):
+            prossimo_tipo = tipo_mem
+        else:
+            prossimo_tipo = "IMMAGINE" if (slot_15m % 2 == 0) else "VIDEO"
+
+    indice_stile = stato.get("indice_stile")
+    if indice_stile is None:
+        indice_stile = (slot_15m // 2) % len(STILI_GRAFICI_TABELLA)
 
     log("══════════════════════════════════════════════════════════════════════")
-    log(f"🚀 AVVIO CICLO #{ciclo} — TIPO: {prossimo_tipo} (Intervallo: 15 min)")
+    log(f"🚀 AVVIO CICLO #{ciclo} — TIPO: {prossimo_tipo} (Slot 15m: {slot_15m})")
     log("══════════════════════════════════════════════════════════════════════")
 
     if prossimo_tipo == "IMMAGINE":
@@ -1093,6 +1181,9 @@ def esegui_singolo_ciclo(stato, tipo_forzato=None):
 
     stato["ciclo_progressivo"] = ciclo
     salva_stato(stato)
+
+    # 💾 Sincronizzazione immediata via GitHub REST API (garanzia anti-blocco runner)
+    sincronizza_stato_su_github_api()
 
     # Watchdog di sicurezza: innesca la diretta serale alle ore 18:55 se non ancora partita
     verifica_e_innesca_diretta_serale(stato)

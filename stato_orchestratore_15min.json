@@ -1,8 +1,8 @@
 {
-  "ciclo_progressivo": 204,
-  "prossimo_tipo": "VIDEO",
+  "ciclo_progressivo": 205,
+  "prossimo_tipo": "IMMAGINE",
   "indice_immobile": 91,
-  "indice_video": 92,
+  "indice_video": 99,
   "indice_stile": 7,
   "ultimo_report_4ore_ts": 1793869749.47193
 }

@@ -224,6 +224,20 @@ def cancella_post_precedente(post_id, token, dry_run=False):
     return False
 
 def pubblica_nuovo_post(page_id, messaggio, token, dry_run=False):
+    # ⛔ KILL SWITCH META ATTIVO: Convogliamento su Telegram
+    print("⛔ [KILL SWITCH META] Pubblicazione nota Facebook bloccata. Convoglio su Telegram...")
+    try:
+        tg_token = os.environ.get("TELEGRAM_BOT_TOKEN") or "8643190035:AAHaUOT12j8l9f6GU9WW4W9HFOLfV-5r5-U"
+        tg_chat = os.environ.get("TELEGRAM_CHAT_ID") or "1723292483"
+        requests.post(f"https://api.telegram.org/bot{tg_token}/sendMessage", data={'chat_id': tg_chat, 'text': f"📝 *[NOTA SOCIAL CONVOGLIATA SU TELEGRAM]*
+_(Meta bloccato)_
+
+{messaggio}", 'parse_mode': 'Markdown'}, timeout=25)
+        print("✅ Nota recapitata su Telegram!")
+    except Exception as e:
+        print(f"⚠️ Errore Telegram: {e}")
+    return {"success": True, "id": "BLOCKED_META_TG"}
+def pubblica_nuovo_post_ORIGINALE(page_id, messaggio, token, dry_run=False):
     if dry_run:
         print(f"  [DRY-RUN] Simulazione pubblicazione post su pagina {page_id}:")
         print("  --- INIZIO ANTEPRIMA ---")

@@ -4,6 +4,9 @@
 // ═══════════════════════════════════════════════════════════════════════
 
 function oscuraCommentoFB(commentId) {
+  // ⛔ KILL SWITCH META
+  Logger.log("⛔ [KILL SWITCH META] oscuraCommentoFB bloccata.");
+  return { success: false, blocked: true };
   try {
     var ss = getSpreadsheetSicuro();
     var sheet = ss ? ss.getSheetByName('Impostazioni_Social') : null;
@@ -31,6 +34,9 @@ function oscuraCommentoFB(commentId) {
 }
 
 function getNuoviCommentiFB() {
+  // ⛔ KILL SWITCH META
+  Logger.log("⛔ [KILL SWITCH META] getNuoviCommentiFB bloccata.");
+  return [];
   try {
     var ss = getSpreadsheetSicuro();
     var props = PropertiesService.getScriptProperties();
@@ -163,6 +169,9 @@ function setFBLiveVideoId(videoId) {
 }
 
 function rispondiACommentoFB(commentId, testo) {
+  // ⛔ KILL SWITCH META
+  Logger.log("⛔ [KILL SWITCH META] rispondiACommentoFB bloccata.");
+  return { success: false, blocked: true };
   try {
     var token = PropertiesService.getScriptProperties().getProperty('FB_PAGE_TOKEN');
     if (!token || !commentId) return { success: false, error: 'Token o commentId mancante' };
@@ -1026,6 +1035,9 @@ function pubblicaSnapshotStoriaSocialOgni10Minuti(dati) {
  * Funzione trigger richiamata ogni 30 minuti da Google Apps Script durante la diretta
  */
 function aggiornaStoriaSnapshotLiveOgni30Minuti() {
+  // ⛔ KILL SWITCH META
+  Logger.log("⛔ [KILL SWITCH META] aggiornaStoriaSnapshotLiveOgni30Minuti bloccata.");
+  return { success: true, blocked: true };
   try {
     return pubblicaSnapshotStoriaSocialOgni30Minuti();
   } catch(e) {
@@ -1645,6 +1657,9 @@ function attivaTriggerNoteOrarieFacebook() {
 }
 
 function triggerAutomaticoNotaFacebook() {
+  // ⛔ KILL SWITCH META
+  Logger.log("⛔ [KILL SWITCH META] triggerAutomaticoNotaFacebook bloccata.");
+  return { success: true, blocked: true };
   var now = new Date();
   var ora = Number(Utilities.formatDate(now, "Europe/Rome", "H"));
   if (ora === 8 || ora === 14 || ora === 19 || ora === 23) {

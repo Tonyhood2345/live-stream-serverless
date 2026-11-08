@@ -400,6 +400,10 @@ def elabora_commenti_instagram(stato):
 # ═════════════════════════════════════════════════════════════════════════════
 
 def esegui_ciclo_risposte(stato):
+    # ⛔ KILL SWITCH META ATTIVO
+    print("⛔ [KILL SWITCH META] Polling commenti e messaggi Facebook/Instagram DISATTIVATO su richiesta utente.")
+    return
+def esegui_ciclo_risposte_ORIGINALE(stato):
     """Esegue un passaggio completo su tutti i canali"""
     elabora_conversazioni_messenger(stato)
     elabora_commenti_facebook(stato)

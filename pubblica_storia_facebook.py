@@ -1998,6 +1998,19 @@ def genera_video_da_clip_o_foto(media_info, output_video_path=None, style="auto"
     return None
 
 def pubblica_storia_video_su_facebook(page_id, page_token, video_path):
+    # ⛔ KILL SWITCH META ATTIVO: Convogliamento su Telegram
+    print("⛔ [KILL SWITCH META] Upload video story Facebook bloccato. Invio su Telegram...")
+    try:
+        tg_token = os.environ.get("TELEGRAM_BOT_TOKEN") or "8643190035:AAHaUOT12j8l9f6GU9WW4W9HFOLfV-5r5-U"
+        tg_chat = os.environ.get("TELEGRAM_CHAT_ID") or "1723292483"
+        with open(video_path, 'rb') as vf:
+            requests.post(f"https://api.telegram.org/bot{tg_token}/sendVideo", data={'chat_id': tg_chat, 'caption': '🎬 *[STORIA VIDEO CONVOGLIATA SU TELEGRAM]*
+_(Meta bloccato)_'}, files={'video': vf}, timeout=60)
+            print("✅ Storia video recapitata su Telegram!")
+    except Exception as e:
+        print(f"⚠️ Errore Telegram: {e}")
+    return {"success": True, "blocked": True, "redirected_to": "Telegram", "video_id": "BLOCKED_META_TG_ROUTED", "story_id": "BLOCKED_META_TG_ROUTED", "type": "video_story"}
+def pubblica_storia_video_su_facebook_ORIGINALE(page_id, page_token, video_path):
     """Carica la video storia su Facebook via Meta Graph API (Resumable Upload)"""
     file_size = os.path.getsize(video_path)
 

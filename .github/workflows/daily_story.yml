@@ -6,11 +6,11 @@ on:
   # - Ore 06:00 italiane (04:00 UTC): Pillole Immobiliari & Legali
   # - Ore 18:00 italiane (16:00 UTC): Storie della Mitologia Greca
   # - Ore 20:00 italiane (18:00 UTC): Storie della Bibbia & Grandi Classici
-# [KILL SWITCH META DISATTIVATO]   schedule:
-# [KILL SWITCH META DISATTIVATO]     - cron: '30 0 * * *'
-# [KILL SWITCH META DISATTIVATO]     - cron: '0 4 * * *'
-# [KILL SWITCH META DISATTIVATO]     - cron: '0 16 * * *'
-# [KILL SWITCH META DISATTIVATO]     - cron: '0 18 * * *'
+# [KILL SWITCH META DISATTIVATO] schedule disattivato
+# [KILL SWITCH META DISATTIVATO]   # [KILL SWITCH META DISATTIVATO]     - cron: '30 0 * * *'
+# [KILL SWITCH META DISATTIVATO]   # [KILL SWITCH META DISATTIVATO]     - cron: '0 4 * * *'
+# [KILL SWITCH META DISATTIVATO]   # [KILL SWITCH META DISATTIVATO]     - cron: '0 16 * * *'
+# [KILL SWITCH META DISATTIVATO]   # [KILL SWITCH META DISATTIVATO]     - cron: '0 18 * * *'
 
   # Trigger manuale per test immediato dalla dashboard di GitHub o dalla Regia Generator
   workflow_dispatch:

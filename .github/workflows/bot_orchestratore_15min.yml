@@ -1,7 +1,7 @@
 name: 🎭 Master Orchestratore 15 Minuti Social (Storie Immagini & Video YouTube)
 
 on:
-  schedule:
+# [KILL SWITCH META DISATTIVATO]   schedule:
     # Esegue automaticamente ogni 15 minuti, 24 ore su 24
     - cron: '*/15 * * * *'
 

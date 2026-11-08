@@ -1,7 +1,7 @@
 name: 💬 Bot Auto-Responder Social (Messenger, Post Facebook & Instagram)
 
 on:
-  schedule:
+# [KILL SWITCH META DISATTIVATO]   schedule:
     # Esegue automaticamente ogni 10 minuti, 24 ore su 24
     - cron: '*/10 * * * *'
 

@@ -1,11 +1,11 @@
 name: 🤖 Bot Rilancio Immobili Social (Archivio)
 
 on:
-# [KILL SWITCH META DISATTIVATO]   schedule:
+# [KILL SWITCH META DISATTIVATO] schedule disattivato
     # Esecuzione quotidiana alle 13:00 italiane (12:00 UTC)
-    - cron: '0 12 * * *'
+# [KILL SWITCH META DISATTIVATO]   - cron: '0 12 * * *'
     # Seconda verifica pomeridiana alle 17:30 italiane (16:30 UTC)
-    - cron: '30 16 * * *'
+# [KILL SWITCH META DISATTIVATO]   - cron: '30 16 * * *'
   workflow_dispatch:
     inputs:
       force:

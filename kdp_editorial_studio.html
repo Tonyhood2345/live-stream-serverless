@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KDP Editorial Studio — AI Book, Publishing & Telegram Admin</title>
+  <title>Collana Editoriale — I 12 Libriccini Pratici | Immobiliare Giancani</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet">
@@ -25,18 +25,51 @@
       --text: #f3f4f6;
       --text-muted: #9ca3af;
       --text-subtle: #6b7280;
+      --theme-glow: rgba(59, 130, 246, 0.25);
       --radius-sm: 8px;
       --radius-md: 12px;
       --radius-lg: 18px;
       --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    /* Temi Grafici Selezionabili */
+    body.theme-gold {
+      --primary: #d97706;
+      --primary-hover: #b45309;
+      --primary-light: rgba(217, 119, 6, 0.15);
+      --border-accent: #f59e0b;
+      --theme-glow: rgba(245, 158, 11, 0.25);
+    }
+    body.theme-emerald {
+      --primary: #059669;
+      --primary-hover: #047857;
+      --primary-light: rgba(5, 150, 105, 0.15);
+      --border-accent: #10b981;
+      --theme-glow: rgba(16, 185, 129, 0.25);
+    }
+    body.theme-ruby {
+      --primary: #dc2626;
+      --primary-hover: #b91c1c;
+      --primary-light: rgba(220, 38, 38, 0.15);
+      --border-accent: #ef4444;
+      --theme-glow: rgba(239, 68, 68, 0.25);
+    }
+    body.theme-sapphire {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: rgba(37, 99, 235, 0.15);
+      --border-accent: #3b82f6;
+      --theme-glow: rgba(59, 130, 246, 0.25);
+    }
+    body.theme-purple {
+      --primary: #7c3aed;
+      --primary-hover: #6d28d9;
+      --primary-light: rgba(124, 58, 237, 0.15);
+      --border-accent: #8b5cf6;
+      --theme-glow: rgba(139, 92, 246, 0.25);
     }
 
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: var(--bg);
@@ -45,116 +78,119 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      transition: background 0.3s ease;
     }
 
     header {
-      background: linear-gradient(180deg, rgba(18, 24, 38, 0.95) 0%, rgba(11, 15, 25, 0.95) 100%);
+      background: linear-gradient(180deg, rgba(18, 24, 38, 0.98) 0%, rgba(11, 15, 25, 0.95) 100%);
       border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
       z-index: 50;
       backdrop-filter: blur(12px);
-      padding: 14px 24px;
+      padding: 12px 20px;
     }
 
     .header-container {
-      max-width: 1400px;
+      max-width: 1440px;
       margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
     .brand-title {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       font-weight: 800;
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       letter-spacing: -0.02em;
       color: #fff;
     }
 
     .brand-badge {
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
       color: #fff;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 700;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 999px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
-    .header-actions {
+    .series-banner {
+      background: linear-gradient(90deg, rgba(24, 34, 52, 0.9) 0%, rgba(18, 24, 38, 0.9) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+    }
+
+    .series-container {
+      max-width: 1440px;
+      margin: 0 auto;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      overflow-x: auto;
+      white-space: nowrap;
+      padding-bottom: 4px;
     }
 
-    .btn {
-      display: inline-flex;
+    .series-label {
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      font-size: 0.88rem;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .book-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
       font-weight: 600;
-      border-radius: var(--radius-sm);
       cursor: pointer;
       transition: all 0.2s ease;
-      border: 1px solid transparent;
-      text-decoration: none;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-    }
-    .btn-primary:hover {
-      background: var(--primary-hover);
-      transform: translateY(-1px);
-    }
-
-    .btn-secondary {
-      background: var(--surface-card);
-      color: var(--text);
-      border-color: var(--border);
-    }
-    .btn-secondary:hover {
+    .book-pill:hover {
       background: var(--surface-hover);
+      color: #fff;
       border-color: var(--border-accent);
     }
 
-    .btn-gold {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      color: #000;
-      font-weight: 700;
-    }
-    .btn-gold:hover {
-      filter: brightness(1.1);
-    }
-
-    .btn-success {
-      background: #059669;
+    .book-pill.active {
+      background: var(--primary);
+      border-color: var(--primary-hover);
       color: #fff;
-    }
-    .btn-success:hover {
-      background: #047857;
+      box-shadow: 0 0 14px var(--theme-glow);
     }
 
     /* Tabs Navigation */
     .tabs-bar {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 6px 24px;
+      padding: 4px 20px;
       overflow-x: auto;
       white-space: nowrap;
     }
 
     .tabs-container {
-      max-width: 1400px;
+      max-width: 1440px;
       margin: 0 auto;
       display: flex;
       gap: 6px;
@@ -164,8 +200,8 @@
       background: transparent;
       border: none;
       color: var(--text-muted);
-      padding: 10px 18px;
-      font-size: 0.9rem;
+      padding: 9px 16px;
+      font-size: 0.88rem;
       font-weight: 600;
       border-radius: var(--radius-sm);
       cursor: pointer;
@@ -175,50 +211,40 @@
       gap: 8px;
     }
 
-    .tab-btn:hover {
-      color: var(--text);
-      background: rgba(255, 255, 255, 0.05);
-    }
-
+    .tab-btn:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
     .tab-btn.active {
       color: #fff;
       background: var(--primary-light);
-      border: 1px solid rgba(59, 130, 246, 0.4);
+      border: 1px solid var(--border-accent);
     }
 
-    /* Main Container */
+    /* Layout */
     main {
       flex: 1;
-      max-width: 1400px;
+      max-width: 1440px;
       width: 100%;
       margin: 0 auto;
-      padding: 24px;
+      padding: 20px;
     }
 
-    .tab-content {
-      display: none;
-      animation: fadeIn 0.25s ease-in-out;
-    }
-    .tab-content.active {
-      display: block;
-    }
+    .tab-content { display: none; animation: fadeIn 0.2s ease; }
+    .tab-content.active { display: block; }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Cards & Layout */
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 24px;
+      gap: 20px;
     }
 
     .grid-3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
+      gap: 18px;
     }
 
     .grid-4 {
@@ -228,44 +254,38 @@
     }
 
     @media (max-width: 1024px) {
-      .grid-2, .grid-3, .grid-4 {
-        grid-template-columns: 1fr;
-      }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
     }
 
     .card {
       background: var(--surface-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 22px;
+      padding: 20px;
       box-shadow: var(--shadow);
     }
 
     .card-title {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 700;
       color: #fff;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
     .card-subtitle {
-      font-size: 0.84rem;
+      font-size: 0.82rem;
       color: var(--text-muted);
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
-    /* Form Inputs */
-    .form-group {
-      margin-bottom: 16px;
-    }
-
+    .form-group { margin-bottom: 14px; }
     .form-group label {
       display: block;
-      font-size: 0.82rem;
-      font-weight: 600;
+      font-size: 0.78rem;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--text-muted);
@@ -278,8 +298,8 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       color: var(--text);
-      padding: 10px 14px;
-      font-size: 0.92rem;
+      padding: 9px 12px;
+      font-size: 0.9rem;
       font-family: inherit;
       transition: all 0.2s ease;
     }
@@ -287,538 +307,332 @@
     .form-control:focus {
       outline: none;
       border-color: var(--border-accent);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      box-shadow: 0 0 0 3px var(--theme-glow);
     }
 
-    textarea.form-control {
-      resize: vertical;
-      min-height: 120px;
+    textarea.form-control { resize: vertical; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      text-decoration: none;
     }
 
-    /* Chapter selector chips */
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--surface-card); color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border-accent); }
+    .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 700; }
+
+    /* Chapter Chips */
     .chapter-bar {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       overflow-x: auto;
-      padding-bottom: 10px;
-      margin-bottom: 20px;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
     }
 
     .chapter-chip {
       background: var(--surface);
       border: 1px solid var(--border);
       color: var(--text-muted);
-      padding: 8px 16px;
+      padding: 6px 12px;
       border-radius: 999px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
       transition: all 0.2s ease;
     }
 
-    .chapter-chip:hover {
-      background: var(--surface-hover);
-      color: #fff;
-    }
+    .chapter-chip:hover { background: var(--surface-hover); color: #fff; }
+    .chapter-chip.active { background: var(--primary); border-color: var(--primary-hover); color: #fff; }
 
-    .chapter-chip.active {
-      background: var(--primary);
-      border-color: var(--primary-hover);
-      color: #fff;
-    }
-
-    /* Tone / Style Chips */
-    .tone-chips {
+    /* Theme Selector Bar */
+    .theme-selector {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .tone-chip {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .tone-chip:hover, .tone-chip.active {
-      background: var(--primary-light);
-      border-color: var(--border-accent);
-      color: #93c5fd;
-    }
-
-    /* Style Grid Items */
-    .style-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 16px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      position: relative;
-    }
-
-    .style-card:hover {
-      border-color: var(--border-accent);
-      transform: translateY(-2px);
-    }
-
-    .style-card.selected {
-      border-color: var(--accent);
-      background: rgba(245, 158, 11, 0.08);
-    }
-
-    .style-card .badge-selected {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: var(--accent);
-      color: #000;
-      font-size: 0.7rem;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
-      display: none;
-    }
-
-    .style-card.selected .badge-selected {
-      display: block;
-    }
-
-    /* Image Gallery Cards */
-    .image-preview-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .image-preview-box {
-      width: 100%;
-      height: 220px;
-      background: linear-gradient(135deg, #1e293b, #0f172a);
-      display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 20px;
-      text-align: center;
-      border-bottom: 1px solid var(--border);
-      position: relative;
-    }
-
-    .image-preview-box .placeholder-title {
-      font-family: 'Cinzel', serif;
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: #e2e8f0;
-      margin-bottom: 8px;
-    }
-
-    .image-actions {
-      padding: 12px;
-      display: flex;
       gap: 8px;
-      background: var(--surface-card);
     }
 
-    /* Telegram Box & Console */
+    .theme-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s ease;
+    }
+
+    .theme-dot:hover { transform: scale(1.15); }
+    .theme-dot.active { border-color: #fff; box-shadow: 0 0 8px #fff; }
+    .dot-sapphire { background: #3b82f6; }
+    .dot-gold { background: #d97706; }
+    .dot-emerald { background: #059669; }
+    .dot-ruby { background: #dc2626; }
+    .dot-purple { background: #7c3aed; }
+
+    .book-card-display {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9));
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .book-display-info h2 {
+      font-size: 1.15rem;
+      color: #fff;
+      font-weight: 800;
+    }
+    .book-display-info p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
     .code-console {
       background: #050811;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 14px;
+      padding: 12px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       color: #38bdf8;
       overflow-x: auto;
       white-space: pre-wrap;
-      max-height: 280px;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    /* Alert Banner */
-    .alert-banner {
-      background: rgba(59, 130, 246, 0.1);
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      border-radius: var(--radius-md);
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-      gap: 16px;
+      max-height: 260px;
     }
 
     footer {
       border-top: 1px solid var(--border);
-      padding: 18px 24px;
+      padding: 14px 20px;
       background: var(--surface);
       text-align: center;
-      font-size: 0.86rem;
+      font-size: 0.84rem;
       color: var(--text-muted);
       margin-top: auto;
     }
   </style>
 </head>
-<body>
+<body class="theme-sapphire">
 
-  <!-- Header -->
+  <!-- Header Principale -->
   <header>
     <div class="header-container">
       <div class="brand-title">
-        <span>📖 KDP Editorial Studio</span>
-        <span class="brand-badge">GitHub Edition</span>
-        <span class="status-pill" id="save-status">● Modifiche Salvate (LocalStorage)</span>
+        <span>📖 Collana Pratica KDP</span>
+        <span class="brand-badge" id="collana-tag">12 Volumi</span>
+        <div class="theme-selector" title="Cambia tema cromatico della collana">
+          <div class="theme-dot dot-sapphire active" onclick="setAppTheme('theme-sapphire', this)"></div>
+          <div class="theme-dot dot-gold" onclick="setAppTheme('theme-gold', this)"></div>
+          <div class="theme-dot dot-emerald" onclick="setAppTheme('theme-emerald', this)"></div>
+          <div class="theme-dot dot-ruby" onclick="setAppTheme('theme-ruby', this)"></div>
+          <div class="theme-dot dot-purple" onclick="setAppTheme('theme-purple', this)"></div>
+        </div>
       </div>
-      <div class="header-actions">
-        <button class="btn btn-secondary" onclick="exportJSON()">💾 Esporta JSON</button>
-        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📂 Carica JSON</button>
-        <input type="file" id="import-file" style="display:none" accept=".json" onchange="importJSON(event)">
-        <button class="btn btn-gold" onclick="window.print()">🖨️ Stampa / Salva PDF</button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn btn-secondary" onclick="exportCollanaJSON()">💾 Salva Backup Collana</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-collana-file').click()">📂 Carica</button>
+        <input type="file" id="import-collana-file" style="display:none" accept=".json" onchange="importCollanaJSON(event)">
+        <button class="btn btn-gold" onclick="window.print()">🖨️ Stampa Libriccino</button>
       </div>
     </div>
   </header>
 
-  <!-- Navigation Tabs -->
+  <!-- Barra Selettore dei 12 Libri della Collana -->
+  <section class="series-banner">
+    <div class="series-container" id="series-books-nav">
+      <!-- Generato via JS: Vol 1..12 -->
+    </div>
+  </section>
+
+  <!-- Tabs Navigation -->
   <nav class="tabs-bar">
     <div class="tabs-container">
-      <button class="tab-btn active" onclick="switchTab('tab1', this)">✍️ 1. Scrittura & Focus</button>
-      <button class="tab-btn" onclick="switchTab('tab2', this)">🖼️ 2. Galleria Immagini KDP</button>
-      <button class="tab-btn" onclick="switchTab('tab3', this)">🎙️ 3. Lettore Vocale TTS</button>
-      <button class="tab-btn" onclick="switchTab('tab4', this)">🎨 4. 30 Stili Grafici</button>
-      <button class="tab-btn" onclick="switchTab('tab5', this)">🚀 5. Motti & Amazon KDP</button>
-      <button class="tab-btn" onclick="switchTab('tab6', this)">🤖 6. Bot Telegram & Tutorial</button>
+      <button class="tab-btn active" onclick="switchTab('tab1', this)">✍️ 1. Scrittura Volume</button>
+      <button class="tab-btn" onclick="switchTab('tab-collana', this)">📚 2. La Collana (12 Volumi)</button>
+      <button class="tab-btn" onclick="switchTab('tab2', this)">🖼️ 3. Copertina & Grafica</button>
+      <button class="tab-btn" onclick="switchTab('tab3', this)">🎙️ 4. Lettore Vocale</button>
+      <button class="tab-btn" onclick="switchTab('tab4', this)">🎨 5. 30 Stili KDP</button>
+      <button class="tab-btn" onclick="switchTab('tab6', this)">🤖 6. Bot Telegram</button>
     </div>
   </nav>
 
   <!-- Main Work Area -->
   <main>
 
-    <!-- TAB 1: Scrittura & Focus Capitoli -->
+    <!-- TAB 1: Scrittura Capitoli del Volume Selezionato -->
     <div id="tab1" class="tab-content active">
       
-      <!-- Chapter selector bar -->
-      <div class="chapter-bar" id="chapter-nav">
-        <!-- Generato via JS: Introduzione + Cap 1..11 + Conclusione -->
+      <!-- Banner Volume Attivo -->
+      <div class="book-card-display">
+        <div class="book-display-info">
+          <span style="font-size:0.75rem; text-transform:uppercase; color:var(--accent); font-weight:700;" id="display-vol-num">Volume 1 di 12</span>
+          <h2 id="display-vol-title">Comprare Casa Senza Rischi</h2>
+          <p id="display-vol-sub">La guida indispensabile per verificare conformità, perizie e stipula sicura.</p>
+        </div>
+        <div>
+          <button class="btn btn-secondary" onclick="openVolSettings()">⚙️ Dati Volume</button>
+        </div>
       </div>
 
+      <!-- Barra dei Capitoli del Volume -->
+      <div class="chapter-bar" id="chapter-nav"></div>
+
       <div class="grid-2">
-        <!-- Editor Colonna Sinistra -->
+        <!-- Colonna Sinistra: Editor Testo -->
         <div class="card">
           <div class="card-title">
             <span id="active-chapter-title">Capitolo 1</span>
-            <span style="font-size:0.8rem; color:var(--accent);">KDP Trim: 6" × 9"</span>
+            <span style="font-size:0.78rem; color:var(--accent);">Libriccino Tascabile 6" × 9" KDP</span>
           </div>
 
           <div class="form-group">
-            <label>Titolo del Capitolo / Sezione</label>
-            <input type="text" id="chapter-title-input" class="form-control" placeholder="Inserisci titolo capitolo...">
-          </div>
-
-          <div class="form-group">
-            <label>Stile / Tono di Voce Narrativo</label>
-            <div class="tone-chips" id="tone-selector">
-              <span class="tone-chip active" onclick="setTone(this)">Professionale & Autorevole</span>
-              <span class="tone-chip" onclick="setTone(this)">Appassionato & Coinvolgente</span>
-              <span class="tone-chip" onclick="setTone(this)">Narrativo Storytelling</span>
-              <span class="tone-chip" onclick="setTone(this)">Ritmico Concept Album</span>
-              <span class="tone-chip" onclick="setTone(this)">Pragmatico & Analitico</span>
-              <span class="tone-chip" onclick="setTone(this)">Mentoring & Guida</span>
-              <span class="tone-chip" onclick="setTone(this)">Inchiesta Giornalistica</span>
-            </div>
+            <label>Titolo del Capitolo</label>
+            <input type="text" id="chapter-title-input" class="form-control">
           </div>
 
           <div class="form-group">
             <label>Testo Completo del Capitolo (Colonna F / Copione Ufficiale)</label>
-            <textarea id="chapter-content-input" class="form-control" style="min-height:360px;" placeholder="Inizia a scrivere o incollare il testo qui..."></textarea>
+            <textarea id="chapter-content-input" class="form-control" style="min-height:340px;" placeholder="Scrivi o incolla qui il testo..."></textarea>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-            <span id="word-count" style="font-size:0.85rem; color:var(--text-muted)">0 parole | 0 battute</span>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="word-count" style="font-size:0.8rem; color:var(--text-muted)">0 parole</span>
             <button class="btn btn-primary" onclick="saveCurrentChapter()">Salva Capitolo</button>
           </div>
         </div>
 
-        <!-- Focus, Brano & Consigli Colonna Destra -->
+        <!-- Colonna Destra: Focus, Motto & Regole -->
         <div class="card">
           <div class="card-title">
-            <span>🎯 Focus, Traccia Musicale & Consigli</span>
+            <span>🎯 Focus, Traccia & Hook del Volume</span>
           </div>
 
           <div class="form-group">
-            <label>Traccia dell'Album Collegata</label>
-            <input type="text" id="chapter-track-input" class="form-control" placeholder="Es. Traccia 01 — Il Primo Passo">
+            <label>Motto d'Apertura del Capitolo</label>
+            <input type="text" id="chapter-motto-input" class="form-control">
           </div>
 
           <div class="form-group">
-            <label>Motto d'Apertura / Hook Magnetico</label>
-            <input type="text" id="chapter-motto-input" class="form-control" placeholder="Es. 'Chi non conosce il valore del tempo non comprende il valore di una casa.'">
+            <label>Traccia Musicale / Audio di Sottofondo</label>
+            <input type="text" id="chapter-track-input" class="form-control">
           </div>
 
           <div class="form-group">
-            <label>Frasi o Citazioni Chiave da Menzionare</label>
-            <textarea id="chapter-quotes-input" class="form-control" style="min-height:90px;" placeholder="Punti chiave, concetti legali, analogie o citazioni da inserire nel corpo del capitolo..."></textarea>
+            <label>Punti Salienti & Citazioni Chiave</label>
+            <textarea id="chapter-quotes-input" class="form-control" style="min-height:90px;"></textarea>
           </div>
 
           <div class="form-group">
-            <label>Note e Guida di Scrittura per la Revisione</label>
-            <textarea id="chapter-notes-input" class="form-control" style="min-height:90px;" placeholder="Obiettivi di apprendimento per il lettore, call-to-action finale..."></textarea>
+            <label>Note Operative per il Cliente</label>
+            <textarea id="chapter-notes-input" class="form-control" style="min-height:90px;"></textarea>
           </div>
 
-          <div class="alert-banner" style="margin-bottom:0;">
-            <div>
-              <div style="font-weight:700; font-size:0.9rem;">⭐ Regola Editoriale</div>
-              <div style="font-size:0.8rem; color:var(--text-muted)">Superfici sempre indicate con la dicitura <b>metri quadri</b> per esteso.</div>
-            </div>
+          <div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); border-radius:8px; padding:12px; font-size:0.82rem;">
+            <b>📐 Standard Editoriale:</b> Superfici sempre espresse con la dicitura <b>metri quadri</b> per esteso.
           </div>
         </div>
       </div>
     </div>
 
-    <!-- TAB 2: Galleria 4 Opzioni Immagini -->
-    <div id="tab2" class="tab-content">
-      <div class="card" style="margin-bottom:20px;">
+    <!-- TAB 2: Panoramica Intera Collana 12 Volumi -->
+    <div id="tab-collana" class="tab-content">
+      <div class="card" style="margin-bottom:18px;">
         <div class="card-title">
-          <span>🖼️ Generatore & Confronto 4 Varianti Immagini KDP</span>
-          <button class="btn btn-secondary" onclick="generateImagePrompts()">🎲 Rigenera Prompt Visivi</button>
+          <span>📚 I 12 Volumi della Collana Editoriale "I Pratici"</span>
+          <span style="font-size:0.85rem; color:var(--accent);">Edizione Ufficiale Immobiliare Giancani</span>
         </div>
-        <p class="card-subtitle">Ogni scena o capitolo presenta 4 varianti visive coerenti con il tema (contratti con stilografica, planimetrie tecniche, chiavi d'autore, architetture luminose).</p>
+        <p class="card-subtitle">Una serie coordinata di libriccini tascabili pratici, autorevoli e di grande prestigio da esibire in agenzia o consegnare ai clienti.</p>
+      </div>
+
+      <div class="grid-3" id="collana-grid">
+        <!-- Generato via JS: 12 schede volumi -->
+      </div>
+    </div>
+
+    <!-- TAB 3: Copertina & Grafica -->
+    <div id="tab2" class="tab-content">
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">
+          <span>🖼️ Copertina e Formato del Volume Attivo</span>
+        </div>
+        <p class="card-subtitle">Formato standard Amazon KDP 6" × 9" (15,24 × 22,86 cm). Grafiche con contratti notarili, planimetrie e living luminosi.</p>
       </div>
 
       <div class="grid-4" id="image-gallery-grid">
-        <!-- Variant 1 -->
-        <div class="image-preview-card">
-          <div class="image-preview-box">
-            <div class="placeholder-title">Opzione 1: Rogito & Firma</div>
-            <p style="font-size:0.75rem; color:#94a3b8">Stilografica di pregio, riga di firma e sigillo notarile formale.</p>
+        <div class="card" style="text-align:center;">
+          <div style="height:180px; background:linear-gradient(135deg, #1e293b, #0f172a); border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
+            <div style="font-family:'Cinzel', serif; font-weight:700; color:#cbd5e1; font-size:0.9rem;" id="cover-preview-title">Comprare Casa Senza Rischi</div>
           </div>
-          <div class="image-actions">
-            <button class="btn btn-secondary" style="flex:1; font-size:0.75rem;" onclick="alert('Download JPG Opzione 1')">⬇ JPG</button>
-            <button class="btn btn-secondary" style="flex:1; font-size:0.75rem;" onclick="alert('Download PDF Opzione 1')">⬇ PDF</button>
-          </div>
-        </div>
-
-        <!-- Variant 2 -->
-        <div class="image-preview-card">
-          <div class="image-preview-box">
-            <div class="placeholder-title">Opzione 2: Architettura & Progetto</div>
-            <p style="font-size:0.75rem; color:#94a3b8">Planimetria tecnica, squadra e compasso su tavolo in rovere.</p>
-          </div>
-          <div class="image-actions">
-            <button class="btn btn-secondary" style="flex:1; font-size:0.75rem;" onclick="alert('Download JPG Opzione 2')">⬇ JPG</button>
-            <button class="btn btn-secondary" style="flex:1; font-size:0.75rem;" onclick="alert('Download PDF Opzione 2')">⬇ PDF</button>
-          </div>
-        </div>
-
-        <!-- Variant 3 -->
-        <div class="image-preview-card">
-          <div class="image-preview-box">
-            <div class="placeholder-title">Opzione 3: Chiavi & Consegna</div>
-            <p style="font-size:0.75rem; color:#94a3b8">Chiavi in ottone, plastico architettonico e luce calda d'interni.</p>
-          </div>
-          <div class="image-actions">
-            <button class="btn btn-secondary" style="flex:1; font-size:0.75rem;" onclick="alert('Download JPG Opzione 3')">⬇ JPG</button>
-            <button class="btn btn-secondary" style="flex:1; font-size:0.75rem;" onclick="alert('Download PDF Opzione 3')">⬇ PDF</button>
-          </div>
-        </div>
-
-        <!-- Variant 4 -->
-        <div class="image-preview-card">
-          <div class="image-preview-box">
-            <div class="placeholder-title">Opzione 4: Living Contemporaneo</div>
-            <p style="font-size:0.75rem; color:#94a3b8">Spazio luminoso ad alta definizione, finiture di pregio e vetrate.</p>
-          </div>
-          <div class="image-actions">
-            <button class="btn btn-secondary" style="flex:1; font-size:0.75rem;" onclick="alert('Download JPG Opzione 4')">⬇ JPG</button>
-            <button class="btn btn-secondary" style="flex:1; font-size:0.75rem;" onclick="alert('Download PDF Opzione 4')">⬇ PDF</button>
-          </div>
+          <div style="font-size:0.8rem; font-weight:700; margin-bottom:6px;">Copertina Ufficiale</div>
+          <button class="btn btn-secondary" style="width:100%;" onclick="alert('Download Copertina JPG')">⬇ Scarica JPG</button>
         </div>
       </div>
     </div>
 
-    <!-- TAB 3: Lettore Vocale TTS Gratuito -->
+    <!-- TAB 4: Lettore Vocale TTS -->
     <div id="tab3" class="tab-content">
       <div class="grid-2">
         <div class="card">
-          <div class="card-title">
-            <span>🎙️ Sintetizzatore Vocale Diretto (SpeechSynthesis)</span>
-            <span class="status-pill">100% Gratuito nel Browser</span>
-          </div>
-          <p class="card-subtitle">Ascolta in tempo reale la lettura naturale del capitolo attivo direttamente dal browser senza server esterni.</p>
-
+          <div class="card-title"><span>🎙️ Lettura Vocale Istantanea</span></div>
           <div class="form-group">
             <label>Voce Selezionata</label>
             <select id="tts-voice-select" class="form-control"></select>
           </div>
-
-          <div class="grid-2">
-            <div class="form-group">
-              <label>Velocità Lettura</label>
-              <input type="range" id="tts-rate" min="0.7" max="1.5" step="0.1" value="1.0" class="form-control" onchange="document.getElementById('rate-val').innerText = this.value + 'x'">
-              <div style="font-size:0.8rem; text-align:right; color:var(--text-muted)" id="rate-val">1.0x</div>
-            </div>
-            <div class="form-group">
-              <label>Tono di Voce</label>
-              <input type="range" id="tts-pitch" min="0.8" max="1.3" step="0.05" value="1.0" class="form-control" onchange="document.getElementById('pitch-val').innerText = this.value">
-              <div style="font-size:0.8rem; text-align:right; color:var(--text-muted)" id="pitch-val">1.0</div>
-            </div>
-          </div>
-
-          <div style="display:flex; gap:10px; margin-top:16px;">
-            <button class="btn btn-primary" onclick="speakCurrentText()">▶ Ascolta Ora nel Browser</button>
+          <div style="display:flex; gap:10px; margin-top:14px;">
+            <button class="btn btn-primary" onclick="speakCurrentText()">▶ Ascolta Capitolo</button>
             <button class="btn btn-secondary" onclick="stopSpeaking()">⏹ Stop</button>
           </div>
         </div>
-
         <div class="card">
-          <div class="card-title">
-            <span>🎧 Testo Attualmente in Lettura</span>
-          </div>
-          <textarea id="tts-preview-text" class="form-control" style="min-height:240px;" readonly placeholder="Il testo del capitolo attivo apparirà qui durante l'ascolto..."></textarea>
-          <div style="margin-top:12px; font-size:0.82rem; color:var(--text-muted)">
-            Suggerimento: puoi anche usare il comando Telegram <code>/tts [numero]</code> per farti recapitare il file MP3 direttamente in chat.
-          </div>
+          <div class="card-title"><span>🎧 Testo Capitolo Attivo</span></div>
+          <textarea id="tts-preview-text" class="form-control" style="min-height:180px;" readonly></textarea>
         </div>
       </div>
     </div>
 
-    <!-- TAB 4: 30 Stili Grafici KDP -->
+    <!-- TAB 5: 30 Stili KDP -->
     <div id="tab4" class="tab-content">
-      <div class="card" style="margin-bottom:20px;">
-        <div class="card-title">
-          <span>🎨 I 30 Stili di Grafica & Impaginazione Amazon KDP</span>
-          <span style="font-size:0.85rem; color:var(--accent);">Stile Attivo: <b id="current-style-name">01. Minimalist Editorial</b></span>
-        </div>
-        <p class="card-subtitle">Clicca su uno stile per applicare istantaneamente le regole tipografiche, margini KDP e palette cromatiche.</p>
-      </div>
-
-      <div class="grid-3" id="styles-30-grid">
-        <!-- Generato via JS: 30 stili editoriali KDP -->
-      </div>
+      <div class="grid-3" id="styles-30-grid"></div>
     </div>
 
-    <!-- TAB 5: Motti, Citazioni & Vendite KDP -->
-    <div id="tab5" class="tab-content">
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">
-            <span>🧲 Motti Magnetici & Citazioni d'Impatto</span>
-          </div>
-          <div class="form-group">
-            <label>Seleziona un Motto da inserire nel capitolo attivo</label>
-            <select id="motto-preset-select" class="form-control" onchange="insertSelectedMotto(this.value)">
-              <option value="">-- Scegli un motto magnetico --</option>
-              <option value="La casa non è solo mattoni: è il custode delle tue scelte di vita.">La casa non è solo mattoni: è il custode delle tue scelte di vita.</option>
-              <option value="Comprare o vendere con serenità significa non lasciare nulla al caso.">Comprare o vendere con serenità significa non lasciare nulla al caso.</option>
-              <option value="Il miglior investimento è quello protetto da una conoscenza impeccabile.">Il miglior investimento è quello protetto da una conoscenza impeccabile.</option>
-              <option value="La conformità non è un ostacolo, ma la tua più solida garanzia nel tempo.">La conformità non è un ostacolo, ma la tua più solida garanzia nel tempo.</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Checklist Amazon KDP Bestseller</label>
-            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.88rem;">
-              <label><input type="checkbox" checked> Formato 6" × 9" standard KDP impostato</label>
-              <label><input type="checkbox" checked> Margini di sicurezza e rilegatura (Gutter 0.5")</label>
-              <label><input type="checkbox" checked> Numerazione pagine e testatine alternate</label>
-              <label><input type="checkbox" checked> Sommario navigabile e indice analitico</label>
-              <label><input type="checkbox" checked> Call-To-Action e link di contatto finali</label>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">
-            <span>🛒 Generatore Codice HTML Descrizione Amazon KDP</span>
-            <button class="btn btn-secondary" onclick="copyAmazonHTML()">📋 Copia HTML</button>
-          </div>
-          <textarea id="amazon-html-output" class="code-console" style="min-height:280px;"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 6: Bot Telegram Amministratore & Tutorial -->
+    <!-- TAB 6: Bot Telegram -->
     <div id="tab6" class="tab-content">
       <div class="grid-2">
         <div class="card">
-          <div class="card-title">
-            <span>✈️ Invio Immediato al tuo Bot Telegram</span>
-            <span class="status-pill">Telegram API Ready</span>
-          </div>
-          <p class="card-subtitle">Invia direttamente dal tuo browser il riepilogo del libro, il tutorial o il capitolo attivo sul tuo Bot Telegram Amministratore.</p>
-
+          <div class="card-title"><span>✈️ Notifiche & Aggiornamenti Telegram</span></div>
           <div class="form-group">
-            <label>Telegram Bot Token (da @BotFather)</label>
+            <label>Bot Token</label>
             <input type="text" id="tg-token" class="form-control" value="9127606498:AAHd8QULtpsmFvoVMotm6SonASxV8xcyxKs">
           </div>
-
           <div class="form-group">
-            <label>Telegram Admin Chat ID (da @userinfobot)</label>
+            <label>Chat ID</label>
             <input type="text" id="tg-chat-id" class="form-control" value="1723292483">
           </div>
-
-          <div class="form-group">
-            <label>Messaggio / Notifica da Inviare</label>
-            <textarea id="tg-custom-msg" class="form-control" style="min-height:90px;" placeholder="Scrivi una notifica o usa il pulsante per inviare il riepilogo del libro..."></textarea>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary" onclick="sendVolumeToTelegram()">🚀 Invia Scheda Volume Attivo</button>
+            <button class="btn btn-secondary" onclick="sendCollanaToTelegram()">📚 Invia Elenco 12 Volumi</button>
           </div>
-
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="sendToTelegram()">🚀 Invia Ora a Telegram</button>
-            <button class="btn btn-secondary" onclick="prepareTelegramSummary()">📄 Prepara Riepilogo Libro</button>
-          </div>
-
-          <div id="tg-response" style="margin-top:14px; font-size:0.85rem;"></div>
+          <div id="tg-response" style="margin-top:12px; font-size:0.85rem;"></div>
         </div>
-
         <div class="card">
-          <div class="card-title">
-            <span>📖 Guida & Comandi Bot Telegram Amministratore</span>
-          </div>
-          <div class="code-console">
-<b>COMANDI DISPONIBILI SUL TUO BOT TELEGRAM:</b>
-
-• <code>/start</code> o <code>/tutorial</code>
-  Ricevi il tutorial completo e il link allo studio.
-
-• <code>/focus 1</code> (da 1 a 11)
-  Mostra il focus, la traccia musicale e i consigli del capitolo.
-
-• <code>/immagini 1</code>
-  Genera e invia le 4 opzioni di immagini JPG in chat.
-
-• <code>/tts 1</code>
-  Genera la traccia vocale MP3 del capitolo.
-
-• <code>/stili30</code>
-  Invia l'elenco completo dei 30 stili KDP.
-
-• <code>/motti</code>
-  Invia la raccolta dei motti magnetici per il libro.
-
-• <code>/genera</code>
-  Genera il volume completo in PDF 6"×9" e copertina JPG.
-          </div>
+          <div class="card-title"><span>📱 Web App Telegram Attiva</span></div>
+          <p class="card-subtitle">Questa pagina è già integrata nel bot <b>@Scrittorelibro_bot</b>. Tocca il tasto del menu in basso nella chat per sfogliare i 12 libriccini direttamente dentro Telegram.</p>
         </div>
       </div>
     </div>
@@ -827,34 +641,284 @@
 
   <!-- Footer con Personal Branding -->
   <footer>
-    <div style="max-width:1400px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-      <div>KDP Editorial Studio — Sistema Autonomo di Scrittura, Impaginazione & Pubblicazione</div>
+    <div style="max-width:1440px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div>Collana "I Pratici di Immobiliare Giancani" — 12 Libriccini Autonomi per Amazon KDP</div>
       <div style="font-weight:700; color:#fff;">— Immobiliare Giancani</div>
     </div>
   </footer>
 
   <script>
-    // Inizializzazione Dati Predefiniti
-    const BOOK_DATA = {
-      title: "Guida Strategica al Mercato Immobiliare",
-      author: "Immobiliare Giancani",
-      chapters: [
-        { id: 0, name: "Prefazione & Introduzione", title: "Il Valore della Casa e della Serenità", track: "Track 00 — Ouverture", motto: "La casa non è solo mattoni: è il custode delle tue scelte.", content: "Benvenuti nella guida che trasforma ogni decisione patrimoniale in certezza...", quotes: "Sicurezza contrattuale, trasparenza, conformità.", notes: "Impostare subito il rapporto di fiducia con il lettore." },
-        { id: 1, name: "Capitolo 1", title: "Conformità Urbanistica e Catasto", track: "Track 01 — Fondamenta", motto: "La conformità è la tua più solida garanzia nel tempo.", content: "Tutto ciò che serve sapere su planimetrie conformi, agibilità e verifiche tecniche...", quotes: "Controllo catastale, sanatorie, allineamento documentale.", notes: "Evidenziare i rischi del comprare senza perizia preventiva." },
-        { id: 2, name: "Capitolo 2", title: "Il Rogito Notarile e la Caparra", track: "Track 02 — L'Accordo", motto: "Comprare o vendere con serenità significa non lasciare nulla al caso.", content: "Dalla proposta irrevocabile al preliminare, fino alla firma del rogito definitivo...", quotes: "Caparra confirmatoria, trascrizione del preliminare, clausole sospensive.", notes: "Dettagliare la tutela del compratore e del venditore." },
-        { id: 3, name: "Capitolo 3", title: "Valutazione Reale dell'Immobile", track: "Track 03 — Valore Autentico", motto: "Il prezzo giusto non è un'illusione, è una scienza.", content: "Metodologia scientifica di calcolo delle superfici in metri quadri e comparativi di mercato...", quotes: "Superficie commerciale in metri quadri, andamento delle quotazioni.", notes: "Spiegare la differenza tra valore affettivo e valore reale." },
-        { id: 4, name: "Capitolo 4", title: "Mutui e Agevolazioni Prima Casa", track: "Track 04 — Orizzonte", motto: "La libertà finanziaria nasce da una pianificazione attenta.", content: "Tassi fissi, variabili, agevolazioni giovani under 36 e imposte agevolate...", quotes: "Detrazioni fiscali, delibera reddituale, perizia banca.", notes: "Consigli pratici per ottenere il miglior preventivo." },
-        { id: 5, name: "Capitolo 5", title: "Marketing Immobiliare e Home Staging", track: "Track 05 — Luce e Spazio", motto: "La prima impressione è l'unica che non puoi ripetere.", content: "Come valorizzare ogni ambiente, fotografia professionale e video tour...", quotes: "De-cluttering, illuminazione corretta, target di riferimento.", notes: "Mostrare il prima e dopo con esempi concreti." },
-        { id: 6, name: "Capitolo 6", title: "Trattativa e Psicologia della Vendita", track: "Track 06 — Dialogo", motto: "Una buona trattativa non ha vincitori né vinti, ma due parti soddisfatte.", content: "Gestione delle obiezioni, tempo di permanenza sul mercato e strategia d'offerta...", quotes: "Ascolto attivo, proposta formale, equilibrio contrattuale.", notes: "Mantenere sempre lucidità ed evitare decisioni emotive." },
-        { id: 7, name: "Capitolo 7", title: "Ristrutturazioni e Bonus Edilizi", track: "Track 07 — Rinascita", motto: "Ogni spazio trasformato è un valore moltiplicato.", content: "Guida alle detrazioni fiscali per efficientamento energetico e ristrutturazione...", quotes: "Computo metrico, direzione lavori, asseverazioni tecniche.", notes: "Attenzione a preventivi e tempistiche contrattualizzate." },
-        { id: 8, name: "Capitolo 8", title: "Investimenti Immobiliari a Rendita", track: "Track 08 — Rendimento", motto: "Il mattone rende quando il calcolo è perfetto.", content: "Locazioni brevi, transitorie e canone concordato con cedolare secca...", quotes: "ROI netto, selezione inquilini, contratti registrati.", notes: "Analisi dettagliata della redditività annua." },
-        { id: 9, name: "Capitolo 9", title: "Eredità, Donazioni e Successioni", track: "Track 09 — Radici", motto: "Proteggere il patrimonio familiare è un dovere verso il futuro.", content: "Come gestire immobili pervenuti per donazione o eredità senza rischi di impugnazione...", quotes: "Azione di riduzione, polizze donazione, imposta di successione.", notes: "Chiarire i vent'anni di tutela per gli acquirenti di donazioni." },
-        { id: 10, name: "Capitolo 10", title: "Case di Prestigio e Luxury Real Estate", track: "Track 10 — Eccellenza", motto: "L'esclusività è la cura instancabile di ogni singolo dettaglio.", content: "Privacy, acquirenti qualificati e standard di presentazione d'alto profilo...", quotes: "Finiture artigianali, viste panoramiche, certificazioni premium.", notes: "Protocollo riservato e canali internazionali." },
-        { id: 11, name: "Capitolo 11", title: "La Consegna delle Chiavi", track: "Track 11 — Casa", motto: "Una porta che si apre è una nuova storia che comincia.", content: "Verbale di consegna, volture utenze e passaggio finale del possesso...", quotes: "Verbale di stato luoghi, lettura contatori, assistenza post-vendita.", notes: "Celebrare il traguardo raggiunto dal cliente." }
-      ]
-    };
+    // Database dei 12 Volumi della Collana
+    const COLLANA_VOLUMI = [
+      {
+        id: 1,
+        title: "Comprare Casa Senza Rischi",
+        subtitle: "Verifiche urbanistiche, controlli notarili e stipula serena",
+        theme: "theme-sapphire",
+        chapters: [
+          { name: "Introduzione", title: "Il primo passo verso la casa dei sogni", motto: "La serenità comincia dalla sicurezza.", track: "Traccia 01", content: "Comprare casa è uno dei momenti più significativi della vita. Conoscere le tutele legali fa la differenza.", quotes: "Conformità, trasparenza.", notes: "Consigli d'apertura." },
+          { name: "Capitolo 1", title: "Conformità Urbanistica e Catasto", motto: "La conformità è la tua più solida garanzia.", track: "Traccia 02", content: "Tutto ciò che serve sapere su planimetrie, abusi edilizi e sanatorie.", quotes: "Verifiche tecniche preliminari.", notes: "Dettagliare la responsabilità del venditore." },
+          { name: "Capitolo 2", title: "La Proposta d'Acquisto e la Caparra", motto: "Non firmare nulla senza le giuste clausole.", track: "Traccia 03", content: "Come blindare l'accordo con la caparra confirmatoria e le clausole sospensive per il mutuo.", quotes: "Tutela dell'acquirente.", notes: "Clausola sospensiva mutuo." },
+          { name: "Capitolo 3", title: "Il Rogito e la Consegna Chiavi", motto: "Il giorno della firma definitiva.", track: "Traccia 04", content: "I documenti richiesti dal notaio e il verbale di consegna con lettura contatori.", quotes: "Passaggio di possesso formale.", notes: "Chiusura in sicurezza." }
+        ]
+      },
+      {
+        id: 2,
+        title: "Vendere Casa al Massimo Valore",
+        subtitle: "Strategie di prezzo, home staging e negoziazione professionale",
+        theme: "theme-gold",
+        chapters: [
+          { name: "Introduzione", title: "Perché il prezzo giusto fa vendere prima", motto: "Chi sbaglia prezzo iniziale perde tempo e denaro.", track: "Traccia 01", content: "Posizionare l'immobile sul mercato con una valutazione rigorosa in metri quadri reali.", quotes: "Analisi comparativa.", notes: "Evitare sovrapprezzo emotivo." },
+          { name: "Capitolo 1", title: "Home Staging e Fotografia Emozionale", motto: "La prima impressione dura per sempre.", track: "Traccia 02", content: "Luce, ordine e valorizzazione degli spazi per attrarre subito visite mirate.", quotes: "De-cluttering e set fotografico.", notes: "Prima e dopo." },
+          { name: "Capitolo 2", title: "Gestire la Trattativa e le Obiezioni", motto: "Negoziare con autorevolezza.", track: "Traccia 03", content: "Come condurre l'acquirente verso un'offerta concreta senza svendere.", quotes: "Filtraggio clienti qualificati.", notes: "Sicurezza nei pagamenti." }
+        ]
+      },
+      {
+        id: 3,
+        title: "Il Rogito Notarile e la Tutela Contrattuale",
+        subtitle: "Guida passo-passo alla firma: documenti, imposte e garanzie",
+        theme: "theme-sapphire",
+        chapters: [
+          { name: "Introduzione", title: "La certezza della proprietà", motto: "Il notaio come garanzia pubblica.", track: "Traccia 01", content: "Cosa accade prima, durante e dopo la firma del rogito.", quotes: "Trascrizione immobiliare.", notes: "Spese e parcelle." }
+        ]
+      },
+      {
+        id: 4,
+        title: "Mutui e Finanziamenti Casa",
+        subtitle: "Tassi, perizie bancarie, detrazioni e agevolazioni giovani",
+        theme: "theme-emerald",
+        chapters: [
+          { name: "Introduzione", title: "Pianificare la rata perfetta", motto: "Il mutuo su misura per la tua famiglia.", track: "Traccia 01", content: "Tasso fisso, variabile con cap, fondo garanzia prima casa Consap.", quotes: "Sostenibilità finanziaria.", notes: "Delibera reddituale." }
+        ]
+      },
+      {
+        id: 5,
+        title: "Valutazione Scientifica degli Immobili",
+        subtitle: "Il calcolo reale dei metri quadri e l'andamento del mercato locale",
+        theme: "theme-ruby",
+        chapters: [
+          { name: "Introduzione", title: "La scienza del valore autentico", motto: "I numeri non mentono mai.", track: "Traccia 01", content: "Metodologia di calcolo delle superfici commerciali calcolate in metri quadri.", quotes: "Borsino immobiliare e OMI.", notes: "Dicitura metri quadri per esteso." }
+        ]
+      },
+      {
+        id: 6,
+        title: "Ristrutturazioni e Bonus Edilizi",
+        subtitle: "Come valorizzare gli ambienti, detrazioni fiscali e gestione cantieri",
+        theme: "theme-purple",
+        chapters: [
+          { name: "Introduzione", title: "Rinnovare moltiplicando il capitale", motto: "Ogni spazio curato è valore creato.", track: "Traccia 01", content: "Bonus ristrutturazione, efficientamento, computo metrico e scelta dell'impresa.", quotes: "Detrazione fiscale e conformità.", notes: "Supervisione lavori." }
+        ]
+      },
+      {
+        id: 7,
+        title: "Investire a Rendita nel Mattone",
+        subtitle: "Locazioni brevi, transitorie e canone concordato con cedolare secca",
+        theme: "theme-gold",
+        chapters: [
+          { name: "Introduzione", title: "Rendita passiva e sicurezza del capitale", motto: "Il mattone protegge l'inflazione.", track: "Traccia 01", content: "Calcolo del ROI netto annuo, selezione degli inquilini e contratti blindati.", quotes: "Cedolare secca al 10% o 21%.", notes: "Gestione affitti." }
+        ]
+      },
+      {
+        id: 8,
+        title: "Eredità, Donazioni e Successioni",
+        subtitle: "Come vendere o acquistare case ereditate o donate senza cause legali",
+        theme: "theme-ruby",
+        chapters: [
+          { name: "Introduzione", title: "Proteggere l'armonia e il patrimonio di famiglia", motto: "La chiarezza evita liti future.", track: "Traccia 01", content: "Diritto di prelazione tra coeredi, polizza salva-donazione e successioni.", quotes: "Azione di riduzione e ventennio.", notes: "Consulenza notarile integrata." }
+        ]
+      },
+      {
+        id: 9,
+        title: "Immobili di Prestigio e Luxury",
+        subtitle: "Protocollo riservato, acquirenti qualificati e standard d'eccellenza",
+        theme: "theme-sapphire",
+        chapters: [
+          { name: "Introduzione", title: "L'esclusività non ammette compromessi", motto: "Privacy e cura artigianale.", track: "Traccia 01", content: "Gestione di ville d'epoca, attici panoramici e residenze storiche.", quotes: "Target d'alto profilo.", notes: "Canali privati." }
+        ]
+      },
+      {
+        id: 10,
+        title: "La Casa Green ed Ecologica",
+        subtitle: "Classe energetica A+, isolamento termico e risparmio sulle bollette",
+        theme: "theme-emerald",
+        chapters: [
+          { name: "Introduzione", title: "Il futuro sostenibile dell'abitare", motto: "Consumare meno per vivere meglio.", track: "Traccia 01", content: "APE (Attestato di Prestazione Energetica), cappotto termico, pompe di calore e fotovoltaico.", quotes: "Direttiva europea case green.", notes: "Rivalutazione sul mercato." }
+        ]
+      },
+      {
+        id: 11,
+        title: "Fiscalità e Tasse sulla Casa",
+        subtitle: "Imposta di registro, IMU, plusvalenze e come risparmiare a norma di legge",
+        theme: "theme-gold",
+        chapters: [
+          { name: "Introduzione", title: "Leggere il fisco per non avere sorprese", motto: "La pianificazione fiscale preventiva.", track: "Traccia 01", content: "Agevolazioni prima casa, riacquisto entro l'anno, esenzione IMU abitazione principale.", quotes: "Regime fiscale ottimizzato.", notes: "Calcolo imposte catastali." }
+        ]
+      },
+      {
+        id: 12,
+        title: "Guida Pratica al Condominio",
+        subtitle: "Tabelle millesimali, delibere assembleari, spese ordinarie e straordinarie",
+        theme: "theme-purple",
+        chapters: [
+          { name: "Introduzione", title: "Vivere bene nel rispetto delle regole comuni", motto: "Il buon vicinato nasce dalla trasparenza.", track: "Traccia 01", content: "Verifica della liberatoria spese condominiali prima del rogito, maggioranze e innovazioni.", quotes: "Liberatoria dell'amministratore.", notes: "Spese arretrate e responsabilità." }
+        ]
+      }
+    ];
 
-    let activeChapterIndex = 1;
+    let currentBookIndex = 0;
+    let currentChapterIndex = 0;
+
+    // Carica dati da LocalStorage
+    function initCollana() {
+      const saved = localStorage.getItem('kdp_collana_data');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          COLLANA_VOLUMI.splice(0, COLLANA_VOLUMI.length, ...parsed);
+        } catch(e) { console.error(e); }
+      }
+      renderSeriesNav();
+      renderCollanaGrid();
+      loadBook(0);
+      renderStylesGrid();
+      populateVoices();
+    }
+
+    function autoSave() {
+      localStorage.setItem('kdp_collana_data', JSON.stringify(COLLANA_VOLUMI));
+    }
+
+    // Render barra dei 12 libri
+    function renderSeriesNav() {
+      const container = document.getElementById('series-books-nav');
+      container.innerHTML = '';
+      COLLANA_VOLUMI.forEach((b, idx) => {
+        const pill = document.createElement('button');
+        pill.className = `book-pill ${idx === currentBookIndex ? 'active' : ''}`;
+        pill.innerHTML = `<span>Vol ${b.id}</span> <b>${b.title}</b>`;
+        pill.onclick = () => {
+          saveCurrentChapter();
+          loadBook(idx);
+        };
+        container.appendChild(pill);
+      });
+    }
+
+    // Carica volume
+    function loadBook(idx) {
+      currentBookIndex = idx;
+      currentChapterIndex = 0;
+      const b = COLLANA_VOLUMI[idx];
+
+      document.getElementById('display-vol-num').innerText = `Volume ${b.id} di 12`;
+      document.getElementById('display-vol-title').innerText = b.title;
+      document.getElementById('display-vol-sub').innerText = b.subtitle;
+      document.getElementById('cover-preview-title').innerText = b.title;
+
+      if (b.theme) {
+        document.body.className = b.theme;
+        document.querySelectorAll('.theme-dot').forEach(d => {
+          d.classList.toggle('active', d.classList.contains(b.theme.replace('theme-', 'dot-')));
+        });
+      }
+
+      renderSeriesNav();
+      renderChapterNav();
+      loadChapter(0);
+    }
+
+    // Render barra capitoli
+    function renderChapterNav() {
+      const container = document.getElementById('chapter-nav');
+      container.innerHTML = '';
+      const book = COLLANA_VOLUMI[currentBookIndex];
+      book.chapters.forEach((ch, idx) => {
+        const chip = document.createElement('button');
+        chip.className = `chapter-chip ${idx === currentChapterIndex ? 'active' : ''}`;
+        chip.innerText = ch.name;
+        chip.onclick = () => {
+          saveCurrentChapter();
+          currentChapterIndex = idx;
+          renderChapterNav();
+          loadChapter(idx);
+        };
+        container.appendChild(chip);
+      });
+    }
+
+    function loadChapter(idx) {
+      const ch = COLLANA_VOLUMI[currentBookIndex].chapters[idx];
+      document.getElementById('active-chapter-title').innerText = `${ch.name}: ${ch.title}`;
+      document.getElementById('chapter-title-input').value = ch.title;
+      document.getElementById('chapter-motto-input').value = ch.motto;
+      document.getElementById('chapter-track-input').value = ch.track;
+      document.getElementById('chapter-quotes-input').value = ch.quotes;
+      document.getElementById('chapter-notes-input').value = ch.notes;
+      document.getElementById('chapter-content-input').value = ch.content;
+      document.getElementById('tts-preview-text').value = ch.content;
+      updateWordCount();
+    }
+
+    function saveCurrentChapter() {
+      const ch = COLLANA_VOLUMI[currentBookIndex].chapters[currentChapterIndex];
+      ch.title = document.getElementById('chapter-title-input').value;
+      ch.motto = document.getElementById('chapter-motto-input').value;
+      ch.track = document.getElementById('chapter-track-input').value;
+      ch.quotes = document.getElementById('chapter-quotes-input').value;
+      ch.notes = document.getElementById('chapter-notes-input').value;
+      ch.content = document.getElementById('chapter-content-input').value;
+      autoSave();
+    }
+
+    function updateWordCount() {
+      const text = document.getElementById('chapter-content-input').value.trim();
+      const words = text ? text.split(/\s+/).length : 0;
+      document.getElementById('word-count').innerText = `${words} parole | ${text.length} battute`;
+    }
+
+    document.getElementById('chapter-content-input').addEventListener('input', () => {
+      updateWordCount();
+      autoSave();
+    });
+
+    // Render scheda 2: Panoramica 12 Volumi
+    function renderCollanaGrid() {
+      const grid = document.getElementById('collana-grid');
+      grid.innerHTML = '';
+      COLLANA_VOLUMI.forEach((b, idx) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.cursor = 'pointer';
+        card.innerHTML = `
+          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--accent); font-weight:700;">Volume ${b.id}</div>
+          <div style="font-size:1.05rem; font-weight:800; color:#fff; margin:4px 0 8px;">${b.title}</div>
+          <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">${b.subtitle}</div>
+          <button class="btn btn-secondary" style="width:100%; font-size:0.8rem;">Apri e Compila</button>
+        `;
+        card.onclick = () => {
+          loadBook(idx);
+          switchTab('tab1', document.querySelectorAll('.tab-btn')[0]);
+        };
+        grid.appendChild(card);
+      });
+    }
+
+    // Cambio Tema Cromatico
+    function setAppTheme(themeClass, dotEl) {
+      document.body.className = themeClass;
+      COLLANA_VOLUMI[currentBookIndex].theme = themeClass;
+      document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('active'));
+      if (dotEl) dotEl.classList.add('active');
+      autoSave();
+    }
+
+    // Switch Tab
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    }
 
     // 30 Stili KDP
     const STYLES_30 = [
@@ -868,279 +932,122 @@
       "29. Narrative Memoir Flow", "30. Prestige Masterclass"
     ];
 
-    // Caricamento Dati da LocalStorage se presenti
-    function loadSavedData() {
-      const saved = localStorage.getItem('kdp_book_data');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          Object.assign(BOOK_DATA, parsed);
-        } catch(e) { console.error(e); }
-      }
-      renderChapterNav();
-      loadChapter(activeChapterIndex);
-      renderStylesGrid();
-      updateAmazonHTML();
-      populateVoices();
-    }
-
-    // Salva su LocalStorage
-    function autoSave() {
-      localStorage.setItem('kdp_book_data', JSON.stringify(BOOK_DATA));
-      const status = document.getElementById('save-status');
-      status.style.opacity = '1';
-      status.innerHTML = '● Salvato';
-      setTimeout(() => { status.innerHTML = '● Modifiche Salvate'; }, 1500);
-    }
-
-    // Render navigatore capitoli
-    function renderChapterNav() {
-      const container = document.getElementById('chapter-nav');
-      container.innerHTML = '';
-      BOOK_DATA.chapters.forEach((ch, idx) => {
-        const chip = document.createElement('button');
-        chip.className = `chapter-chip ${idx === activeChapterIndex ? 'active' : ''}`;
-        chip.innerText = ch.name;
-        chip.onclick = () => {
-          saveCurrentChapter();
-          activeChapterIndex = idx;
-          renderChapterNav();
-          loadChapter(idx);
-        };
-        container.appendChild(chip);
-      });
-    }
-
-    // Carica capitolo nei campi
-    function loadChapter(idx) {
-      const ch = BOOK_DATA.chapters[idx];
-      document.getElementById('active-chapter-title').innerText = `${ch.name}: ${ch.title}`;
-      document.getElementById('chapter-title-input').value = ch.title;
-      document.getElementById('chapter-track-input').value = ch.track;
-      document.getElementById('chapter-motto-input').value = ch.motto;
-      document.getElementById('chapter-quotes-input').value = ch.quotes;
-      document.getElementById('chapter-notes-input').value = ch.notes;
-      document.getElementById('chapter-content-input').value = ch.content;
-      document.getElementById('tts-preview-text').value = ch.content;
-      updateWordCount();
-    }
-
-    // Salva capitolo attivo
-    function saveCurrentChapter() {
-      const ch = BOOK_DATA.chapters[activeChapterIndex];
-      ch.title = document.getElementById('chapter-title-input').value;
-      ch.track = document.getElementById('chapter-track-input').value;
-      ch.motto = document.getElementById('chapter-motto-input').value;
-      ch.quotes = document.getElementById('chapter-quotes-input').value;
-      ch.notes = document.getElementById('chapter-notes-input').value;
-      ch.content = document.getElementById('chapter-content-input').value;
-      document.getElementById('tts-preview-text').value = ch.content;
-      autoSave();
-      updateAmazonHTML();
-    }
-
-    // Conteggio parole e battute
-    function updateWordCount() {
-      const text = document.getElementById('chapter-content-input').value.trim();
-      const words = text ? text.split(/\s+/).length : 0;
-      const chars = text.length;
-      document.getElementById('word-count').innerText = `${words} parole | ${chars} caratteri`;
-    }
-
-    document.getElementById('chapter-content-input').addEventListener('input', () => {
-      updateWordCount();
-      autoSave();
-    });
-
-    // Cambio Tab
-    function switchTab(tabId, btn) {
-      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      btn.classList.add('active');
-    }
-
-    // Imposta tono narrativo
-    function setTone(element) {
-      document.querySelectorAll('.tone-chip').forEach(c => c.classList.remove('active'));
-      element.classList.add('active');
-    }
-
-    // Render 30 Stili KDP
     function renderStylesGrid() {
       const grid = document.getElementById('styles-30-grid');
       grid.innerHTML = '';
-      STYLES_30.forEach((styleName, idx) => {
+      STYLES_30.forEach((s) => {
         const card = document.createElement('div');
-        card.className = `style-card ${idx === 0 ? 'selected' : ''}`;
-        card.innerHTML = `
-          <span class="badge-selected">ATTIVO</span>
-          <div style="font-weight:700; font-size:0.95rem; margin-bottom:6px; color:#fff;">${styleName}</div>
-          <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4;">Impaginazione 6"×9", margini simmetrici, gutter 12.7mm, testatine centrate.</div>
-        `;
-        card.onclick = () => {
-          document.querySelectorAll('.style-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          document.getElementById('current-style-name').innerText = styleName;
-        };
+        card.className = 'card';
+        card.innerHTML = `<div style="font-weight:700; color:#fff;">${s}</div><div style="font-size:0.75rem; color:var(--text-muted)">Formato 6" × 9" KDP</div>`;
         grid.appendChild(card);
       });
     }
 
-    // Inserisci motto
-    function insertSelectedMotto(motto) {
-      if (!motto) return;
-      document.getElementById('chapter-motto-input').value = motto;
-      saveCurrentChapter();
-    }
-
-    // Genera e Aggiorna HTML Amazon KDP
-    function updateAmazonHTML() {
-      const html = `<h2>${BOOK_DATA.title} — ${BOOK_DATA.author}</h2>
-<p>Se desideri orientarti nel mercato immobiliare con assoluta sicurezza e massimizzare il valore del tuo investimento, questo volume è la tua bussola definitiva.</p>
-
-<h3>Cosa scoprirai all'interno:</h3>
-<ul>
-${BOOK_DATA.chapters.slice(1, 7).map(c => `  <li><b>${c.title}</b>: ${c.motto}</li>`).join('\n')}
-</ul>
-
-<p><b>Dettagli Tecnici:</b> Formato 6" × 9" Amazon KDP, impaginazione professionale, copertina ad alta risoluzione.</p>
-<p><i>A cura di Immobiliare Giancani</i></p>`;
-      document.getElementById('amazon-html-output').value = html;
-    }
-
-    function copyAmazonHTML() {
-      const text = document.getElementById('amazon-html-output').value;
-      navigator.clipboard.writeText(text).then(() => alert('Codice HTML Amazon KDP copiato negli appunti!'));
-    }
-
-    // Lettore Vocale Web Speech API
+    // TTS
     let synth = window.speechSynthesis;
     let voices = [];
-
     function populateVoices() {
       if (!synth) return;
       voices = synth.getVoices().filter(v => v.lang.startsWith('it'));
       const select = document.getElementById('tts-voice-select');
       select.innerHTML = '';
-      if (voices.length === 0) {
-        select.innerHTML = '<option>Voce Italiana di Sistema</option>';
-      } else {
-        voices.forEach(v => {
-          const opt = document.createElement('option');
-          opt.value = v.name;
-          opt.innerText = `${v.name} (${v.lang})`;
-          select.appendChild(opt);
-        });
-      }
+      if (!voices.length) select.innerHTML = '<option>Voce Italiana di Sistema</option>';
+      else voices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.name; opt.innerText = `${v.name} (${v.lang})`;
+        select.appendChild(opt);
+      });
     }
-
-    if (synth && synth.onvoiceschanged !== undefined) {
-      synth.onvoiceschanged = populateVoices;
-    }
+    if (synth && synth.onvoiceschanged !== undefined) synth.onvoiceschanged = populateVoices;
 
     function speakCurrentText() {
-      if (!synth) return alert('Sintesi vocale non supportata in questo browser.');
+      if (!synth) return alert('TTS non supportato');
       synth.cancel();
-      const text = document.getElementById('chapter-content-input').value || "Nessun testo presente nel capitolo attivo.";
+      const text = document.getElementById('chapter-content-input').value;
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'it-IT';
-      utter.rate = parseFloat(document.getElementById('tts-rate').value);
-      utter.pitch = parseFloat(document.getElementById('tts-pitch').value);
-      
-      const selectedVoice = voices.find(v => v.name === document.getElementById('tts-voice-select').value);
-      if (selectedVoice) utter.voice = selectedVoice;
-
       synth.speak(utter);
     }
+    function stopSpeaking() { if (synth) synth.cancel(); }
 
-    function stopSpeaking() {
-      if (synth) synth.cancel();
-    }
-
-    // Esporta / Importa JSON
-    function exportJSON() {
+    // Backup JSON
+    function exportCollanaJSON() {
       saveCurrentChapter();
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(BOOK_DATA, null, 2));
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(COLLANA_VOLUMI, null, 2));
       const a = document.createElement('a');
       a.setAttribute("href", dataStr);
-      a.setAttribute("download", "kdp_studio_progetto.json");
+      a.setAttribute("download", "collana_12_libriccini_giancani.json");
       document.body.appendChild(a);
       a.click();
       a.remove();
     }
 
-    function importJSON(event) {
+    function importCollanaJSON(event) {
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
           const data = JSON.parse(e.target.result);
-          Object.assign(BOOK_DATA, data);
+          COLLANA_VOLUMI.splice(0, COLLANA_VOLUMI.length, ...data);
           autoSave();
-          renderChapterNav();
-          loadChapter(activeChapterIndex);
-          alert('Progetto caricato con successo!');
-        } catch(err) {
-          alert('File non valido.');
-        }
+          renderSeriesNav();
+          renderCollanaGrid();
+          loadBook(0);
+          alert('Collana caricata con successo!');
+        } catch(err) { alert('File non valido.'); }
       };
       reader.readAsText(event.target.files[0]);
     }
 
-    // Invio Diretto a Telegram tramite Bot API
-    function prepareTelegramSummary() {
-      const ch = BOOK_DATA.chapters[activeChapterIndex];
-      const msg = `📖 *${BOOK_DATA.title}*\n` +
-                  `👤 Autore: ${BOOK_DATA.author}\n` +
-                  `🔖 Sezione: *${ch.name} - ${ch.title}*\n` +
-                  `🎵 Traccia: _${ch.track}_\n` +
-                  `💡 Motto: "${ch.motto}"\n\n` +
-                  `— Immobiliare Giancani`;
-      document.getElementById('tg-custom-msg').value = msg;
-    }
-
-    async function sendToTelegram() {
+    // Invio Telegram
+    async function sendTelegramMsg(text) {
       const token = document.getElementById('tg-token').value.trim();
       const chatId = document.getElementById('tg-chat-id').value.trim();
-      const message = document.getElementById('tg-custom-msg').value.trim();
       const resBox = document.getElementById('tg-response');
-
-      if (!token || !chatId || !message) {
-        alert('Compila Token, Chat ID e il messaggio da inviare.');
-        return;
-      }
-
-      resBox.innerHTML = '<span style="color:#38bdf8;">Invio in corso a Telegram...</span>';
-
+      resBox.innerHTML = 'Invio in corso...';
       try {
-        const url = `https://api.telegram.org/bot${token}/sendMessage`;
-        const res = await fetch(url, {
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: message,
-            parse_mode: 'Markdown'
-          })
+          body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'Markdown' })
         });
-
         const data = await res.json();
-        if (data.ok) {
-          resBox.innerHTML = '<span style="color:#34d399;">✅ Messaggio inviato con successo al tuo Bot Telegram!</span>';
-        } else {
-          resBox.innerHTML = `<span style="color:#ef4444;">❌ Errore Telegram: ${data.description}</span>`;
-        }
-      } catch (err) {
-        resBox.innerHTML = `<span style="color:#ef4444;">❌ Errore di rete: ${err.message}</span>`;
-      }
+        if (data.ok) resBox.innerHTML = '<span style="color:#34d399">✅ Inviato con successo a Telegram!</span>';
+        else resBox.innerHTML = `<span style="color:#ef4444">❌ Errore: ${data.description}</span>`;
+      } catch(e) { resBox.innerHTML = 'Errore di rete.'; }
     }
 
-    function generateImagePrompts() {
-      alert('Prompt visivi rigenerati per il capitolo corrente con inquadratura 9:16 e 6"×9" KDP.');
+    function sendVolumeToTelegram() {
+      const b = COLLANA_VOLUMI[currentBookIndex];
+      const ch = b.chapters[currentChapterIndex];
+      const msg = `📖 *COLLANA I PRATICI — VOLUME ${b.id} di 12*\n` +
+                  `*${b.title}*\n_${b.subtitle}_\n\n` +
+                  `🔖 Sezione: *${ch.name}: ${ch.title}*\n` +
+                  `💡 Motto: "${ch.motto}"\n\n` +
+                  `— Immobiliare Giancani`;
+      sendTelegramMsg(msg);
     }
 
-    // Avvio al caricamento
-    window.onload = loadSavedData;
+    function sendCollanaToTelegram() {
+      let msg = `📚 *COLLANA COMPLETA "I PRATICI" (12 VOLUMI KDP)*\n\n`;
+      COLLANA_VOLUMI.forEach(b => {
+        msg += `• *Vol ${b.id}*: ${b.title}\n`;
+      });
+      msg += `\n— Immobiliare Giancani`;
+      sendTelegramMsg(msg);
+    }
+
+    function openVolSettings() {
+      const b = COLLANA_VOLUMI[currentBookIndex];
+      const newTitle = prompt("Modifica Titolo Volume:", b.title);
+      if (newTitle) b.title = newTitle;
+      const newSub = prompt("Modifica Sottotitolo Volume:", b.subtitle);
+      if (newSub) b.subtitle = newSub;
+      autoSave();
+      loadBook(currentBookIndex);
+      renderCollanaGrid();
+    }
+
+    window.onload = initCollana;
   </script>
 </body>
 </html>

@@ -133,22 +133,10 @@
       margin: 0 auto;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       overflow-x: auto;
       white-space: nowrap;
       padding-bottom: 4px;
-    }
-
-    .series-label {
-      font-size: 0.78rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--accent);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
     }
 
     .book-pill {
@@ -273,6 +261,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .card-subtitle {
@@ -315,6 +305,7 @@
     .btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       padding: 8px 14px;
       font-size: 0.85rem;
@@ -331,6 +322,25 @@
     .btn-secondary { background: var(--surface-card); color: var(--text); border-color: var(--border); }
     .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border-accent); }
     .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 700; }
+    
+    .btn-magic {
+      background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .btn-magic:hover {
+      filter: brightness(1.15);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(139, 92, 246, 0.5);
+    }
+
+    .btn-stop {
+      background: #ef4444;
+      color: #fff;
+    }
+    .btn-stop:hover { background: #dc2626; }
 
     /* Chapter Chips */
     .chapter-bar {
@@ -404,17 +414,19 @@
       color: var(--text-muted);
     }
 
-    .code-console {
-      background: #050811;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 12px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: #38bdf8;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      max-height: 260px;
+    .status-toast {
+      display: none;
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid #10b981;
+      color: #34d399;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      align-items: center;
+      gap: 8px;
+      animation: fadeIn 0.2s ease;
     }
 
     footer {
@@ -445,7 +457,7 @@
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <button class="btn btn-secondary" onclick="exportCollanaJSON()">💾 Salva Backup Collana</button>
+        <button class="btn btn-secondary" onclick="exportCollanaJSON()">💾 Backup Collana</button>
         <button class="btn btn-secondary" onclick="document.getElementById('import-collana-file').click()">📂 Carica</button>
         <input type="file" id="import-collana-file" style="display:none" accept=".json" onchange="importCollanaJSON(event)">
         <button class="btn btn-gold" onclick="window.print()">🖨️ Stampa Libriccino</button>
@@ -493,12 +505,25 @@
       <!-- Barra dei Capitoli del Volume -->
       <div class="chapter-bar" id="chapter-nav"></div>
 
+      <!-- Notifica Toast per Autocompilazione & Play -->
+      <div id="action-toast" class="status-toast">
+        <span>✨ Capitolo autocompilato con successo, salvato nella memoria e avviato in lettura audio!</span>
+      </div>
+
       <div class="grid-2">
-        <!-- Colonna Sinistra: Editor Testo -->
+        <!-- Colonna Sinistra: Editor Testo con Tasto Autocompila & Play -->
         <div class="card">
           <div class="card-title">
             <span id="active-chapter-title">Capitolo 1</span>
-            <span style="font-size:0.78rem; color:var(--accent);">Libriccino Tascabile 6" × 9" KDP</span>
+            <div style="display:flex; gap:8px;">
+              <!-- IL TASTO RICHIESTO: AUTOCOMPILAZIONE CHE SALVA E FA PLAY SUBITO -->
+              <button class="btn btn-magic" id="btn-autocompile-play" onclick="autocompileAndPlay()">
+                ✨ Autocompila & Play
+              </button>
+              <button class="btn btn-stop" id="btn-stop-audio" style="display:none;" onclick="stopSpeaking()">
+                ⏹ Ferma Audio
+              </button>
+            </div>
           </div>
 
           <div class="form-group">
@@ -508,12 +533,15 @@
 
           <div class="form-group">
             <label>Testo Completo del Capitolo (Colonna F / Copione Ufficiale)</label>
-            <textarea id="chapter-content-input" class="form-control" style="min-height:340px;" placeholder="Scrivi o incolla qui il testo..."></textarea>
+            <textarea id="chapter-content-input" class="form-control" style="min-height:340px;" placeholder="Scrivi qui oppure clicca su '✨ Autocompila & Play' per caricare il testo ufficiale, salvarlo e ascoltarlo all'istante..."></textarea>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
             <span id="word-count" style="font-size:0.8rem; color:var(--text-muted)">0 parole</span>
-            <button class="btn btn-primary" onclick="saveCurrentChapter()">Salva Capitolo</button>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-secondary" onclick="speakCurrentText()">▶ Riascolta</button>
+              <button class="btn btn-primary" onclick="saveCurrentChapter()">💾 Salva Capitolo</button>
+            </div>
           </div>
         </div>
 
@@ -560,9 +588,7 @@
         <p class="card-subtitle">Una serie coordinata di libriccini tascabili pratici, autorevoli e di grande prestigio da esibire in agenzia o consegnare ai clienti.</p>
       </div>
 
-      <div class="grid-3" id="collana-grid">
-        <!-- Generato via JS: 12 schede volumi -->
-      </div>
+      <div class="grid-3" id="collana-grid"></div>
     </div>
 
     <!-- TAB 3: Copertina & Grafica -->
@@ -656,10 +682,10 @@
         subtitle: "Verifiche urbanistiche, controlli notarili e stipula serena",
         theme: "theme-sapphire",
         chapters: [
-          { name: "Introduzione", title: "Il primo passo verso la casa dei sogni", motto: "La serenità comincia dalla sicurezza.", track: "Traccia 01", content: "Comprare casa è uno dei momenti più significativi della vita. Conoscere le tutele legali fa la differenza.", quotes: "Conformità, trasparenza.", notes: "Consigli d'apertura." },
-          { name: "Capitolo 1", title: "Conformità Urbanistica e Catasto", motto: "La conformità è la tua più solida garanzia.", track: "Traccia 02", content: "Tutto ciò che serve sapere su planimetrie, abusi edilizi e sanatorie.", quotes: "Verifiche tecniche preliminari.", notes: "Dettagliare la responsabilità del venditore." },
-          { name: "Capitolo 2", title: "La Proposta d'Acquisto e la Caparra", motto: "Non firmare nulla senza le giuste clausole.", track: "Traccia 03", content: "Come blindare l'accordo con la caparra confirmatoria e le clausole sospensive per il mutuo.", quotes: "Tutela dell'acquirente.", notes: "Clausola sospensiva mutuo." },
-          { name: "Capitolo 3", title: "Il Rogito e la Consegna Chiavi", motto: "Il giorno della firma definitiva.", track: "Traccia 04", content: "I documenti richiesti dal notaio e il verbale di consegna con lettura contatori.", quotes: "Passaggio di possesso formale.", notes: "Chiusura in sicurezza." }
+          { name: "Prefazione", title: "Il primo passo verso la casa dei sogni", motto: "La serenità comincia dalla sicurezza.", track: "Traccia 01 — Ouverture", content: "Comprare casa è uno dei passi più importanti nella vita di una famiglia. Spesso l'entusiasmo della ricerca rischia di mettere in secondo piano i controlli documentali indispensabili. Questa guida nasce proprio per darti gli strumenti pratici per riconoscere gli immobili perfettamente in regola ed evitare qualsiasi sorpresa prima del rogito notarile.\n\n— Immobiliare Giancani", quotes: "Conformità urbanistica, trasparenza contrattuale.", notes: "Impostare fiducia e autorevolezza." },
+          { name: "Capitolo 1", title: "Conformità Urbanistica e Catasto", motto: "La conformità è la tua più solida garanzia.", track: "Traccia 02 — Fondamenta", content: "La conformità urbanistica ed edilizia non ammette deroghe. Una planimetria catastale deve corrispondere esattamente allo stato reale dei luoghi, compresa l'altezza dei soffitti, la disposizione dei tramezzi interni e le aperture verso l'esterno. Un immobile con difformità non sanate espone l'acquirente a blocchi nell'erogazione del mutuo e a responsabilità amministrative. Prima di versare qualsiasi caparra, richiedi sempre l'accesso agli atti e una perizia tecnica giurata.\n\n— Immobiliare Giancani", quotes: "Controllo catastale, sanatorie edilizie, allineamento documentale.", notes: "Dettagliare la responsabilità del venditore e la perizia preventiva." },
+          { name: "Capitolo 2", title: "La Proposta d'Acquisto e la Caparra", motto: "Non firmare nulla senza le giuste clausole di tutela.", track: "Traccia 03 — L'Accordo", content: "La proposta d'acquisto, una volta accettata dal venditore, assume pieno valore vincolante. È fondamentale che la caparra confirmatoria venga versata con assegno non trasferibile intestato al venditore ma custodito fiduciariamente fino all'avveramento della clausola sospensiva del mutuo. In questo modo il compratore è protetto al cento per cento nell'eventualità in cui la banca non deliberi il finanziamento.\n\n— Immobiliare Giancani", quotes: "Caparra confirmatoria, clausola sospensiva mutuo, registrazione.", notes: "Differenza tra caparra confirmatoria e penitenziale." },
+          { name: "Capitolo 3", title: "Il Rogito e la Consegna Chiavi", motto: "Il giorno della firma definitiva.", track: "Traccia 04 — Casa", content: "Il rogito notarile sancisce il passaggio ufficiale della proprietà. In sede di stipula, il notaio dà lettura dell'atto verificando la libertà da ipoteche pregiudizievoli, la regolarità delle imposte di registro e la liberatoria delle spese condominiali. Subito dopo la firma si procede alla redazione del verbale di consegna dell'immobile, con la lettura dei contatori delle utenze e la consegna di tutte le serie di chiavi.\n\n— Immobiliare Giancani", quotes: "Trascrizione immobiliare, liberatoria condominiale, voltura utenze.", notes: "Chiusura in sicurezza." }
         ]
       },
       {
@@ -668,9 +694,9 @@
         subtitle: "Strategie di prezzo, home staging e negoziazione professionale",
         theme: "theme-gold",
         chapters: [
-          { name: "Introduzione", title: "Perché il prezzo giusto fa vendere prima", motto: "Chi sbaglia prezzo iniziale perde tempo e denaro.", track: "Traccia 01", content: "Posizionare l'immobile sul mercato con una valutazione rigorosa in metri quadri reali.", quotes: "Analisi comparativa.", notes: "Evitare sovrapprezzo emotivo." },
-          { name: "Capitolo 1", title: "Home Staging e Fotografia Emozionale", motto: "La prima impressione dura per sempre.", track: "Traccia 02", content: "Luce, ordine e valorizzazione degli spazi per attrarre subito visite mirate.", quotes: "De-cluttering e set fotografico.", notes: "Prima e dopo." },
-          { name: "Capitolo 2", title: "Gestire la Trattativa e le Obiezioni", motto: "Negoziare con autorevolezza.", track: "Traccia 03", content: "Come condurre l'acquirente verso un'offerta concreta senza svendere.", quotes: "Filtraggio clienti qualificati.", notes: "Sicurezza nei pagamenti." }
+          { name: "Prefazione", title: "Perché il prezzo giusto fa vendere prima", motto: "Chi sbaglia prezzo iniziale perde tempo e denaro.", track: "Traccia 01", content: "Il mercato immobiliare moderno premia la precisione. Sovraprezzare un immobile nella speranza di trattare porta solo a bruciare l'annuncio nelle prime settimane, che sono le più preziose. Una stima scientifica basata sui metri quadri reali permette di attrarre acquirenti realmente motivati e finanziabili.\n\n— Immobiliare Giancani", quotes: "Analisi comparativa, posizionamento strategico.", notes: "Evitare sovrapprezzo emotivo." },
+          { name: "Capitolo 1", title: "Home Staging e Fotografia Emozionale", motto: "La prima impressione dura per sempre.", track: "Traccia 02", content: "Un acquirente decide se una casa gli piace nei primi novanta secondi della visita. Liberare gli ambienti dagli oggetti superflui, valorizzare la luce naturale e realizzare un servizio fotografico ad alta definizione consente di aumentare le richieste di visita fino al trecento per cento, riducendo i margini di ribasso.\n\n— Immobiliare Giancani", quotes: "De-cluttering, illuminazione corretta, visual storytelling.", notes: "Prima e dopo con esempi pratici." },
+          { name: "Capitolo 2", title: "Gestire la Trattativa e le Obiezioni", motto: "Negoziare con autorevolezza.", track: "Traccia 03", content: "Condurre una trattativa significa saper rispondere a ogni obiezione con dati concreti e documentazione ineccepibile. Mantenere fermo il punto sul reale valore dell'immobile protegge il patrimonio del venditore e garantisce un accordo solido e trasparente.\n\n— Immobiliare Giancani", quotes: "Filtro acquirenti qualificati, proposta irrevocabile scritta.", notes: "Sicurezza nei pagamenti." }
         ]
       },
       {
@@ -679,7 +705,8 @@
         subtitle: "Guida passo-passo alla firma: documenti, imposte e garanzie",
         theme: "theme-sapphire",
         chapters: [
-          { name: "Introduzione", title: "La certezza della proprietà", motto: "Il notaio come garanzia pubblica.", track: "Traccia 01", content: "Cosa accade prima, durante e dopo la firma del rogito.", quotes: "Trascrizione immobiliare.", notes: "Spese e parcelle." }
+          { name: "Prefazione", title: "La certezza della proprietà", motto: "Il notaio come garanzia pubblica.", track: "Traccia 01", content: "Dalla proposta al preliminare fino all'atto notarile finale: comprendere ogni passaggio burocratico garantisce la massima serenità sia a chi acquista sia a chi vende.\n\n— Immobiliare Giancani", quotes: "Trascrizione immobiliare, garanzie reali.", notes: "Tutela legale." },
+          { name: "Capitolo 1", title: "Documenti Obbligatori per il Rogito", motto: "Nessun documento lasciato al caso.", track: "Traccia 02", content: "Atto di provenienza, planimetria catastale conforme, attestato di prestazione energetica e certificato di agibilità: ecco la cartella documentale completa richiesta dal notaio per rogare senza ritardi.\n\n— Immobiliare Giancani", quotes: "Checklist notarile completa.", notes: "Tempistiche di reperimento." }
         ]
       },
       {
@@ -688,7 +715,8 @@
         subtitle: "Tassi, perizie bancarie, detrazioni e agevolazioni giovani",
         theme: "theme-emerald",
         chapters: [
-          { name: "Introduzione", title: "Pianificare la rata perfetta", motto: "Il mutuo su misura per la tua famiglia.", track: "Traccia 01", content: "Tasso fisso, variabile con cap, fondo garanzia prima casa Consap.", quotes: "Sostenibilità finanziaria.", notes: "Delibera reddituale." }
+          { name: "Prefazione", title: "Pianificare la rata perfetta", motto: "Il mutuo su misura per la tua famiglia.", track: "Traccia 01", content: "Scegliere tra tasso fisso e variabile, comprendere il TAEG e calcolare il rapporto rata-reddito massimo per ottenere il via libera dalla banca in tempi rapidi.\n\n— Immobiliare Giancani", quotes: "Sostenibilità finanziaria, istruttoria bancaria.", notes: "Delibera reddituale preventiva." },
+          { name: "Capitolo 1", title: "La Perizia Tecnica della Banca", motto: "La conformità che rassicura l'istituto di credito.", track: "Traccia 02", content: "Cosa controlla il perito nominato dalla banca: verifica delle superfici in metri quadri, regolarità edilizia e congruità del prezzo pattuito rispetto alle quotazioni di mercato.\n\n— Immobiliare Giancani", quotes: "Perizia estimativa, delibera tecnica.", notes: "Metri quadri per esteso." }
         ]
       },
       {
@@ -697,7 +725,8 @@
         subtitle: "Il calcolo reale dei metri quadri e l'andamento del mercato locale",
         theme: "theme-ruby",
         chapters: [
-          { name: "Introduzione", title: "La scienza del valore autentico", motto: "I numeri non mentono mai.", track: "Traccia 01", content: "Metodologia di calcolo delle superfici commerciali calcolate in metri quadri.", quotes: "Borsino immobiliare e OMI.", notes: "Dicitura metri quadri per esteso." }
+          { name: "Prefazione", title: "La scienza del valore autentico", motto: "I numeri non mentono mai.", track: "Traccia 01", content: "Superficie calpestabile e superficie commerciale: come si calcolano correttamente i balconi, le cantine, i terrazzi e i giardini per ottenere i metri quadri commerciali corretti.\n\n— Immobiliare Giancani", quotes: "Coefficienti di ponderazione mercantile.", notes: "Dicitura metri quadri per esteso." },
+          { name: "Capitolo 1", title: "I Parametri che Determinano il Valore", motto: "Luce, piano, stato e posizione.", track: "Traccia 02", content: "L'ascensore, l'esposizione, la classe energetica e il contesto circostante: come ciascun elemento incide percentualmente sul valore finale al metro quadro.\n\n— Immobiliare Giancani", quotes: "Borsino immobiliare e quotazioni OMI.", notes: "Calcolo analitico." }
         ]
       },
       {
@@ -706,7 +735,7 @@
         subtitle: "Come valorizzare gli ambienti, detrazioni fiscali e gestione cantieri",
         theme: "theme-purple",
         chapters: [
-          { name: "Introduzione", title: "Rinnovare moltiplicando il capitale", motto: "Ogni spazio curato è valore creato.", track: "Traccia 01", content: "Bonus ristrutturazione, efficientamento, computo metrico e scelta dell'impresa.", quotes: "Detrazione fiscale e conformità.", notes: "Supervisione lavori." }
+          { name: "Prefazione", title: "Rinnovare moltiplicando il capitale", motto: "Ogni spazio curato è valore creato.", track: "Traccia 01", content: "Una ristrutturazione mirata trasforma anche un appartamento datato in una dimora contemporanea ad alta efficienza energetica, moltiplicando il suo valore commerciale.\n\n— Immobiliare Giancani", quotes: "Detrazioni fiscali, computo metrico estimativo.", notes: "Pianificazione preventiva." }
         ]
       },
       {
@@ -715,7 +744,7 @@
         subtitle: "Locazioni brevi, transitorie e canone concordato con cedolare secca",
         theme: "theme-gold",
         chapters: [
-          { name: "Introduzione", title: "Rendita passiva e sicurezza del capitale", motto: "Il mattone protegge l'inflazione.", track: "Traccia 01", content: "Calcolo del ROI netto annuo, selezione degli inquilini e contratti blindati.", quotes: "Cedolare secca al 10% o 21%.", notes: "Gestione affitti." }
+          { name: "Prefazione", title: "Rendita passiva e protezione del capitale", motto: "Il mattone protegge dall'inflazione.", track: "Traccia 01", content: "Come scegliere la tipologia di locazione più redditizia per la propria zona: canone concordato con cedolare secca agevolata al dieci per cento oppure affitti brevi per turisti e professionisti.\n\n— Immobiliare Giancani", quotes: "ROI netto, cedolare secca, selezione inquilini.", notes: "Redditività garantita." }
         ]
       },
       {
@@ -724,7 +753,7 @@
         subtitle: "Come vendere o acquistare case ereditate o donate senza cause legali",
         theme: "theme-ruby",
         chapters: [
-          { name: "Introduzione", title: "Proteggere l'armonia e il patrimonio di famiglia", motto: "La chiarezza evita liti future.", track: "Traccia 01", content: "Diritto di prelazione tra coeredi, polizza salva-donazione e successioni.", quotes: "Azione di riduzione e ventennio.", notes: "Consulenza notarile integrata." }
+          { name: "Prefazione", title: "Proteggere l'armonia e il patrimonio di famiglia", motto: "La chiarezza evita liti future.", track: "Traccia 01", content: "La donazione immobiliare è spesso vista con diffidenza dalle banche a causa del rischio di revocatoria da parte dei legittimari. Come stipulare una polizza donazione sicura o effettuare una risoluzione consensuale per rendere l'immobile perfettamente commerciabile.\n\n— Immobiliare Giancani", quotes: "Azione di riduzione, polizza salva-donazione.", notes: "Consulenza successoria." }
         ]
       },
       {
@@ -733,7 +762,7 @@
         subtitle: "Protocollo riservato, acquirenti qualificati e standard d'eccellenza",
         theme: "theme-sapphire",
         chapters: [
-          { name: "Introduzione", title: "L'esclusività non ammette compromessi", motto: "Privacy e cura artigianale.", track: "Traccia 01", content: "Gestione di ville d'epoca, attici panoramici e residenze storiche.", quotes: "Target d'alto profilo.", notes: "Canali privati." }
+          { name: "Prefazione", title: "L'esclusività non ammette compromessi", motto: "Privacy e cura artigianale.", track: "Traccia 01", content: "Gli immobili di prestigio richiedono un approccio su misura: materiali promozionali riservati, canali internazionali selezionati e visite condotte solo con acquirenti profilati finanziariamente.\n\n— Immobiliare Giancani", quotes: "Standard luxury, riservatezza assoluta.", notes: "Target d'alto profilo." }
         ]
       },
       {
@@ -742,7 +771,7 @@
         subtitle: "Classe energetica A+, isolamento termico e risparmio sulle bollette",
         theme: "theme-emerald",
         chapters: [
-          { name: "Introduzione", title: "Il futuro sostenibile dell'abitare", motto: "Consumare meno per vivere meglio.", track: "Traccia 01", content: "APE (Attestato di Prestazione Energetica), cappotto termico, pompe di calore e fotovoltaico.", quotes: "Direttiva europea case green.", notes: "Rivalutazione sul mercato." }
+          { name: "Prefazione", title: "Il futuro sostenibile dell'abitare", motto: "Consumare meno per vivere meglio.", track: "Traccia 01", content: "Le nuove normative europee premiano gli immobili ad alta efficienza. Un cappotto termico e infissi a taglio termico aumentano il comfort abitativo e garantiscono la tenuta del valore dell'immobile nel tempo.\n\n— Immobiliare Giancani", quotes: "APE, classe A+, risparmio energetico.", notes: "Direttive europee." }
         ]
       },
       {
@@ -751,7 +780,7 @@
         subtitle: "Imposta di registro, IMU, plusvalenze e come risparmiare a norma di legge",
         theme: "theme-gold",
         chapters: [
-          { name: "Introduzione", title: "Leggere il fisco per non avere sorprese", motto: "La pianificazione fiscale preventiva.", track: "Traccia 01", content: "Agevolazioni prima casa, riacquisto entro l'anno, esenzione IMU abitazione principale.", quotes: "Regime fiscale ottimizzato.", notes: "Calcolo imposte catastali." }
+          { name: "Prefazione", title: "Leggere il fisco per non avere sorprese", motto: "La pianificazione fiscale preventiva.", track: "Traccia 01", content: "Dalle agevolazioni prima casa con imposta di registro al due per cento, fino al riacquisto entro l'anno e alla gestione delle plusvalenze sulle vendite prima dei cinque anni: la guida pratica per risparmiare legalmente.\n\n— Immobiliare Giancani", quotes: "Pianificazione imposte, agevolazione prima casa.", notes: "Ottimizzazione fiscale." }
         ]
       },
       {
@@ -760,7 +789,7 @@
         subtitle: "Tabelle millesimali, delibere assembleari, spese ordinarie e straordinarie",
         theme: "theme-purple",
         chapters: [
-          { name: "Introduzione", title: "Vivere bene nel rispetto delle regole comuni", motto: "Il buon vicinato nasce dalla trasparenza.", track: "Traccia 01", content: "Verifica della liberatoria spese condominiali prima del rogito, maggioranze e innovazioni.", quotes: "Liberatoria dell'amministratore.", notes: "Spese arretrate e responsabilità." }
+          { name: "Prefazione", title: "Vivere bene nel rispetto delle regole comuni", motto: "Il buon vicinato nasce dalla trasparenza.", track: "Traccia 01", content: "Chi compra un appartamento risponde solidalmente con il venditore per le spese condominiali dell'anno in corso e di quello precedente. Richiedere la liberatoria dell'amministratore prima del rogito è il passaggio fondamentale per una transazione serena.\n\n— Immobiliare Giancani", quotes: "Liberatoria amministratore, ripartizione millesimale.", notes: "Tutela spese condominiali." }
         ]
       }
     ];
@@ -768,7 +797,7 @@
     let currentBookIndex = 0;
     let currentChapterIndex = 0;
 
-    // Carica dati da LocalStorage
+    // Inizializzazione
     function initCollana() {
       const saved = localStorage.getItem('kdp_collana_data');
       if (saved) {
@@ -881,7 +910,41 @@
       autoSave();
     });
 
-    // Render scheda 2: Panoramica 12 Volumi
+    // =========================================================================
+    // ✨ FUNZIONE RICHIESTA: AUTOCOMPILAZIONE CON SALVATAGGIO IMMEDIATO E PLAY
+    // =========================================================================
+    function autocompileAndPlay() {
+      const b = COLLANA_VOLUMI[currentBookIndex];
+      const ch = b.chapters[currentChapterIndex];
+
+      // Se non c'è testo o è breve, generiamo un copione autorevole calibrato
+      let generatedText = ch.content;
+      if (!generatedText || generatedText.length < 50) {
+        generatedText = `Nel mercato immobiliare la competenza e l'attenzione a ogni dettaglio contrattuale sono i pilastri che trasformano ogni operazione in un successo duraturo. Conoscere le normative edilizie, verificare con perizia tecnica la corrispondenza delle superfici in metri quadri ed esaminare tutti i titoli di provenienza permette di procedere con la massima tranquillità. Questa sezione del Volume ${b.id} — "${b.title}" — approfondisce proprio le soluzioni operative per garantire la migliore tutela.\n\n— Immobiliare Giancani`;
+      }
+
+      // 1. Inserisce nei campi dell'interfaccia
+      document.getElementById('chapter-content-input').value = generatedText;
+      document.getElementById('tts-preview-text').value = generatedText;
+
+      // 2. Salva nei dati dell'oggetto e in LocalStorage
+      ch.content = generatedText;
+      saveCurrentChapter();
+      updateWordCount();
+
+      // 3. Mostra il toast di conferma
+      const toast = document.getElementById('action-toast');
+      toast.style.display = 'flex';
+      setTimeout(() => { toast.style.display = 'none'; }, 3500);
+
+      // 4. Avvia subito la lettura vocale in Play
+      speakCurrentText();
+
+      // Mostra pulsante di stop
+      document.getElementById('btn-stop-audio').style.display = 'inline-flex';
+    }
+
+    // Scheda 2: Panoramica 12 Volumi
     function renderCollanaGrid() {
       const grid = document.getElementById('collana-grid');
       grid.innerHTML = '';
@@ -943,7 +1006,7 @@
       });
     }
 
-    // TTS
+    // TTS con Web Speech API
     let synth = window.speechSynthesis;
     let voices = [];
     function populateVoices() {
@@ -961,14 +1024,33 @@
     if (synth && synth.onvoiceschanged !== undefined) synth.onvoiceschanged = populateVoices;
 
     function speakCurrentText() {
-      if (!synth) return alert('TTS non supportato');
+      if (!synth) return alert('Sintesi vocale non supportata nel browser.');
       synth.cancel();
-      const text = document.getElementById('chapter-content-input').value;
+      const text = document.getElementById('chapter-content-input').value || "Nessun testo presente nel capitolo attivo.";
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'it-IT';
+      
+      const select = document.getElementById('tts-voice-select');
+      if (select && select.value) {
+        const selectedVoice = voices.find(v => v.name === select.value);
+        if (selectedVoice) utter.voice = selectedVoice;
+      }
+
+      utter.onend = () => {
+        const stopBtn = document.getElementById('btn-stop-audio');
+        if (stopBtn) stopBtn.style.display = 'none';
+      };
+
       synth.speak(utter);
+      const stopBtn = document.getElementById('btn-stop-audio');
+      if (stopBtn) stopBtn.style.display = 'inline-flex';
     }
-    function stopSpeaking() { if (synth) synth.cancel(); }
+
+    function stopSpeaking() {
+      if (synth) synth.cancel();
+      const stopBtn = document.getElementById('btn-stop-audio');
+      if (stopBtn) stopBtn.style.display = 'none';
+    }
 
     // Backup JSON
     function exportCollanaJSON() {
